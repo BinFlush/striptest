@@ -155,7 +155,7 @@ If the "Count" numbers are difficult to memorize, they may be written on a scrap
 
 An arduino based f-stop timer is still not cheaper than a metronome, and the metronome is wonderfully flexible and simple. It can be seen as an example of the KISS design principle (Keep It Simple Stupid), where a basic wristwatch in principle could replace the metronome. This script then functions as a bridge between the metronomes full timing capabilities, and our f-stop printing.
 
-Also, not everyone likes to solder.
+Also, not everyone likes to solder, but everyone loves metronomes. 
 
 * **Why doesn't this script just include a metronome?**
 
