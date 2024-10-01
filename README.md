@@ -84,6 +84,23 @@ Custom tempo files are useful for metronomes with skips in their possible bpm op
 180
 ```
 
+### Extended example
+Let's say our metronome has a range from 30-300 bpm, and that we previously obtained a good exposure at 8 seconds, but the contrast needed modification such that we know that the 8-second exposure might be slightly underexposed at the new contrast setting. We can do the following:
+We make a 5-step striptest where we place the base of 8 seconds at the first step, and do increments of 1/6 stops from there. It will result in the following output:
+```bash
+$ python striptest.py -b 8 -n 5 -p 1 -s 6 -tmin 30 -tmax 300
+
+TEMPO 255
+Count every fourth beat
+
+     Count      Stops    Seconds   Target Sec   % of stepsize Error
+     8+2/4          0      8.000        8.000       0.0%
+     9+2/4       +1/6      8.941        8.980      -3.7%
+    10+3/4       +2/6     10.118       10.079       3.3%
+    12           +3/6     11.294       11.314      -1.5%
+    13+2/4       +4/6     12.706       12.699       0.5%
+```
+
 ## Installation
 
 1. Clone the repository:
