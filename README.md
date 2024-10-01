@@ -3,6 +3,26 @@ A small script to find optimal tempo settings for f/stop printing with a metrono
 ## Overview
 **striptest** is a Python script designed for darkroom enthusiasts who want to optimize their exposure settings for f/stop printing using a metronome, and specifically for making teststrips. This tool finds the best tempo settings reducing exposure inaccuracies.
 
+## Quickstart
+Ensure you have python and numpy installed, download the file `striptest.py`, open a terminal, navigate to where the file is located and run
+```
+python striptest.py
+```
+By default it outputs a 7-step list in 1/3 stop increments with the base of 10 seconds in the middle. The optimal metronome tempo for timing these exposures happens to be 181 bpm. You will thus see the following output:
+```
+TEMPO 181
+Count every third beat
+
+     Count      Stops    Seconds   Target Sec   % of stepsize Error
+     5             -1      4.972        5.000      -2.4%
+     6+1/3       -2/3      6.298        6.300      -0.1%
+     8           -1/3      7.956        7.937       1.0%
+    10              0      9.945       10.000      -2.4%
+    12+2/3       +1/3     12.597       12.599      -0.1%
+    16           +2/3     15.912       15.874       1.0%
+    20             +1     19.890       20.000      -2.4%
+```
+Doing these exposures simply amounts to setting your metronome to the tempo (181), optionally making the metronome mark every third beat, and start counting (from 0) when you start your exposure. Keep counting on every third beat and make adjustments according to whatever teststrip method you use, as per the "Count" column.
 ## Background
 
 ### Traditional f/stop Printing
@@ -10,7 +30,7 @@ When working in the darkroom, exposures are best timed in f/stops, and these exp
 
 Where $t$ is the exposure time we are looking for, $b$ is a base time that we are calculating from, and **stop** is how many f/stops we want to adjust away from our base time.
 
-However, even when rounding exposure times to the nearest half-second, it can lead to inaccuracies. For example, if performing a 5-step test strip in 1/3 stops based on a 6-second base exposure:
+However, this method has its drawbacks. Even when rounding exposure times to the nearest half-second, it can lead to inaccuracies. For example, if performing a 5-step test strip in 1/3-stop increments based on a 6-second base exposure:
 
 | **Stops** | -2/3   | -1/3   | 0   |   +1/3|    +2/3   |
 |-------:|--------|----------|----------|---------|-------------|
@@ -19,12 +39,20 @@ However, even when rounding exposure times to the nearest half-second, it can le
 | **Rounded time** (s)| 4  | 5   | 6   | 7.5| 9.5 |
 |**% of 1/3 stop error**| 24.5%| 21.1%|0%|3.4%| 1.1%|
 
-This rounding issue, combined with the use of a metronome, motivated the creation of this script.
+As shown, half seconds are in some cases not granular enough. 
+
+Furthermore, simply rounding seconds is in theory not always appropriate. It is theoretically possible for the rounding operation, to lead to a value that is further away from the desired exposure that if the rounding was done in the other direction. This is due to the logarithmic nature of f-stops, and the fact, that rounding should be done in logarithmic space (stop-space). 
+
+Since we have a metronome at hand, there are many other timing options than 60 or 120 beats per second. As a matter of fact, for almost any realistic teststrip, it is possible to find a tempo that aligns well with the desired exposures, which opens up the possibility of very accurate f-stop exposures when doing our teststrips. 
+
+This is what motivated the creation of this script.
 
 ## Function
 
 ### Basic Example
-To find the optimal tempo for a 6-second base exposure over 5 steps:
+As shown in the **quickstart** section, the script can be run without any arguments.
+
+However, to find the optimal tempo for a 6-second base exposure over 5 steps, we use the -b (base) and -n (numsteps) arguments:
 ```bash
 $ python striptest.py -b 6 -n 5
 TEMPO 190
@@ -115,4 +143,5 @@ Count every fourth beat
 
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request.
+
 
