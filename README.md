@@ -1,5 +1,5 @@
 # striptest
-A small script to find optimal tempo settings for f/stop printing with a metronome in the darkroom.
+A small script to find optimal tempo settings for f/stop printing with a physical metronome in the darkroom.
 ## Overview
 **striptest** is a Python script designed for darkroom enthusiasts who want to optimize their exposure settings for f/stop printing using a metronome, and specifically for making teststrips. This tool finds the best tempo settings reducing exposure inaccuracies.
 
