@@ -100,18 +100,18 @@ for tempo in tempos:
 # Possibly make subdivisions based on tempo
 if 120 <= winner['tempo'] < 180:
     winner['lst'] = [(a/2,b,c,d) for a,b,c,d in winner['lst']]
-    subdivision_notice = "Subdivide into halves"
+    subdivision_notice = "Count every second beat"
     countdivisor=2
 elif 180 <= winner['tempo'] < 240:
     winner['lst'] = [(a/3,b,c,d) for a,b,c,d in winner['lst']]
-    subdivision_notice = "Subdivide into triplets"
+    subdivision_notice = "Count every third beat"
     countdivisor=3
 elif winner['tempo'] >= 240:
     winner['lst'] = [(a/4,b,c,d) for a,b,c,d in winner['lst']]
-    subdivision_notice = "Subdivide into quarters"
+    subdivision_notice = "Count every fourth beat"
     countdivisor=4
 else:
-    subdivision_notice = "No subdivision necessary"
+    subdivision_notice = "Count every beat"
 
 
 

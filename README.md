@@ -6,9 +6,8 @@ A small script to find optimal tempo settings for f/stop printing with a metrono
 ## Background
 
 ### Traditional f/stop Printing
-When working in the darkroom, exposures are best timed in f/stops, and these exposures are often timed using very expensive special f/stop timers. However, using a metronome set to 60 bpm (simply counting seconds) is also possible. Exposure calculations are done using:
+When working in the darkroom, exposures are best timed in f/stops, and these exposures are often timed using very expensive special f/stop timers. However, using a metronome set to 60 bpm (simply counting seconds) is also possible. Exposure calculations are done using $t = b \cdot 2^{\text{stop}}$
 
-$t = b \cdot 2^{\text{stop}}$
 Where $t$ is the exposure time we are looking for, $b$ is a base time that we are calculating from, and **stop** is how many f/stops we want to adjust away from our base time.
 
 However, even when rounding exposure times to the nearest half-second, it can lead to inaccuracies. For example, if performing a 5-step test strip in 1/3 stops based on a 6-second base exposure:
@@ -29,7 +28,7 @@ To find the optimal tempo for a 6-second base exposure over 5 steps:
 ```bash
 $ python striptest.py -b 6 -n 5
 TEMPO 190
-Subdivide into triplets
+Count every third beat
 
      Count      Stops    Seconds   Target Sec   % of stepsize Error
      4           -2/3      3.789        3.780       1.1%
@@ -38,9 +37,11 @@ Subdivide into triplets
      8           +1/3      7.579        7.560       1.1%
     10           +2/3      9.474        9.524      -2.3%
 ```
-As seen, the script finds an optimal tempo (e.g., 190 bpm) to minimize exposure inaccuracies.
+As seen, the script finds an optimal tempo (e.g., 190 bpm) to minimize exposure inaccuracies, with much smaller errors compared to the above example counting half seconds.
 
-As seen, the script finds an optimal tempo (e.g., 190 bpm) to minimize exposure inaccuracies.
+In this case, set your metronome to 190 bpm, optionally make the metronome accent every third beat, and simply start exposing by counting the accented beats. The metronome will in this case be effectively beating triplets, so a count of 6+1/3 illustrates you should stop on the first triplet after the 6th accented beat.
+
+As always in darkroom printing, you should start your exposure at the count of zero.
 
 ## Usage
 
@@ -63,17 +64,24 @@ python striptest.py -b 6 -n 5
 
 To specify a different stepsize (e.g., 1/2 stop increments):
 ```bash
-python striptest.py -b 6 -s 2 -n 5
+python striptest.py -s 2
 ```
 
 To use a custom tempo range between 60 and 180 bpm:
 ```bash
-python striptest.py -b 6 -n 5 -tmin 60 -tmax 180
+python striptest.py -tmin 60 -tmax 180
 ```
 
 To use a custom file with tempo options:
 ```bash
 python striptest.py -b 6 -n 5 -f tempos.txt
+```
+
+Custom tempo files are useful for metronomes with skips in their possible bpm options. Some metronomes for instance only include every other bpm above a certain value, and even every third bpm above a higher value. Tempo files should have every tempo as an integer number, separated with newline. If you only want to use tempos 60, 120, and 180, the file contents should simply be:
+```
+60
+120
+180
 ```
 
 ## Installation
@@ -87,9 +95,6 @@ python striptest.py -b 6 -n 5 -f tempos.txt
    ```bash
    pip install numpy
    ```
-
-## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request.
