@@ -11,7 +11,7 @@ python striptest.py
 By default it outputs a 7-step list in 1/3 stop increments with the base of 10 seconds in the middle. The optimal metronome tempo for timing these exposures happens to be 181 bpm. You will thus see the following output:
 ```
 TEMPO 181
-Count every third beat
+Count every 3rd beat
 
      Count      Stops    Seconds   Target Sec   % of stepsize Error
      5             -1      4.972        5.000      -2.4%
@@ -56,7 +56,7 @@ However, to find the optimal tempo for a 6-second base exposure over 5 steps, we
 ```bash
 $ python striptest.py -b 6 -n 5
 TEMPO 190
-Count every third beat
+Count every 3rd beat
 
      Count      Stops    Seconds   Target Sec   % of stepsize Error
      4           -2/3      3.789        3.780       1.1%
@@ -119,7 +119,7 @@ We make a 5-step teststrip where we place the base of 8 seconds at the first ste
 $ python striptest.py -b 8 -n 5 -p 1 -s 6 -tmin 30 -tmax 300
 
 TEMPO 255
-Count every fourth beat
+Count every 4th beat
 
      Count      Stops    Seconds   Target Sec   % of stepsize Error
      8+2/4          0      8.000        8.000       0.0%
