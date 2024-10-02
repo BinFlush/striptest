@@ -4,13 +4,22 @@ import argparse
 import numpy as np
 
 parser = argparse.ArgumentParser(description='Calculate the best tempo for darkroom timer.')
-parser.add_argument('-b', '--base', type=float, default=10.0, help='Base value for calculation (default: 10)')
-parser.add_argument('-s', '--stepsize', type=int, default=3, help='Inverse of the stepsize as an integer. 1 is one stop, 2 is 1/2 stop etc. (default: 3)')
-parser.add_argument('-n', '--numsteps', type=int, default=7, help='Number of steps (default: 7)')
-parser.add_argument('-p', '--baseplace', type=int, default=-1, help='Baseplace value. This is 1-indexed such that the first value is 1 (default: is middle for uneven n, left to middle for even n)')
-parser.add_argument('-tmin', '--tmin', type=int, default=40, help='Minimum tempo (default: 40)')
-parser.add_argument('-tmax', '--tmax', type=int, default=208, help='Maximum tempo (default: 208)')
-parser.add_argument('-f', '--file', type=argparse.FileType('r'), help='Optional input file with specific tempo options. Should be a plaintext file where each line is a bpm number, only separated by newline (overrides -tmax and -tmin)')
+parser.add_argument('-b', '--base', type=float, default=10.0, 
+                    help='Base value for calculation (default: 10)')
+parser.add_argument('-s', '--stepsize', type=int, default=3, 
+                    help='Inverse of the stepsize as an integer. 1 is one stop, 2 is 1/2 stop etc. (default: 3)')
+parser.add_argument('-n', '--numsteps', type=int, default=7, 
+                    help='Number of steps (default: 7)')
+parser.add_argument('-p', '--baseplace', type=int, default=-1, 
+                    help='Baseplace value. This is 1-indexed such that the first value is 1 (default: is middle for uneven n, left to middle for even n)')
+parser.add_argument('-tmin', '--tmin', type=int, default=40, 
+                    help='Minimum tempo (default: 40)')
+parser.add_argument('-tmax', '--tmax', type=int, default=208, 
+                    help='Maximum tempo (default: 208)')
+parser.add_argument('-f', '--file', type=argparse.FileType('r'), 
+                    help='Optional input file with specific tempo options. Should be a plaintext file where each line is a bpm number, only separated by newline (overrides -tmax and -tmin)')
+parser.add_argument('-l', '--local', action='store_true', 
+                    help='Use local timing for the test strip such that each step is a full exposure. Useful for local teststrips, or for those who prefer not to start from 0 on each step, but rather to continue their count from the previous step (default is cumulative timing).')
 
 args = parser.parse_args()
 
@@ -95,6 +104,24 @@ for tempo in tempos:
         winner['loss'] = squared_loss
         winner['tempo'] = tempo
         winner['lst'] = closest_quads
+
+if not args.local:
+    cumulative_lst = []
+    previous_n = 0  # Initialize the previous exposure count
+
+    for n, sec, stop, stoperror in winner['lst']:
+        # Calculate the cumulative `n` as the difference from the previous step
+        cumulative_n = n - previous_n
+        cumulative_lst.append((cumulative_n, sec, stop, stoperror))
+        
+        # Update the previous exposure count
+        previous_n = n
+    
+    # Update winner['lst'] with the cumulative counts
+    winner['lst'] = cumulative_lst
+    
+
+
 
 #print(winner)
 # Possibly make subdivisions based on tempo

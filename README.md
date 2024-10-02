@@ -15,12 +15,12 @@ Count every 3rd beat
 
      Count      Stops    Seconds   Target Sec   % of stepsize Error
      5             -1      4.972        5.000      -2.4%
-     6+1/3       -2/3      6.298        6.300      -0.1%
-     8           -1/3      7.956        7.937       1.0%
-    10              0      9.945       10.000      -2.4%
-    12+2/3       +1/3     12.597       12.599      -0.1%
-    16           +2/3     15.912       15.874       1.0%
-    20             +1     19.890       20.000      -2.4%
+     1+1/3       -2/3      6.298        6.300      -0.1%
+     1+2/3       -1/3      7.956        7.937       1.0%
+     2              0      9.945       10.000      -2.4%
+     2+2/3       +1/3     12.597       12.599      -0.1%
+     3+1/3       +2/3     15.912       15.874       1.0%
+     4             +1     19.890       20.000      -2.4%
 ```
 Doing these exposures simply amounts to setting your metronome to the tempo (181), optionally making the metronome mark every third beat, and start counting (from 0) when you start your exposure. Keep counting on every third beat and make adjustments according to whatever teststrip method you use, as per the "Count" column.
 ## Background
@@ -60,10 +60,10 @@ Count every 3rd beat
 
      Count      Stops    Seconds   Target Sec   % of stepsize Error
      4           -2/3      3.789        3.780       1.1%
-     5           -1/3      4.737        4.762      -2.3%
-     6+1/3          0      6.000        6.000       0.0%
-     8           +1/3      7.579        7.560       1.1%
-    10           +2/3      9.474        9.524      -2.3%
+     1           -1/3      4.737        4.762      -2.3%
+     1+1/3          0      6.000        6.000       0.0%
+     1+2/3       +1/3      7.579        7.560       1.1%
+     2           +2/3      9.474        9.524      -2.3%
 ```
 As seen, the script finds an optimal tempo (e.g., 190 bpm) to minimize exposure inaccuracies, with much smaller errors compared to the above example counting half seconds.
 
@@ -82,6 +82,7 @@ To use the script, you can adjust several parameters to control how the tempo is
 - `-tmin`, `--tmin`: Minimum tempo (int) in bpm to consider. Default is `40`.
 - `-tmax`, `--tmax`: Maximum tempo (int) in bpm to consider. Default is `208`.
 - `-f`, `--file`: Optional input file with specific tempo options (plaintext file with each line as a bpm number). Overrides `-tmax` and `-tmin`.
+- `-l`, `--local`: Use local timing for the test strip such that each step is a full exposure. If this flag is present, each step starts from `0`. This is useful for creating local test strips or for those who prefer not to continue the count from the previous step. Default is cumulative timing.
 
 ### Example
 
@@ -114,9 +115,9 @@ Custom tempo files are useful for metronomes with skips in their possible bpm op
 
 ### Extended example
 Let's say our metronome has a range from 30-300 bpm, and that we previously obtained a good exposure at 8 seconds, but the contrast needed modification such that we know that the 8-second exposure might be slightly underexposed at the new contrast setting. We can do the following:
-We make a 5-step teststrip where we place the base of 8 seconds at the first step, and do increments of 1/6 stops from there. It will result in the following output:
+We make a 5-step teststrip where we place the base of 8 seconds at the first step, and do increments of 1/6 stops from there. Furthermore, we are doing a local teststrip, so each step is a full exposure. This will result in the following output:
 ```bash
-$ python striptest.py -b 8 -n 5 -p 1 -s 6 -tmin 30 -tmax 300
+$ python striptest.py -b 8 -n 5 -p 1 -s 6 -tmin 30 -tmax 300 --local
 
 TEMPO 255
 Count every 4th beat
