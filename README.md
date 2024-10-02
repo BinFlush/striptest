@@ -83,6 +83,7 @@ To use the script, you can adjust several parameters to control how the tempo is
 - `-tmax`, `--tmax`: Maximum tempo (int) in bpm to consider. Default is `208`.
 - `-f`, `--file`: Optional input file with specific tempo options (plaintext file with each line as a bpm number). Overrides `-tmax` and `-tmin`.
 - `-l`, `--local`: Use local timing for the test strip such that each step is a full exposure. If this flag is present, each step starts from `0`. This is useful for creating local test strips or for those who prefer not to continue the count from the previous step. Default is cumulative timing.
+- `-d`, `--divisions`: Force a specific subdivision pattern for beats. Accepts an integer that sets the divisor (e.g., `2` for halves, `3` for triplets). Overrides the automatic subdivision based on tempo.
 
 ### Example
 
@@ -96,9 +97,9 @@ To specify a different stepsize (e.g., 1/2 stop increments):
 python striptest.py -s 2
 ```
 
-To use a custom tempo range between 60 and 180 bpm:
+To use a custom tempo range between 60 and 180 bpm, and specify that we want to count every beat:
 ```bash
-python striptest.py -tmin 60 -tmax 180
+python striptest.py -tmin 60 -tmax 180 -d 1
 ```
 
 To use a custom file with tempo options:

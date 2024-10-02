@@ -20,6 +20,13 @@ parser.add_argument('-f', '--file', type=argparse.FileType('r'),
                     help='Optional input file with specific tempo options. Should be a plaintext file where each line is a bpm number, only separated by newline (overrides -tmax and -tmin)')
 parser.add_argument('-l', '--local', action='store_true', 
                     help='Use local timing for the test strip such that each step is a full exposure. Useful for local teststrips, or for those who prefer not to start from 0 on each step, but rather to continue their count from the previous step (default is cumulative timing).')
+parser.add_argument('-d', '--divisions', type=int, default=None, 
+                    help='Force a specific subdivision pattern for the beats. '
+                         'If provided, this overrides the automatic subdivision '
+                         'based on tempo (e.g., halves, triplets). Accepts an integer to set the divisor (e.g., 2 for halves, 3 for triplets).')
+
+#parser.add_argument('-d', '--divisions', type=int, default=None, 
+#                    help='Force a certain subdivision pattern.')
 
 args = parser.parse_args()
 
@@ -29,6 +36,7 @@ numsteps = args.numsteps
 baseplace = args.baseplace if args.baseplace > 0 else (numsteps + 1) // 2
 min_tempo = args.tmin
 max_tempo = args.tmax
+divisions = args.divisions
 
 if stepsize <= 0:
     raise ValueError("Stepsize must be a positive integer.")
@@ -40,6 +48,8 @@ if baseplace < 1 or numsteps < baseplace:
     raise ValueError("baseplace must be in [1,...,numsteps]")
 if min_tempo <= 0 or max_tempo <= 0:
     raise ValueError("All provided tempi must be greater than zero.")
+if divisions and divisions < 1:
+    raise ValueError("Divisions must be a strictly positive integer.")
 
 
 # Read tempos from file if provided, otherwise use the range
@@ -141,10 +151,14 @@ def ordinal_suffix(n):
         return "th"
 
 
-def subdivisions(tempo):
+def subdivisions(tempo, choice):
     # Put all logic for subdivisions in here.
     ## Decide subdivision
-    subdivision = max(1,int(tempo/60))
+    if choice:
+        subdivision = choice
+    else:
+        # intelligent choice
+        subdivision = max(1,int(tempo/60))
 
     ## Make subdivision notice
     if subdivision == 1:
@@ -155,7 +169,7 @@ def subdivisions(tempo):
     return subdivision, subdivision_notice
 
 # Possibly make subdivisions based on tempo
-countdivisor, subdivision_notice = subdivisions(winner['tempo'])
+countdivisor, subdivision_notice = subdivisions(winner['tempo'], divisions)
 winner['lst'] = [(a/countdivisor,b,c,d) for a,b,c,d in winner['lst']]
 
 
