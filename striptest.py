@@ -120,26 +120,43 @@ if not args.local:
     # Update winner['lst'] with the cumulative counts
     winner['lst'] = cumulative_lst
     
+def ordinal_suffix(n):
+    """
+    finds the correct suffix for positive integers, e.g. 2nd, 3rd etc.
+    """
+    if n%1 != 0 or n < 0:
+        raise ValueError("n must be positive integer")
+    # Special case for numbers ending in 11, 12, 13
+    if 11 <= n % 100 <= 13:
+        return "th"
+    # General rule for other numbers
+    last_digit = n % 10
+    if last_digit == 1:
+        return "st"
+    elif last_digit == 2:
+        return "nd"
+    elif last_digit == 3:
+        return "rd"
+    else:
+        return "th"
 
 
+def subdivisions(tempo):
+    # Put all logic for subdivisions in here.
+    ## Decide subdivision
+    subdivision = max(1,int(tempo/60))
 
-#print(winner)
+    ## Make subdivision notice
+    if subdivision == 1:
+        subdivision_notice = 'Count every beat'
+    else:
+        suffix = ordinal_suffix(subdivision)
+        subdivision_notice = f'Count every {subdivision}{suffix} beat'
+    return subdivision, subdivision_notice
+
 # Possibly make subdivisions based on tempo
-if 120 <= winner['tempo'] < 180:
-    winner['lst'] = [(a/2,b,c,d) for a,b,c,d in winner['lst']]
-    subdivision_notice = "Count every 2nd beat"
-    countdivisor=2
-elif 180 <= winner['tempo'] < 240:
-    winner['lst'] = [(a/3,b,c,d) for a,b,c,d in winner['lst']]
-    subdivision_notice = "Count every 3rd beat"
-    countdivisor=3
-elif winner['tempo'] >= 240:
-    winner['lst'] = [(a/4,b,c,d) for a,b,c,d in winner['lst']]
-    subdivision_notice = "Count every 4th beat"
-    countdivisor=4
-else:
-    subdivision_notice = "Count every beat"
-
+countdivisor, subdivision_notice = subdivisions(winner['tempo'])
+winner['lst'] = [(a/countdivisor,b,c,d) for a,b,c,d in winner['lst']]
 
 
 def format_stops(stopint):
