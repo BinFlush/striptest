@@ -5,7 +5,7 @@ import numpy as np
 def main():
     args = parse_arguments()
 
-    tempos = populate_tempos(args.tmin, args.tmax, args.file)
+    tempi = populate_tempi(args.tmin, args.tmax, args.file)
     
     base, stepsize, numsteps, baseplace, divisions, local = (
         args.base, args.stepsize, args.numsteps, args.baseplace, args.divisions, args.local)
@@ -21,7 +21,7 @@ def main():
     target_seconds = base * 2 ** steps
 
     # this is where the magic happens
-    winner = find_winner(tempos, steps, base) 
+    winner = find_winner(tempi, steps, base) 
 
     # This also mutates winner['lst']
     countdivisor, subdivision_notice = finalize_timing(winner, local, divisions)
@@ -103,19 +103,19 @@ def parse_arguments():
     return args
 
 
-def populate_tempos(tmin, tmax, file):
-# Read tempos from file if provided, otherwise use the range
+def populate_tempi(tmin, tmax, file):
+# Read tempi from file if provided, otherwise use the range
     if file:
-        print(f"Using file '{file.name}' for tempos")
-        tempos = [int(line.strip()) for line in file if line.strip().isdigit()]
+        print(f"Using file '{file.name}' for tempi")
+        tempi = [int(line.strip()) for line in file if line.strip().isdigit()]
         file.close()
-        tempos = sorted(set(tempos))
+        tempi = sorted(set(tempi))
     else:
-        tempos = [i for i in range(tmin, tmax + 1)]
+        tempi = [i for i in range(tmin, tmax + 1)]
 
-    if not tempos:
+    if not tempi:
         raise ValueError("Tempo list is empty")
-    return tempos
+    return tempi
 
 
 def finalize_timing(winner, local, divisions):
@@ -154,13 +154,13 @@ def beats_seconds_and_stops(tempo, steps, base):
     return result
 
 
-def find_winner(tempos, steps, base):
+def find_winner(tempi, steps, base):
     """
     Find the optimal tempo that minimizes the squared loss of step errors.
 
     Parameters:
     ----------
-    tempos : list of int
+    tempi : list of int
         A list of tempo values (in bpm) to evaluate.
     steps : array-like
         A list or NumPy array of target steps (in stops).
@@ -177,8 +177,8 @@ def find_winner(tempos, steps, base):
     """
     winner = {'loss': np.inf, 'tempo': -1, 'lst': None}
 
-    for tempo in tempos:
-        # a matrix of shape (num_beats, 3)
+    for tempo in tempi:
+        # a np matrix of shape (num_beats, 3)
         l = beats_seconds_and_stops(tempo, steps, base)
 
         n_values = l[:, 0]
@@ -189,18 +189,16 @@ def find_winner(tempos, steps, base):
         closest_indices = np.argmin(differences, axis=0)  # Shape (num_steps,)
 
         # Use these indices to get the closest triples for each step
-        closest_n = n_values[closest_indices]  # Closest beat numbers
-        closest_sec = sec_values[closest_indices]  # Closest seconds
         closest_stop = stops[closest_indices]  # Closest stops
-
-        # Calculate step errors
         step_errors = closest_stop - steps  # Deviation from the target steps
-
-        # Form the closest quads: |n|sec|stop|stoperror|
-        closest_quads = np.column_stack((closest_n, closest_sec, closest_stop, step_errors))
         squared_loss = np.sum(step_errors ** 2)
 
         if winner['loss'] > squared_loss:
+            # We have a winner. We can build the rest of the vectors
+            closest_n = n_values[closest_indices]  # Closest beat numbers
+            closest_sec = sec_values[closest_indices]  # Closest seconds
+            # Collect vectors into matrix: |n|sec|stop|stoperror|
+            closest_quads = np.column_stack((closest_n, closest_sec, closest_stop, step_errors))
             winner['loss'] = squared_loss
             winner['tempo'] = tempo
             winner['lst'] = closest_quads
