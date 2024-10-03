@@ -6,26 +6,25 @@ def main():
     args = parse_arguments()
 
     tempos = populate_tempos(args.tmin, args.tmax, args.file)
-    base = args.base
-    stepsize = args.stepsize
-    numsteps = args.numsteps
-    baseplace = args.baseplace 
-    divisions = args.divisions
+    
+    base, stepsize, numsteps, baseplace, divisions, local = (
+        args.base, args.stepsize, args.numsteps, args.baseplace, args.divisions, args.local)
 
-    # A purely integer list of (fractional)stops to be evaluated and output 
-    int_steps = [i-baseplace+1 for i in range(numsteps)] 
+    # A purely integer list representing (fractional)stops to be evaluated and output 
+    int_steps = np.arange(numsteps) - baseplace + 1
+
     # The same stops but as correct floats
-    steps = np.array([i/stepsize for i in int_steps])
+    # (for actual calculation)
+    steps = int_steps/stepsize
 
-    winner = find_winner(tempos, steps, base) # this is where the magic happens
+    # Only used in output, since all calculations are done in logspace
+    target_seconds = base * 2 ** steps
 
-    if not args.local:
-        winner['lst'] = convert_to_local_timing(winner['lst'])
+    # this is where the magic happens
+    winner = find_winner(tempos, steps, base) 
 
-    # Possibly make subdivisions based on tempo
-    countdivisor, subdivision_notice = subdivisions(winner['tempo'], divisions)
-    winner['lst'] = apply_subdivisions(winner['lst'], countdivisor)
-    target_seconds = [base * 2 ** step for step in steps]
+    # This also mutates winner['lst']
+    countdivisor, subdivision_notice = finalize_timing(winner, local, divisions)
 
     # Output final results in a clear format
     print()
@@ -33,7 +32,7 @@ def main():
     print(subdivision_notice)
     print()
 
-    # Output table header
+    # Table header
     print(f"{'Count':>10} {'Stops':>10} {'Seconds':>10} {'Target Sec':>12} {'% of stepsize Error':>21}")
 
     # Format the output for each quad in the winner's list
@@ -112,6 +111,19 @@ def populate_tempos(tmin, tmax, file):
         raise ValueError("Tempo list is empty")
     return tempos
 
+
+def finalize_timing(winner, local, divisions):
+    # Possibly convert to local timing
+    if not local:
+        winner['lst'] = convert_to_local_timing(winner['lst'])
+    
+    # Apply subdivisions based on tempo or divisions
+    countdivisor, subdivision_notice = subdivisions(winner['tempo'], divisions)
+    winner['lst'] = apply_subdivisions(winner['lst'], countdivisor)
+
+    return countdivisor, subdivision_notice
+
+
 def beats_seconds_and_stops(tempo, steps, base):
     """
     Input: A tempo (int) as bpm
@@ -160,6 +172,7 @@ def find_winner(tempos, steps, base):
     winner = {'loss': np.inf, 'tempo': -1, 'lst': None}
 
     for tempo in tempos:
+        # a matrix of shape (num_beats, 3)
         l = beats_seconds_and_stops(tempo, steps, base)
 
         n_values = l[:, 0]
@@ -188,6 +201,7 @@ def find_winner(tempos, steps, base):
 
     return winner
 
+
 def convert_to_local_timing(lst):
     cumulative_lst = np.zeros_like(lst)
     cumulative_lst[:, 1:] = lst[:, 1:]  # Copy over sec, stop, stoperror
@@ -197,7 +211,6 @@ def convert_to_local_timing(lst):
     cumulative_lst[0, 0] = lst[0, 0]  # First count value is unchanged
     
     return cumulative_lst
-
 
 
 def ordinal_suffix(n):
@@ -255,12 +268,14 @@ def format_stops(stopint, stepsize):
     else:
         return f"{sign}{abs_int}/{stepsize}"
 
+
 def format_counts(n, countdivisor):
     if n%1 == 0:
         return str(int(n))+'    '
     else:
         orig_n = int(round(n*countdivisor))
         return f'{orig_n//countdivisor}+{orig_n%countdivisor}/{countdivisor}'
+
 
 if __name__ == "__main__":
     main()
