@@ -184,10 +184,21 @@ def find_winner(tempi, steps, base):
         sec_values = l[:, 1]
         stops = l[:, 2]
 
-        differences = np.abs(stops[:, np.newaxis] - steps)  # Shape (num_beats, num_steps)
-        closest_indices = np.argmin(differences, axis=0)  # Shape (num_steps,)
+        # binary search to find closest indices
+        closest_indices = np.searchsorted(stops, steps)
 
-        # Use these indices to get the closest triples for each step
+        # ensure they are within range
+        closest_indices = np.clip(closest_indices, 1, len(stops) - 1)
+
+        # need to check the index just before and after the closest index to find the minimum
+        low_indices = closest_indices - 1
+
+        # Choose the indices with the smallest differences
+        low_diffs = np.abs(stops[low_indices] - steps)
+        high_diffs = np.abs(stops[closest_indices] - steps)
+        closest_indices = np.where(low_diffs < high_diffs, low_indices, closest_indices)
+
+        # Use these indices to get the closest triples
         closest_stop = stops[closest_indices]  # Closest stops
         step_errors = closest_stop - steps  # Deviation from the target steps
         squared_loss = np.sum(step_errors ** 2)
