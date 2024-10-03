@@ -141,6 +141,12 @@ def beats_seconds_and_stops(tempo, steps, base):
     
     return result
 
+def find_divisors(n):
+    # returns all divisors except the number itself and 1.
+    potential_divisors = np.arange(2, int(np.sqrt(n)) + 1)
+    divisors = potential_divisors[n % potential_divisors == 0]
+    return set(divisors).union(n // divisors)
+
 
 def find_winner(tempi, steps, base):
     """
@@ -163,9 +169,14 @@ def find_winner(tempi, steps, base):
         - 'tempo': The optimal tempo value in bpm.
         - 'lst': A NumPy array containing the optimal quads (n, sec, stop, stoperror).
     """
+
+    excluded = set() # used for optimization
+    tempi.reverse() # we will iterate from the highest to lowest
     winner = {'loss': np.inf, 'tempo': -1, 'lst': None}
 
     for tempo in tempi:
+        if tempo in excluded:
+            continue
         # a np matrix of shape (num_beats, 3)
         l = beats_seconds_and_stops(tempo, steps, base)
 
@@ -181,8 +192,8 @@ def find_winner(tempi, steps, base):
         step_errors = closest_stop - steps  # Deviation from the target steps
         squared_loss = np.sum(step_errors ** 2)
 
-        if winner['loss'] > squared_loss:
-            # We have a winner. We can build the rest of the vectors
+        if winner['loss'] >= squared_loss:
+            # We have a (better/lower) winner. We can build the rest of the vectors
             closest_n = n_values[closest_indices]  # Closest beat numbers
             closest_sec = sec_values[closest_indices]  # Closest seconds
             # Collect vectors into matrix: |n|sec|stop|stoperror|
@@ -190,6 +201,10 @@ def find_winner(tempi, steps, base):
             winner['loss'] = squared_loss
             winner['tempo'] = tempo
             winner['lst'] = closest_quads
+        else:
+            # We have a loser. We can thus safely remove all lower tempi that divide this tempo
+            # since their beats are a subset of these beats.
+            excluded |= find_divisors(tempo)
 
     return winner
 
