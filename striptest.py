@@ -47,6 +47,12 @@ def main():
         print(f"{count_formatted:>10} {stops_formatted:>10} {seconds_formatted:>10} {target_sec_formatted:>12} {error_formatted:>10}")
 
 
+
+
+
+
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Calculate the best tempo for darkroom timer.')
     parser.add_argument('-b', '--base', type=float, default=10.0, 
