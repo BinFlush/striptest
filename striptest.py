@@ -1,82 +1,124 @@
 #!/usr/bin/env python3
-
 import argparse
 import numpy as np
 
-parser = argparse.ArgumentParser(description='Calculate the best tempo for darkroom timer.')
-parser.add_argument('-b', '--base', type=float, default=10.0, 
-                    help='Base value for calculation (default: 10)')
-parser.add_argument('-s', '--stepsize', type=int, default=3, 
-                    help='Inverse of the stepsize as an integer. 1 is one stop, 2 is 1/2 stop etc. (default: 3)')
-parser.add_argument('-n', '--numsteps', type=int, default=7, 
-                    help='Number of steps (default: 7)')
-parser.add_argument('-p', '--baseplace', type=int, default=-1, 
-                    help='Baseplace value. This is 1-indexed such that the first value is 1 (default: is middle for uneven n, left to middle for even n)')
-parser.add_argument('-tmin', '--tmin', type=int, default=40, 
-                    help='Minimum tempo (default: 40)')
-parser.add_argument('-tmax', '--tmax', type=int, default=208, 
-                    help='Maximum tempo (default: 208)')
-parser.add_argument('-f', '--file', type=argparse.FileType('r'), 
-                    help='Optional input file with specific tempo options. Should be a plaintext file where each line is a bpm number, only separated by newline (overrides -tmax and -tmin)')
-parser.add_argument('-l', '--local', action='store_true', 
-                    help='Use local timing for the test strip such that each step is a full exposure. Useful for local teststrips, or for those who prefer not to start from 0 on each step, but rather to continue their count from the previous step (default is cumulative timing).')
-parser.add_argument('-d', '--divisions', type=int, default=None, 
-                    help='Force a specific subdivision pattern for the beats. '
-                         'If provided, this overrides the automatic subdivision '
-                         'based on tempo (e.g., halves, triplets). Accepts an integer to set the divisor (e.g., 2 for halves, 3 for triplets).')
+def main():
+    args = parse_arguments()
 
-#parser.add_argument('-d', '--divisions', type=int, default=None, 
-#                    help='Force a certain subdivision pattern.')
+    tempos = populate_tempos(args.tmin, args.tmax, args.file)
+    base = args.base
+    stepsize = args.stepsize
+    numsteps = args.numsteps
+    baseplace = args.baseplace 
+    divisions = args.divisions
 
-args = parser.parse_args()
+    # A purely integer list of (fractional)stops to be evaluated and output 
+    int_steps = [i-baseplace+1 for i in range(numsteps)] 
+    # The same stops but as correct floats
+    steps = np.array([i/stepsize for i in int_steps])
 
-base = args.base
-stepsize = args.stepsize
-numsteps = args.numsteps
-baseplace = args.baseplace if args.baseplace > 0 else (numsteps + 1) // 2
-min_tempo = args.tmin
-max_tempo = args.tmax
-divisions = args.divisions
+    winner = find_winner(tempos, steps, base) # this is where the magic happens
 
-if stepsize <= 0:
-    raise ValueError("Stepsize must be a positive integer.")
-if numsteps <= 0:
-    raise ValueError("Number of steps must be a positive integer.")
-if base <= 0:
-    raise ValueError("Base must be greater than zero.")
-if baseplace < 1 or numsteps < baseplace:
-    raise ValueError("baseplace must be in [1,...,numsteps]")
-if min_tempo <= 0 or max_tempo <= 0:
-    raise ValueError("All provided tempi must be greater than zero.")
-if divisions and divisions < 1:
-    raise ValueError("Divisions must be a strictly positive integer.")
+    if not args.local:
+        winner['lst'] = convert_to_local_timing(winner['lst'])
+
+    # Possibly make subdivisions based on tempo
+    countdivisor, subdivision_notice = subdivisions(winner['tempo'], divisions)
+    winner['lst'] = apply_subdivisions(winner['lst'], countdivisor)
+    target_seconds = [base * 2 ** step for step in steps]
+
+    # Output final results in a clear format
+    print()
+    print(f"TEMPO {winner['tempo']}")
+    print(subdivision_notice)
+    print()
+
+    # Output table header
+    print(f"{'Count':>10} {'Stops':>10} {'Seconds':>10} {'Target Sec':>12} {'% of stepsize Error':>21}")
+
+    # Format the output for each quad in the winner's list
+    for (n, sec, stop, steperror), int_step, targ_sec in zip(winner['lst'], int_steps, target_seconds):
+        count_formatted = format_counts(n, countdivisor)  # Format the beat count properly
+        stops_formatted = format_stops(int_step, stepsize)  # Use the int_steps value to format stops
+        seconds_formatted = f"{sec:.3f}"  # Show actual seconds with 3 decimal places
+        target_sec_formatted = f"{targ_sec:.3f}"  # Show target seconds with 3 decimal places
+        error_formatted = f"{steperror*stepsize*100:.1f}%"  # Show error as a percentage with one decimal point
+        
+        # Print each row in the formatted table
+        print(f"{count_formatted:>10} {stops_formatted:>10} {seconds_formatted:>10} {target_sec_formatted:>12} {error_formatted:>10}")
 
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Calculate the best tempo for darkroom timer.')
+    parser.add_argument('-b', '--base', type=float, default=10.0, 
+                        help='Base value for calculation (default: 10)')
+    parser.add_argument('-s', '--stepsize', type=int, default=3, 
+                        help='Inverse of the stepsize as an integer. 1 is one stop, '
+                             '2 is 1/2 stop etc. (default: 3)')
+    parser.add_argument('-n', '--numsteps', type=int, default=7, 
+                        help='Number of steps (default: 7)')
+    parser.add_argument('-p', '--baseplace', type=int, default=-1, 
+                        help='Baseplace value. This is 1-indexed such that the first value is 1 '
+                             '(default: is middle for uneven n, left to middle for even n)')
+    parser.add_argument('-tmin', '--tmin', type=int, default=40, 
+                        help='Minimum tempo (default: 40)')
+    parser.add_argument('-tmax', '--tmax', type=int, default=208, 
+                        help='Maximum tempo (default: 208)')
+    parser.add_argument('-f', '--file', type=argparse.FileType('r'), 
+                        help='Optional input file with specific tempo options. '
+                             'Should be a plaintext file where each line is a bpm number, '
+                             'only separated by newline (overrides -tmax and -tmin)')
+    parser.add_argument('-l', '--local', action='store_true', 
+                        help='Use local timing for the test strip such that each step is a full exposure. '
+                             'Useful for local teststrips, or for those who prefer not to start from 0 on each step, '
+                             'but rather to continue their count from the previous step (default is cumulative timing).')
+    parser.add_argument('-d', '--divisions', type=int, default=None, 
+                        help='Force a specific subdivision pattern for the beats. '
+                             'If provided, this overrides the automatic subdivision '
+                             'based on tempo (e.g., halves, triplets). Accepts an integer to set the divisor '
+                             '(e.g., 2 for halves, 3 for triplets).')
+
+    args = parser.parse_args()
+
+    args.baseplace = args.baseplace if args.baseplace > 0 else (args.numsteps + 1) // 2
+
+    if args.stepsize <= 0:
+        raise ValueError("Stepsize must be a positive integer.")
+    if args.numsteps <= 0:
+        raise ValueError("Number of steps must be a positive integer.")
+    if args.base <= 0:
+        raise ValueError("Base must be greater than zero.")
+    if args.baseplace < 1 or args.numsteps < args.baseplace:
+        raise ValueError("baseplace must be in [1,...,numsteps]")
+    if args.tmin <= 0 or args.tmax <= 0:
+        raise ValueError("All provided tempi must be greater than zero.")
+    if args.divisions and args.divisions < 1:
+        raise ValueError("Divisions must be a strictly positive integer.")
+
+    return args
+
+
+def populate_tempos(tmin, tmax, file):
 # Read tempos from file if provided, otherwise use the range
-if args.file:
-    print(f"Using file '{args.file.name}' for tempos")
-    tempos = [int(line.strip()) for line in args.file if line.strip().isdigit()]
-    args.file.close()
-    tempos = sorted(set(tempos))
-else:
-    tempos = [i for i in range(min_tempo, max_tempo + 1)]
+    if file:
+        print(f"Using file '{file.name}' for tempos")
+        tempos = [int(line.strip()) for line in file if line.strip().isdigit()]
+        file.close()
+        tempos = sorted(set(tempos))
+    else:
+        tempos = [i for i in range(tmin, tmax + 1)]
 
-if not tempos:
-    raise ValueError("Tempo list is empty")
+    if not tempos:
+        raise ValueError("Tempo list is empty")
+    return tempos
 
-# A purely integer list of (fractional)stops to be evaluated and output 
-int_steps = [i-baseplace+1 for i in range(numsteps)] 
-# The same stops but as correct floats
-steps = [i/stepsize for i in int_steps]
-
-
-def beats_seconds_and_stops(tempo):
+def beats_seconds_and_stops(tempo, steps, base):
     """
     Input: A tempo (int) as bpm
-    Output: a list of 3-tuples, where:
-        first number is the beat number n (1-indexed since time 0 makes no sense), 
-        second number is the beats placement in seconds, 
-        third number is the beats deviance from base in stops.
+    Output: a numpy matrix for, where:
+        first column is the beat number n (1-indexed since time 0 makes no sense), 
+        second column is the beats placement in seconds, 
+        third column is the beats deviance from base in stops.
     The list includes only (but all) beats in the relevant space.
     """
     # First calculate the bounds for relevant beat numbers.
@@ -84,52 +126,80 @@ def beats_seconds_and_stops(tempo):
     lower_n = max(lower_n, 1) # step 0 makes no sense. Also avoids log(0) issue
     upper_n = int(np.ceil(tempo*base*2**steps[-1]/60))
 
-    n_list = [n for n in range(lower_n, upper_n+1)]
-    seconds = [n*60/tempo for n in n_list]
-    stops = [np.log2(s)-np.log2(base) for s in seconds]
-    for n,s in enumerate(seconds):
-        if s <= 0:
-            print('lowsecond:',s)
-            print('thestop:', stops[n])
+    n_list = np.arange(lower_n, upper_n + 1)
+    beatlength = 60/tempo
+    seconds = n_list * beatlength
+    stops = np.log2(seconds / base)
+    # results are a matrix of shape (num_beats, 3) 
+    result = np.column_stack((n_list, seconds, stops))
     
-    return list(zip(n_list, seconds, stops))
+    return result
 
-winner = {'loss':np.inf,'tempo': -1,'lst': []} # a triple |squared loss|tempo|quad_list|
-# Now we iterate through each of the tempos and find the optimal one
-for tempo in tempos:
-    l = beats_seconds_and_stops(tempo)
 
-    closest_quads = [] 
-    # a quad for a tempo is: |n|sec|stop|stoperror|
-    for targ_step in steps:
-        # find the closest triple
-        n, sec, stop = min(l, key=lambda x: abs(x[2]-targ_step))
-        steperror = (stop - targ_step)
-        closest_quads.append( (n, sec, stop, steperror) )
+def find_winner(tempos, steps, base):
+    """
+    Find the optimal tempo that minimizes the squared loss of step errors.
 
-    # Compute squared loss
-    squared_loss = sum([i[3]**2 for i in closest_quads])
+    Parameters:
+    ----------
+    tempos : list of int
+        A list of tempo values (in bpm) to evaluate.
+    steps : array-like
+        A list or NumPy array of target steps (in stops).
+    base : float
+        The base value for the timing calculations.
 
-    if winner['loss'] > squared_loss:
-        winner['loss'] = squared_loss
-        winner['tempo'] = tempo
-        winner['lst'] = closest_quads
+    Returns:
+    -------
+    dict
+        A dictionary with:
+        - 'loss': Minimum squared loss.
+        - 'tempo': The optimal tempo value in bpm.
+        - 'lst': A NumPy array containing the optimal quads (n, sec, stop, stoperror).
+    """
+    winner = {'loss': np.inf, 'tempo': -1, 'lst': None}
 
-if not args.local:
-    cumulative_lst = []
-    previous_n = 0  # Initialize the previous exposure count
+    for tempo in tempos:
+        l = beats_seconds_and_stops(tempo, steps, base)
 
-    for n, sec, stop, stoperror in winner['lst']:
-        # Calculate the cumulative `n` as the difference from the previous step
-        cumulative_n = n - previous_n
-        cumulative_lst.append((cumulative_n, sec, stop, stoperror))
-        
-        # Update the previous exposure count
-        previous_n = n
+        n_values = l[:, 0]
+        sec_values = l[:, 1]
+        stops = l[:, 2]
+
+        differences = np.abs(stops[:, np.newaxis] - steps)  # Shape (num_beats, num_steps)
+        closest_indices = np.argmin(differences, axis=0)  # Shape (num_steps,)
+
+        # Use these indices to get the closest triples for each step
+        closest_n = n_values[closest_indices]  # Closest beat numbers
+        closest_sec = sec_values[closest_indices]  # Closest seconds
+        closest_stop = stops[closest_indices]  # Closest stops
+
+        # Calculate step errors
+        step_errors = closest_stop - steps  # Deviation from the target steps
+
+        # Form the closest quads: |n|sec|stop|stoperror|
+        closest_quads = np.column_stack((closest_n, closest_sec, closest_stop, step_errors))
+        squared_loss = np.sum(step_errors ** 2)
+
+        if winner['loss'] > squared_loss:
+            winner['loss'] = squared_loss
+            winner['tempo'] = tempo
+            winner['lst'] = closest_quads
+
+    return winner
+
+def convert_to_local_timing(lst):
+    cumulative_lst = np.zeros_like(lst)
+    cumulative_lst[:, 1:] = lst[:, 1:]  # Copy over sec, stop, stoperror
+
+    # The difference is simply each element minus the previous. Vectorize this
+    cumulative_lst[1:, 0] = lst[1:, 0] - lst[:-1, 0]
+    cumulative_lst[0, 0] = lst[0, 0]  # First count value is unchanged
     
-    # Update winner['lst'] with the cumulative counts
-    winner['lst'] = cumulative_lst
-    
+    return cumulative_lst
+
+
+
 def ordinal_suffix(n):
     """
     finds the correct suffix for positive integers, e.g. 2nd, 3rd etc.
@@ -168,12 +238,14 @@ def subdivisions(tempo, choice):
         subdivision_notice = f'Count every {subdivision}{suffix} beat'
     return subdivision, subdivision_notice
 
-# Possibly make subdivisions based on tempo
-countdivisor, subdivision_notice = subdivisions(winner['tempo'], divisions)
-winner['lst'] = [(a/countdivisor,b,c,d) for a,b,c,d in winner['lst']]
+
+def apply_subdivisions(lst, countdivisor):
+    lst[:, 0] /= countdivisor  # Divide the count column
+    return lst
 
 
-def format_stops(stopint):
+
+def format_stops(stopint, stepsize):
     if stopint == 0:
         return "0"
     sign = "+" if stopint > 0 else "-"
@@ -183,31 +255,12 @@ def format_stops(stopint):
     else:
         return f"{sign}{abs_int}/{stepsize}"
 
-def format_counts(n):
+def format_counts(n, countdivisor):
     if n%1 == 0:
         return str(int(n))+'    '
     else:
         orig_n = int(round(n*countdivisor))
         return f'{orig_n//countdivisor}+{orig_n%countdivisor}/{countdivisor}'
 
-
-target_seconds = [base * 2 ** step for step in steps]
-# Output final results in a clear format
-print()
-print(f"TEMPO {winner['tempo']}")
-print(subdivision_notice)
-print()
-
-# Output table header
-print(f"{'Count':>10} {'Stops':>10} {'Seconds':>10} {'Target Sec':>12} {'% of stepsize Error':>21}")
-
-# Format the output for each quad in the winner's list
-for (n, sec, stop, steperror), int_step, targ_sec in zip(winner['lst'], int_steps, target_seconds):
-    count_formatted = format_counts(n)  # Format the beat count properly
-    stops_formatted = format_stops(int_step)  # Use the int_steps value to format stops
-    seconds_formatted = f"{sec:.3f}"  # Show actual seconds with 3 decimal places
-    target_sec_formatted = f"{targ_sec:.3f}"  # Show target seconds with 3 decimal places
-    error_formatted = f"{steperror*stepsize*100:.1f}%"  # Show error as a percentage with one decimal point
-    
-    # Print each row in the formatted table
-    print(f"{count_formatted:>10} {stops_formatted:>10} {seconds_formatted:>10} {target_sec_formatted:>12} {error_formatted:>10}")
+if __name__ == "__main__":
+    main()
