@@ -118,18 +118,6 @@ def populate_tempi(tmin, tmax, file):
     return tempi
 
 
-def finalize_timing(winner, local, divisions):
-    # Possibly convert to local timing
-    if not local:
-        winner['lst'] = convert_to_local_timing(winner['lst'])
-    
-    # Apply subdivisions based on tempo or divisions
-    countdivisor, subdivision_notice = subdivisions(winner['tempo'], divisions)
-    winner['lst'] = apply_subdivisions(winner['lst'], countdivisor)
-
-    return countdivisor, subdivision_notice
-
-
 def beats_seconds_and_stops(tempo, steps, base):
     """
     Input: A tempo (int) as bpm
@@ -256,10 +244,16 @@ def subdivisions(tempo, choice):
     return subdivision, subdivision_notice
 
 
-def apply_subdivisions(lst, countdivisor):
-    lst[:, 0] /= countdivisor  # Divide the count column
-    return lst
+def finalize_timing(winner, local, divisions):
+    # Possibly convert to local timing
+    if not local:
+        winner['lst'] = convert_to_local_timing(winner['lst'])
+    
+    # Apply subdivisions based on tempo or divisions
+    countdivisor, subdivision_notice = subdivisions(winner['tempo'], divisions)
+    winner['lst'][:, 0] /= countdivisor
 
+    return countdivisor, subdivision_notice
 
 
 def format_stops(stopint, stepsize):
