@@ -19,9 +19,14 @@ def main():
 
     # Only used in output, since all calculations are done in logspace
     target_seconds = base * 2 ** steps
+    
+    # Generic loss function. Not sure whether to use L1 or L2.
+    # L1 seems to often produce more convenient BPMs, but L2 seems like
+    # a better idea, since it would keep the individual errors small.
+    L_p_loss = lambda p: lambda errors: np.sum(np.abs(errors) ** p)
 
     # this is where the magic happens
-    winner = find_winner(tempi, steps, base) 
+    winner = find_winner(tempi, steps, base, L_p_loss(2)) 
 
     # This also mutates winner['lst']
     countdivisor, subdivision_notice = finalize_timing(winner, local, divisions)
@@ -147,8 +152,7 @@ def find_divisors(n):
     divisors = potential_divisors[n % potential_divisors == 0]
     return set(divisors).union(n // divisors)
 
-
-def find_winner(tempi, steps, base):
+def find_winner(tempi, steps, base, loss_function):
     """
     Find the optimal tempo that minimizes the squared loss of step errors.
 
@@ -201,15 +205,15 @@ def find_winner(tempi, steps, base):
         # Use these indices to get the closest triples
         closest_stop = stops[closest_indices]  # Closest stops
         step_errors = closest_stop - steps  # Deviation from the target steps
-        squared_loss = np.sum(step_errors ** 2)
+        loss = loss_function(step_errors)
 
-        if winner['loss'] >= squared_loss:
+        if winner['loss'] >= loss:
             # We have a (better/lower) winner. We can build the rest of the vectors
             closest_n = n_values[closest_indices]  # Closest beat numbers
             closest_sec = sec_values[closest_indices]  # Closest seconds
             # Collect vectors into matrix: |n|sec|stop|stoperror|
             closest_quads = np.column_stack((closest_n, closest_sec, closest_stop, step_errors))
-            winner['loss'] = squared_loss
+            winner['loss'] = loss
             winner['tempo'] = tempo
             winner['lst'] = closest_quads
         else:
