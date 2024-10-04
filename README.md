@@ -1,7 +1,7 @@
 # striptest
-A small script to find optimal tempo settings for f/stop printing with a physical metronome in the darkroom.
+A tool to quickly find optimal tempo settings for f/stop printing with a physical metronome in the darkroom.
 ## Overview
-**striptest** is a Python script designed for darkroom enthusiasts who want to optimize their exposure settings for f/stop printing using a metronome, and specifically for making teststrips. This tool finds the best tempo settings reducing exposure inaccuracies.
+**striptest** is a Python script designed for darkroom enthusiasts who want to optimize their exposure settings for f/stop printing using a metronome, and specifically for making teststrips. This tool finds the best tempo settings and counting instructions, reducing exposure inaccuracies.
 
 ## Quickstart
 Ensure you have python and numpy installed, download the file `striptest.py`, open a terminal, navigate to where the file is located and run
@@ -23,6 +23,8 @@ Count every 3rd beat
      4             +1     19.890       20.000      -2.4%
 ```
 Doing these exposures simply amounts to setting your metronome to the tempo (181), optionally making the metronome mark every third beat, and start counting (from 0) when you start your exposure. Keep counting on every third beat and make adjustments according to whatever teststrip method you use, as per the "Count" column.
+
+As show, we expose the entire strip for 5 counts (15 beats), then we cover the first piece and expose the rest for an additional 1+1/3 counts (4 beats) and so on.
 ## Background
 
 ### Traditional f/stop Printing
