@@ -83,11 +83,16 @@ To use the script, you can adjust several parameters to control how the tempo is
 - `-p`, `--baseplace`: The position of the base value in the test strip (1-indexed). The default is the middle for an uneven `n`, and left to middle for an even `n`.
 - `-tmin`, `--tmin`: Minimum tempo (int) in bpm to consider. Default is `40`.
 - `-tmax`, `--tmax`: Maximum tempo (int) in bpm to consider. Default is `208`.
-- `-f`, `--file`: Optional input file with specific tempo options (plaintext file with each line as a bpm number). Overrides `-tmax` and `-tmin`.
+- `-f`, `--file`: Optional input file with specific tempo options (plaintext file).
+  Each line can either be:
+    - A single BPM number (e.g., `60`).
+    - A range of BPMs using the shorthand format `start:end [step]` (e.g., `40:60 [2]` for a range from 40 to 60 in steps of 2).
+      Multiple ranges can be listed on separate lines. 
+  If a file is provided, it overrides `-tmax` and `-tmin`.
 - `-l`, `--local`: Use local timing for the test strip such that each step is a full exposure. If this flag is present, each step starts from `0`. This is useful for creating local test strips or for those who prefer not to continue the count from the previous step. Default is cumulative timing.
 - `-d`, `--divisions`: Force a specific subdivision pattern for beats. Accepts an integer that sets the divisor (e.g., `2` for halves, `3` for triplets). Overrides the automatic subdivision based on tempo.
 
-### Example
+### More examples
 
 To run a strip test with a base exposure of 6 seconds, 5 steps, and default options:
 ```bash
@@ -109,17 +114,39 @@ To use a custom file with tempo options:
 python striptest.py -b 6 -n 5 -f tempos.txt
 ```
 
-Custom tempo files are useful for metronomes with skips in their possible bpm options. Some metronomes for instance only include every other bpm above a certain value, and even every third bpm above a higher value. Tempo files should have every tempo as an integer number, separated with newline. If you only want to use tempos 60, 120, and 180, the file contents should simply be:
-```
-60
-120
-180
-```
+Custom tempo files are useful for metronomes with skips in their possible bpm options. Some metronomes, for instance, only include every other bpm above a certain value, and even every third bpm above a higher value. Tempo files should contain tempo values in either of the following formats:
+
+- **Single BPMs**: Each line should contain a single integer value representing a BPM.
+  If you only want to use tempos 60, 120, and 180, the file contents should look like:
+  ```
+  60
+  120
+  180
+  ```
+
+- **Shorthand Ranges**: You can also specify ranges of tempos using the shorthand format:
+  ```
+  start:end [step]
+  ```
+  where `start` is the starting BPM, `end` is the ending BPM, and `step` is the interval. This makes it easy to specify a large range of tempos concisely.
+
+  **Example**: 
+  ```
+  # This is a very common set of BPMs, used in many metronomes
+  40:60 [2]
+  60:72 [3]
+  72:120 [4]
+  120:144 [6]
+  144:208 [8]
+  ```
+
+Multiple ranges and single BPMs can be mixed within the same file. Each tempo or range should be on its own line. If a tempo file is provided, it will override the `-tmax` and `-tmin` options specified on the command line.
+
 
 ### Extended example
 Let's say our metronome has a range from 30-300 bpm, and that we previously obtained a good exposure at 8 seconds, but the contrast needed modification such that we know that the 8-second exposure might be slightly underexposed at the new contrast setting. We can do the following:
 We make a 5-step teststrip where we place the base of 8 seconds at the first step, and do increments of 1/6 stops from there. Furthermore, we are doing a local teststrip, so each step is a full exposure. This will result in the following output:
-```bash
+```
 $ python striptest.py -b 8 -n 5 -p 1 -s 6 -tmin 30 -tmax 300 --local
 
 TEMPO 255

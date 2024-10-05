@@ -6,6 +6,7 @@ def main():
     args = parse_arguments()
 
     tempi = populate_tempi(args.tmin, args.tmax, args.file)
+    print(tempi)
     
     base, stepsize, numsteps, baseplace, divisions, local = (
         args.base, args.stepsize, args.numsteps, args.baseplace, args.divisions, args.local)
@@ -75,9 +76,15 @@ def parse_arguments():
     parser.add_argument('-tmax', '--tmax', type=int, default=208, 
                         help='Maximum tempo (default: 208)')
     parser.add_argument('-f', '--file', type=argparse.FileType('r'), 
-                        help='Optional input file with specific tempo options. '
-                             'Should be a plaintext file where each line is a bpm number, '
-                             'only separated by newline (overrides -tmax and -tmin)')
+                    help=('Optional input file with specific tempo options. '
+                          'The file should be a plaintext file with one tempo per line. '
+                          'Each line can either be a single BPM number or a shorthand for a range. '
+                          'For a single BPM, simply list the number (e.g., "60"). '
+                          'For a range of BPMs, use the shorthand format "start:end [step]" '
+                          '(e.g., "40:60 [2]" for a range from 40 to 60 in steps of 2). '
+                          'Multiple ranges can be specified on separate lines. '
+                          'If a file is provided, it overrides -tmax and -tmin options.'))
+
     parser.add_argument('-l', '--local', action='store_true', 
                         help='Use local timing for the test strip such that each step is a full exposure. '
                              'Useful for local teststrips, or for those who prefer not to start from 0 on each step, '
@@ -108,13 +115,39 @@ def parse_arguments():
     return args
 
 
+def parse_tempo_file(file):
+    # Tempo file can have either ints on lines, or shorthand
+    # range specifications in the form first:last [interval]
+    # 40:60 [2] is for instance shorthand for 40, 42, 44, ..., 60
+    tempi = []
+    for line in file:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if ":" in line and "[" in line and "]" in line:
+            try:
+                range_part, interval_part = line.split("[")
+                start, end = map(int, range_part.split(":"))
+                step = int(interval_part.split("]")[0])
+                
+                tempi.extend(range(start, end + 1, step))
+            except ValueError:
+                print(f"Invalid format in line: {line}")
+        else:
+            # Parse individual BPM
+            try:
+                tempi.append(int(line))
+            except ValueError:
+                print(f"Invalid BPM format in line: {line}")
+
+    return sorted(set(tempi))
+
+
 def populate_tempi(tmin, tmax, file):
 # Read tempi from file if provided, otherwise use the range
     if file:
         print(f"Using file '{file.name}' for tempi")
-        tempi = [int(line.strip()) for line in file if line.strip().isdigit()]
-        file.close()
-        tempi = sorted(set(tempi))
+        tempi = parse_tempo_file(file)
     else:
         tempi = [i for i in range(tmin, tmax + 1)]
 
