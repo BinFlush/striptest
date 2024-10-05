@@ -157,10 +157,10 @@ def closest_np_searchsorted(stops, steps):
     closest_indices = np.searchsorted(stops, steps)
     # ensure we will be within range
     high_indices = np.clip(closest_indices, 1, len(stops) - 1)
-    low_indices = closest_indices - 1
+    low_indices = high_indices - 1
     low_diffs = np.abs(stops[low_indices] - steps)
     high_diffs = np.abs(stops[high_indices] - steps)
-    closest_indices = np.where(low_diffs < high_diffs, low_indices, closest_indices)
+    closest_indices = np.where(low_diffs < high_diffs, low_indices, high_indices)
     return closest_indices
 
 
