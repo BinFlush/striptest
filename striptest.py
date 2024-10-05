@@ -152,10 +152,23 @@ def find_divisors(n):
     divisors = potential_divisors[n % potential_divisors == 0]
     return set(divisors).union(n // divisors)
 
+def closest_np_searchsorted(stops, steps):
+    # Use binary search
+    closest_indices = np.searchsorted(stops, steps)
+    # ensure we will be within range
+    high_indices = np.clip(closest_indices, 1, len(stops) - 1)
+    low_indices = closest_indices - 1
+    low_diffs = np.abs(stops[low_indices] - steps)
+    high_diffs = np.abs(stops[high_indices] - steps)
+    closest_indices = np.where(low_diffs < high_diffs, low_indices, closest_indices)
+    return closest_indices
 
-def find_closest_indices_seq_search(stops, steps):
+def closest__seq_search(stops, steps):
     # since both arrays are sorted, this algorithm can be used
     # in only O(num_beats+num_steps)
+    # However, in practice, searchsorted beats it, even for large searches.
+    # even though it is O(log(num_beats) * num_steps)
+    # This is probably because num_steps is usually small and num_beats is large
     num_beats = len(stops)
     num_steps = len(steps)
 
@@ -213,7 +226,7 @@ def find_winner(tempi, steps, base, loss_function):
         stops = l[:, 2]
 
         # This function does the heavy lifting
-        closest_indices = find_closest_indices_seq_search(stops, steps) 
+        closest_indices = closest_np_searchsorted(stops, steps) 
 
         # Use these indices to get the closest triples
         closest_stop = stops[closest_indices]  # Closest stops
