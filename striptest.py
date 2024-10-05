@@ -6,7 +6,6 @@ def main():
     args = parse_arguments()
 
     tempi = populate_tempi(args.tmin, args.tmax, args.file)
-    print(tempi)
     
     base, stepsize, numsteps, baseplace, divisions, local = (
         args.base, args.stepsize, args.numsteps, args.baseplace, args.divisions, args.local)
