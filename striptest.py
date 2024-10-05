@@ -152,6 +152,30 @@ def find_divisors(n):
     divisors = potential_divisors[n % potential_divisors == 0]
     return set(divisors).union(n // divisors)
 
+
+def find_closest_indices_seq_search(stops, steps):
+    # since both arrays are sorted, this algorithm can be used
+    # in only O(num_beats+num_steps)
+    num_beats = len(stops)
+    num_steps = len(steps)
+
+    closest_indices = np.zeros(num_steps, dtype=int)
+    
+    i, j = 0, 0
+    while j < num_steps and i < num_beats:
+        while i < num_beats - 1 and stops[i] < steps[j]:
+            i += 1
+        # Now i is right after the intersection wrt. steps[j]
+        
+        # find closest, stops[i-1] or stops[i]
+        if i > 0 and abs(stops[i-1] - steps[j]) <= abs(stops[i] - steps[j]):
+            closest_indices[j] = i - 1
+        else:
+            closest_indices[j] = i
+        j += 1
+    
+    return closest_indices
+
 def find_winner(tempi, steps, base, loss_function):
     """
     Find the optimal tempo that minimizes the squared loss of step errors.
@@ -188,19 +212,8 @@ def find_winner(tempi, steps, base, loss_function):
         sec_values = l[:, 1]
         stops = l[:, 2]
 
-        # binary search to find closest indices
-        closest_indices = np.searchsorted(stops, steps)
-
-        # ensure they are within range
-        closest_indices = np.clip(closest_indices, 1, len(stops) - 1)
-
-        # need to check the index just before and after the closest index to find the minimum
-        low_indices = closest_indices - 1
-
-        # Choose the indices with the smallest differences
-        low_diffs = np.abs(stops[low_indices] - steps)
-        high_diffs = np.abs(stops[closest_indices] - steps)
-        closest_indices = np.where(low_diffs < high_diffs, low_indices, closest_indices)
+        # This function does the heavy lifting
+        closest_indices = find_closest_indices_seq_search(stops, steps) 
 
         # Use these indices to get the closest triples
         closest_stop = stops[closest_indices]  # Closest stops
