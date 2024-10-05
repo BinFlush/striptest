@@ -163,31 +163,6 @@ def closest_np_searchsorted(stops, steps):
     closest_indices = np.where(low_diffs < high_diffs, low_indices, closest_indices)
     return closest_indices
 
-def closest__seq_search(stops, steps):
-    # since both arrays are sorted, this algorithm can be used
-    # in only O(num_beats+num_steps)
-    # However, in practice, searchsorted beats it, even for large searches.
-    # even though it is O(log(num_beats) * num_steps)
-    # This is probably because num_steps is usually small and num_beats is large
-    num_beats = len(stops)
-    num_steps = len(steps)
-
-    closest_indices = np.zeros(num_steps, dtype=int)
-    
-    i, j = 0, 0
-    while j < num_steps and i < num_beats:
-        while i < num_beats - 1 and stops[i] < steps[j]:
-            i += 1
-        # Now i is right after the intersection wrt. steps[j]
-        
-        # find closest, stops[i-1] or stops[i]
-        if i > 0 and abs(stops[i-1] - steps[j]) <= abs(stops[i] - steps[j]):
-            closest_indices[j] = i - 1
-        else:
-            closest_indices[j] = i
-        j += 1
-    
-    return closest_indices
 
 def find_winner(tempi, steps, base, loss_function):
     """
