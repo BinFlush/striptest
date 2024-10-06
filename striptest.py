@@ -7,8 +7,8 @@ def main():
 
     tempi = populate_tempi(args.tmin, args.tmax, args.file)
     
-    base, stepsize, numsteps, baseplace, divisions, local = (
-        args.base, args.stepsize, args.numsteps, args.baseplace, args.divisions, args.local)
+    base, stepsize, numsteps, baseplace, divisions, cumulative = (
+        args.base, args.stepsize, args.numsteps, args.baseplace, args.divisions, args.cumulative)
 
     # A purely integer list representing (fractional)stops to be evaluated and output 
     int_steps = np.arange(numsteps) - baseplace + 1
@@ -22,14 +22,14 @@ def main():
     
     # Generic loss function. Not sure whether to use L1 or L2.
     # L1 seems to often produce more convenient BPMs, but L2 seems like
-    # a better idea, since it would keep the individual errors small.
+    # a better idea, since it would punish outliers.
     L_p_loss = lambda p: lambda errors: np.sum(np.abs(errors) ** p)
 
     # this is where the magic happens
     winner = find_winner(tempi, steps, base, L_p_loss(2)) 
 
     # This also mutates winner['lst']
-    countdivisor, subdivision_notice = finalize_timing(winner, local, divisions)
+    countdivisor, subdivision_notice = finalize_timing(winner, cumulative, divisions)
 
     # Output final results in a clear format
     print()
@@ -53,41 +53,42 @@ def main():
 
 
 
-
-
-
-
-
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Calculate the best tempo for darkroom timer.')
     parser.add_argument('-b', '--base', type=float, default=10.0, 
                         help='Base value for calculation (default: 10)')
+
     parser.add_argument('-s', '--stepsize', type=int, default=3, 
                         help='Inverse of the stepsize as an integer. 1 is one stop, '
                              '2 is 1/2 stop etc. (default: 3)')
+
     parser.add_argument('-n', '--numsteps', type=int, default=7, 
                         help='Number of steps (default: 7)')
+
     parser.add_argument('-p', '--baseplace', type=int, default=-1, 
                         help='Baseplace value. This is 1-indexed such that the first value is 1 '
                              '(default: is middle for uneven n, left to middle for even n)')
+
     parser.add_argument('-tmin', '--tmin', type=int, default=40, 
                         help='Minimum tempo (default: 40)')
+
     parser.add_argument('-tmax', '--tmax', type=int, default=208, 
                         help='Maximum tempo (default: 208)')
+
     parser.add_argument('-f', '--file', type=argparse.FileType('r'), 
-                    help=('Optional input file with specific tempo options. '
+                    help='Optional input file with specific tempo options. '
                           'The file should be a plaintext file with one tempo per line. '
                           'Each line can either be a single BPM number or a shorthand for a range. '
                           'For a single BPM, simply list the number (e.g., "60"). '
                           'For a range of BPMs, use the shorthand format "start:end [step]" '
                           '(e.g., "40:60 [2]" for a range from 40 to 60 in steps of 2). '
                           'Multiple ranges can be specified on separate lines. '
-                          'If a file is provided, it overrides -tmax and -tmin options.'))
+                          'If a file is provided, it overrides -tmax and -tmin options.')
 
-    parser.add_argument('-l', '--local', action='store_true', 
-                        help='Use local timing for the test strip such that each step is a full exposure. '
-                             'Useful for local teststrips, or for those who prefer not to start from 0 on each step, '
-                             'but rather to continue their count from the previous step (default is cumulative timing).')
+    parser.add_argument('-c', '--cumulative', action='store_true', 
+                        help='Use cumulative timing for the test strip such that each step builds upon the previous. '
+                             'Useful for those who prefer to start counting from 0 on each step. (often easier with divisions set to 1; e.g. -d 1)')
+
     parser.add_argument('-d', '--divisions', type=int, default=None, 
                         help='Force a specific subdivision pattern for the beats. '
                              'If provided, this overrides the automatic subdivision '
@@ -257,7 +258,7 @@ def find_winner(tempi, steps, base, loss_function):
     return winner
 
 
-def convert_to_local_timing(lst):
+def convert_to_cumulative_timing(lst):
     cumulative_lst = np.zeros_like(lst)
     cumulative_lst[:, 1:] = lst[:, 1:]  # Copy over sec, stop, stoperror
 
@@ -307,10 +308,10 @@ def subdivisions(tempo, choice):
     return subdivision, subdivision_notice
 
 
-def finalize_timing(winner, local, divisions):
-    # Possibly convert to local timing
-    if not local:
-        winner['lst'] = convert_to_local_timing(winner['lst'])
+def finalize_timing(winner, cumulative, divisions):
+    # Possibly convert to cumulative timing
+    if cumulative:
+        winner['lst'] = convert_to_cumulative_timing(winner['lst'])
     
     # Apply subdivisions based on tempo or divisions
     countdivisor, subdivision_notice = subdivisions(winner['tempo'], divisions)

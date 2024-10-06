@@ -15,12 +15,12 @@ Count every 3rd beat
 
      Count      Stops    Seconds   Target Sec   % of stepsize Error
      5             -1      4.972        5.000      -2.4%
-     1+1/3       -2/3      6.298        6.300      -0.1%
-     1+2/3       -1/3      7.956        7.937       1.0%
-     2              0      9.945       10.000      -2.4%
-     2+2/3       +1/3     12.597       12.599      -0.1%
-     3+1/3       +2/3     15.912       15.874       1.0%
-     4             +1     19.890       20.000      -2.4%
+     6+1/3       -2/3      6.298        6.300      -0.1%
+     8           -1/3      7.956        7.937       1.0%
+    10              0      9.945       10.000      -2.4%
+    12+2/3       +1/3     12.597       12.599      -0.1%
+    16           +2/3     15.912       15.874       1.0%
+    20             +1     19.890       20.000      -2.4%
 ```
 Doing these exposures simply amounts to setting your metronome to the tempo (181), optionally making the metronome mark every third beat, and start counting (from 0) when you start your exposure. Keep counting on every third beat and make adjustments according to whatever teststrip method you use, as per the "Count" column.
 
@@ -62,10 +62,10 @@ Count every 3rd beat
 
      Count      Stops    Seconds   Target Sec   % of stepsize Error
      4           -2/3      3.789        3.780       1.1%
-     1           -1/3      4.737        4.762      -2.3%
-     1+1/3          0      6.000        6.000       0.0%
-     1+2/3       +1/3      7.579        7.560       1.1%
-     2           +2/3      9.474        9.524      -2.3%
+     5           -1/3      4.737        4.762      -2.3%
+     6+1/3          0      6.000        6.000       0.0%
+     8           +1/3      7.579        7.560       1.1%
+    10           +2/3      9.474        9.524      -2.3%
 ```
 As seen, the script finds an optimal tempo (e.g., 190 bpm) to minimize exposure inaccuracies, with much smaller errors compared to the above example counting half seconds.
 
@@ -89,7 +89,7 @@ To use the script, you can adjust several parameters to control how the tempo is
     - A range of BPMs using the shorthand format `start:end [step]` (e.g., `40:60 [2]` for a range from 40 to 60 in steps of 2).
       Multiple ranges can be listed on separate lines. 
   If a file is provided, it overrides `-tmax` and `-tmin`.
-- `-l`, `--local`: Use local timing for the test strip such that each step is a full exposure. If this flag is present, each step starts from `0`. This is useful for creating local test strips or for those who prefer not to continue the count from the previous step. Default is cumulative timing.
+- `-c`, `--cumulative`: Use cumulative timing for the test strip such that each step builds upon the previous. Useful for those who prefer to start counting from 0 on each step. Default is local timing where each step shows the time for its full exposure.
 - `-d`, `--divisions`: Force a specific subdivision pattern for beats. Accepts an integer that sets the divisor (e.g., `2` for halves, `3` for triplets). Overrides the automatic subdivision based on tempo.
 
 ### More examples
@@ -144,20 +144,20 @@ Multiple ranges and single BPMs can be mixed within the same file. Each tempo or
 
 
 ### Extended example
-Let's say our metronome has a range from 30-300 bpm, and that we previously obtained a good exposure at 8 seconds, but the contrast needed modification such that we know that the 8-second exposure might be slightly underexposed at the new contrast setting. We can do the following:
-We make a 5-step teststrip where we place the base of 8 seconds at the first step, and do increments of 1/6 stops from there. Furthermore, we are doing a local teststrip, so each step is a full exposure. This will result in the following output:
+Let's say our metronome has a range from 30-200 bpm, and that we previously obtained a good exposure at 8 seconds, but the contrast needed modification such that we know that the 8-second exposure might be slightly underexposed at the new contrast setting. We can do the following:
+We make a 5-step teststrip where we place the base of 8 seconds at the first step, and do increments of 1/6 stops from there. Furthermore, we are doing a cumulative teststrip, so each step builds upon the next. For cumulative counting, it is often easier to set the divisions to 1, so we count every beat. This will result in the following output:
 ```
-$ python striptest.py -b 8 -n 5 -p 1 -s 6 -tmin 30 -tmax 300 --local
+$ python striptest.py -b 8 -n 5 -p 1 -s 6 -tmin 30 -tmax 300 -c -d 1
 
-TEMPO 255
-Count every 4th beat
+TEMPO 180
+Count every beat
 
      Count      Stops    Seconds   Target Sec   % of stepsize Error
-     8+2/4          0      8.000        8.000       0.0%
-     9+2/4       +1/6      8.941        8.980      -3.7%
-    10+3/4       +2/6     10.118       10.079       3.3%
-    12           +3/6     11.294       11.314      -1.5%
-    13+2/4       +4/6     12.706       12.699       0.5%
+    24              0      8.000        8.000       0.0%
+     3           +1/6      9.000        8.980       2.0%
+     3           +2/6     10.000       10.079      -6.8%
+     4           +3/6     11.333       11.314       1.5%
+     4           +4/6     12.667       12.699      -2.2%
 ```
 
 ## Installation
