@@ -297,3 +297,8 @@ B_{t'}= \{1\cdot \frac{60}{t'},2\cdot \frac{60}{t'},...\} = \{1n\cdot \frac{60}{
 $$
 We can immediately see that $B_t' \subset B$.
 When evaluating through the set of tempi, we therefore start from the maximum bpm and work downwards. Whenever we encounter a tempo that is guaranteed not to be the optimal (because its loss $\Epsilon_t$ is not the lowest so far), we thus know that all other tempi $t'$ that divide $t$ also cannot have an optimal solution. We therefore skip evaluating these tempi further down the line. We do this by simply finding all divisors of $t$ and adding them to an "exclude" set.
+
+
+
+When $a \ne 0$, there are two solutions to $(ax^2 + bx + c = 0)$ and they are
+$$ x = {-b \pm \sqrt{b^2-4ac} \over 2a} $$
