@@ -226,16 +226,16 @@ m \cdot \frac{60}{t} = b \cdot 2^{a_k} \implies m \cdot \frac{60}{t \cdot b} = 2
 
 However, since we need integer values of $m$, what we actually want is to minimize the expression:
 ```math
- \mathcal{E}_t = \sum_{k=1}^n \epsilon_k = \sum_{k=1}^n \left(\log_2(m^*_k) + \log_2\left(\frac{60}{t \cdot b}\right) - a_k\right)^2,  \quad m^* \in \mathbb{N}
+ \mathcal{L}_t = \sum_{k=1}^n \epsilon_k = \sum_{k=1}^n \left(\log_2(m^*_k) + \log_2\left(\frac{60}{t \cdot b}\right) - a_k\right)^2,  \quad m^* \in \mathbb{N}
 ```
 
 Let $u$ be a function of the tempo $t$:
 ```math
 u(t) = \log_2\left(\frac{60}{t \cdot b}\right)
 ```
-Then, we can rewrite $\mathcal{E}$ as:
+Then, we can rewrite $\mathcal{L}$ as:
 ```math
-\mathcal{E}_t = \sum_{k=1}^n \epsilon_k = \sum_{k=1}^n \left(\log_2(m^*_k) + u(t) - a_k\right)^2, \quad m^* \in \mathbb{N}
+\mathcal{L}_t = \sum_{k=1}^n \epsilon_k = \sum_{k=1}^n \left(\log_2(m^*_k) + u(t) - a_k\right)^2, \quad m^* \in \mathbb{N}
 ```
 
 If we look at a single $k$, we have:
@@ -280,14 +280,14 @@ m_k^{\text{high}} & \text{otherwise}
 ### Calculating the Total Error
 Once we find the optimal $\hat{m}_k^*$ for each $k$ given a tempo $t$, we can calculate the total error:
 ```math
-\mathcal{E}_t=\sum_{k=1}^n\epsilon_k = \left(\log_2(\hat{m}_k^*) + u(t) - a_k\right)^2
+\mathcal{L}_t=\sum_{k=1}^n\epsilon_k = \left(\log_2(\hat{m}_k^*) + u(t) - a_k\right)^2
 ```
 
 
 ### Optimizing Over Tempi
-To find the optimal tempo $t$, we iterate over all possible tempi $t \in T$, and for each tempo, compute the corresponding $\hat{m}_k^*$ values and evaluate the total error $\mathcal{E}_t$. The optimal tempo $t^*$ is the one that yields the smallest error:
+To find the optimal tempo $t$, we iterate over all possible tempi $t \in T$, and for each tempo, compute the corresponding $\hat{m}_k^*$ values and evaluate the total error $\mathcal{L}_t$. The optimal tempo $t^*$ is the one that yields the smallest error:
 ```math
-t^* = \arg\min_{t \in T} \mathcal{E}_t
+t^* = \arg\min_{t \in T} \mathcal{L}_t
 ```
 
 ### Further optimizations
@@ -297,7 +297,7 @@ If we then consider another tempo $t'=t/n, \quad n \in \mathbb{N}$ with beats
 B_{t'}= \{1\cdot \frac{60}{t'},2\cdot \frac{60}{t'},...\} = \{1n\cdot \frac{60}{t},2n\cdot \frac{60}{t},...\}
 ```
 We can immediately see that $B_t' \subset B$.
-When evaluating through the set of tempi, we therefore start from the maximum bpm and work downwards. Whenever we encounter a tempo that is guaranteed not to be the optimal (because its loss $\mathcal{E}_t$ is not the lowest so far), we thus know that all other tempi $t'$ that divide $t$ also cannot have an optimal solution. We therefore skip evaluating these tempi further down the line. We do this by simply finding all divisors of $t$ and adding them to an "exclude" set.
+When evaluating through the set of tempi, we therefore start from the maximum bpm and work downwards. Whenever we encounter a tempo that is guaranteed not to be the optimal (because its loss $\mathcal{L}_t$ is not the lowest so far), we thus know that all other tempi $t'$ that divide $t$ also cannot have an optimal solution. We therefore skip evaluating these tempi further down the line. We do this by simply finding all divisors of $t$ and adding them to an "exclude" set.
 
 
 
