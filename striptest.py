@@ -41,7 +41,7 @@ def main():
     print(f"{'Count':>10} {'Stops':>10} {'Seconds':>10} {'Target Sec':>12} {'% of stepsize Error':>21}")
 
     # Format the output for each quad in the winner's list
-    for (n, sec, stop, steperror), int_step, targ_sec in zip(winner['lst'], int_steps, target_seconds):
+    for (n, sec,  steperror), int_step, targ_sec in zip(winner['lst'], int_steps, target_seconds):
         count_formatted = format_counts(n, countdivisor)  # Format the beat count properly
         stops_formatted = format_stops(int_step, stepsize)  # Use the int_steps value to format stops
         seconds_formatted = f"{sec:.3f}"  # Show actual seconds with 3 decimal places
@@ -156,28 +156,6 @@ def populate_tempi(tmin, tmax, file):
     return tempi
 
 
-def beats_seconds_and_stops(tempo, steps, base):
-    """
-    Input: A tempo (int) as bpm
-    Output: a numpy matrix for, where:
-        first column is the beat number n (1-indexed since time 0 makes no sense), 
-        second column is the beats placement in seconds, 
-        third column is the beats deviance from base in stops.
-    The list includes only (but all) beats in the relevant space.
-    """
-    # First calculate the bounds for relevant beat numbers.
-    lower_n = int(np.floor(tempo*base*2**steps[0]/60))
-    lower_n = max(lower_n, 1) # step 0 makes no sense. Also avoids log(0) issue
-    upper_n = int(np.ceil(tempo*base*2**steps[-1]/60))
-
-    n_list = np.arange(lower_n, upper_n + 1)
-    beatlength = 60/tempo
-    seconds = n_list * beatlength
-    stops = np.log2(seconds / base)
-    # results are a matrix of shape (num_beats, 3) 
-    result = np.column_stack((n_list, seconds, stops))
-    
-    return result
 
 def find_divisors(n):
     # returns all divisors except the number itself and 1.
@@ -226,30 +204,30 @@ def find_winner(tempi, steps, base, loss_function):
     for tempo in tempi:
         if tempo in excluded:
             continue
-        # a np matrix of shape (num_beats, 3)
-        l = beats_seconds_and_stops(tempo, steps, base)
+        
+        u = np.log2(60/(base*tempo))
 
-        n_values = l[:, 0]
-        sec_values = l[:, 1]
-        stops = l[:, 2]
+        #steps is the "a(k)" array
+        M = 2**(steps-u)
+        # We can't simply round M. 
+        # because we need to find the closest in logspace
+        Mlow = np.floor(M)
+        Mhigh = np.ceil(M)
+        M_star = np.where( 
+                     np.abs( np.log2(Mlow)+u-steps)<=np.abs( np.log2(Mhigh)+u-steps), 
+                     Mlow, Mhigh)
 
-        # This function does the heavy lifting
-        closest_indices = closest_np_searchsorted(stops, steps) 
-
-        # Use these indices to get the closest triples
-        closest_stop = stops[closest_indices]  # Closest stops
-        step_errors = closest_stop - steps  # Deviation from the target steps
+        step_errors = np.log2(M_star)+u - steps
         loss = loss_function(step_errors)
 
         if winner['loss'] >= loss:
             # We have a (better/lower) winner. We can build the rest of the vectors
-            closest_n = n_values[closest_indices]  # Closest beat numbers
-            closest_sec = sec_values[closest_indices]  # Closest seconds
-            # Collect vectors into matrix: |n|sec|stop|stoperror|
-            closest_quads = np.column_stack((closest_n, closest_sec, closest_stop, step_errors))
+            closest_sec = M_star * 60 / tempo
+            closest_triplets = np.column_stack( (M_star, closest_sec, step_errors) )
+
             winner['loss'] = loss
             winner['tempo'] = tempo
-            winner['lst'] = closest_quads
+            winner['lst'] = closest_triplets
         else:
             # We have a loser. We can thus safely remove all lower tempi that divide this tempo
             # since their beats are a subset of these beats.
@@ -341,3 +319,4 @@ def format_counts(n, countdivisor):
 
 if __name__ == "__main__":
     main()
+
