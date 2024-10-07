@@ -269,7 +269,7 @@ We compute the errors for both rounding options:
 ```
 
 We then select $\hat{m}_k^*$ as the value that minimizes the error:
-```math$
+```math
 \hat{m}_k^* = 
 \begin{cases} 
 m_k^{\text{low}} & \text{if } \epsilon_k^{\text{low}} \leq \epsilon_k^{\text{high}} \\
