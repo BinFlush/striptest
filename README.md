@@ -162,7 +162,7 @@ Count every beat
 ```
 While -6.8% error might seem like a lot, remember it is percentages of the stepsize, so it is not so bad. The output plot shows this:
 ![Extended example errors plotted](figures/ext-example.png)
-## Installing an running
+## Installing and running
 
 1. Clone the repository:
    ```bash
