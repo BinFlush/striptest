@@ -146,9 +146,9 @@ Multiple ranges and single BPMs can be mixed within the same file. Each tempo or
 
 ### Extended example
 Let's say our metronome has a range from 30-200 bpm, and that we previously obtained a good exposure at 8 seconds, but the contrast needed modification such that we know that the 8-second exposure might be slightly underexposed at the new contrast setting. We can do the following:
-We make a 5-step teststrip where we place the base of 8 seconds at the first step, and do increments of 1/6 stops from there. Furthermore, we are doing a cumulative teststrip, so each step builds upon the next. For cumulative counting, it is often easier to set the divisions to 1, so we count every beat. This will result in the following output:
+We make a 5-step teststrip (-n 5) where we place the base of 8 seconds at the first step (-b 8 -p 1), and do increments of 1/6 stops from there (-s 6). Furthermore, we are doing a cumulative teststrip, so each step builds upon the next (-c). For cumulative counting, it is often easier to set the divisions to 1, so we count every beat (-d 1), and in the end, we want to plot the stopwise error from the theoretical targets (--plot). This will result in the following output:
 ```
-$ python striptest.py -b 8 -n 5 -p 1 -s 6 -tmin 30 -tmax 200 -c -d 1
+$ python striptest.py -n 5 -b 8 -p 1 -s 6 -tmin 30 -tmax 200 -c -d 1 --plot
 
 TEMPO 180
 Count every beat
@@ -160,7 +160,7 @@ Count every beat
      4           +3/6     11.333       11.314       1.5%
      4           +4/6     12.667       12.699      -2.2%
 ```
-While -6.8% error might seem like a lot, remember it is percentages of the stepsize, so it is not so bad. Here are these exposures plotted against the theoretical stops:
+While -6.8% error might seem like a lot, remember it is percentages of the stepsize, so it is not so bad. The output plot shows this:
 ![Extended example errors plotted](figures/ext-example.png)
 ## Installing an running
 
