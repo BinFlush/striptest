@@ -175,6 +175,13 @@ def closest_np_searchsorted(stops, steps):
     return closest_indices
 
 
+def get_optimal_beat_numbers(Mlow, Mhigh, u, steps):
+    """Find the closest beat numbers in log-space between Mlow and Mhigh."""
+    e_low = np.abs(np.log2(Mlow) + u - steps)
+    e_high = np.abs(np.log2(Mhigh) + u - steps)
+    return np.where(e_low <= e_high, Mlow, Mhigh)
+
+
 def find_winner(tempi, steps, base, loss_function):
     """
     Find the optimal tempo that minimizes the squared loss of step errors.
@@ -194,7 +201,7 @@ def find_winner(tempi, steps, base, loss_function):
         A dictionary with:
         - 'loss': Minimum squared loss.
         - 'tempo': The optimal tempo value in bpm.
-        - 'lst': A NumPy array containing the optimal quads (n, sec, stop, stoperror).
+        - 'lst': A NumPy array containing the optimal triplets (n, sec, stoperror).
     """
 
     excluded = set() # used for optimization
@@ -213,11 +220,9 @@ def find_winner(tempi, steps, base, loss_function):
         # because we need to find the closest in logspace
         Mlow = np.floor(M)
         Mhigh = np.ceil(M)
-        M_star = np.where( 
-                     np.abs( np.log2(Mlow)+u-steps)<=np.abs( np.log2(Mhigh)+u-steps), 
-                     Mlow, Mhigh)
+        M_star = get_optimal_beat_numbers(Mlow, Mhigh, u, steps)
 
-        step_errors = np.log2(M_star)+u - steps
+        step_errors = np.log2(M_star) + u - steps
         loss = loss_function(step_errors)
 
         if winner['loss'] >= loss:
