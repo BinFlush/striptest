@@ -35,6 +35,15 @@ def main():
     countdivisor, subdivision_notice = finalize_timing(winner, cumulative, divisions)
 
     # Output final results in a clear format
+    print_output(winner, int_steps, target_seconds, countdivisor, stepsize, subdivision_notice)
+        
+    if plot: plotter(steps, winner['lst'][:,2])
+
+
+
+
+
+def print_output(winner, int_steps, target_seconds, countdivisor, stepsize, subdivision_notice):
     print()
     print(f"TEMPO {winner['tempo']}")
     print(subdivision_notice)
@@ -46,16 +55,13 @@ def main():
     # Format the output for each quad in the winner's list
     for (n, sec, _, steperror), int_step, targ_sec in zip(winner['lst'], int_steps, target_seconds):
         count_formatted = format_counts(n, countdivisor)  # Format the beat count properly
-        stops_formatted = format_stops(int_step, stepsize)  # Use the int_steps value to format stops
+        stops_formatted = format_stops(int_step, stepsize)  # Format stops
         seconds_formatted = f"{sec:.3f}"  # Show actual seconds with 3 decimal places
         target_sec_formatted = f"{targ_sec:.3f}"  # Show target seconds with 3 decimal places
-        error_formatted = f"{steperror*stepsize*100:.1f}%"  # Show error as a percentage with one decimal point
+        error_formatted = f"{steperror * stepsize * 100:.1f}%"  # Show error as a percentage
         
         # Print each row in the formatted table
         print(f"{count_formatted:>10} {stops_formatted:>10} {seconds_formatted:>10} {target_sec_formatted:>12} {error_formatted:>10}")
-        
-    if plot:
-        plotter(steps, winner['lst'][:,2])
 
 
 def plotter(steps, closest_stops):
@@ -210,8 +216,8 @@ def closest_np_searchsorted(stops, steps):
 
 def get_optimal_beat_numbers(M, u, steps):
     """Find the closest beat numbers in log-space between Mlow and Mhigh."""
-    Mlow = np.floor(M)
-    Mhigh = np.ceil(M)
+    Mlow = np.maximum(1, np.floor(M))
+    Mhigh = np.maximum(1, np.ceil(M))
     e_low = (np.log2(Mlow) + u - steps)**2
     e_high = (np.log2(Mhigh) + u - steps)**2
     return np.where(e_low <= e_high, Mlow, Mhigh)
@@ -240,10 +246,9 @@ def find_winner(tempi, steps, base, loss_function):
     """
 
     excluded = set() # used for optimization
-    tempi.reverse() # we will iterate from the highest to lowest
     winner = {'loss': np.inf, 'tempo': -1, 'lst': None}
 
-    for tempo in tempi:
+    for tempo in reversed(tempi):
         if tempo in excluded:
             continue
         
