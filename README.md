@@ -303,12 +303,12 @@ t^* = \arg\min_{t \in T} \mathcal{L}_t
 
 ### Further optimizations
 Any given tempo $t$, has beats $B_t = \\{1\cdot \frac{60}{t},2\cdot \frac{60}{t},...\\}$.
-If we then consider another tempo $t'=t/n, \quad n \in \mathbb{N}$ with beats 
+If we then consider another tempo $t^{\tick}=t/n, \quad n \in \mathbb{N}$ with beats 
 ```math
-B_{t'}= \left\{1\cdot \frac{60}{t'},2\cdot \frac{60}{t'},...\right\} = \left\{1n\cdot \frac{60}{t},2n\cdot \frac{60}{t},...\right\}
+B_{t^\tick}= \left\{1\cdot \frac{60}{t^\tick},2\cdot \frac{60}{t^\tick},...\right\} = \left\{1n\cdot \frac{60}{t},2n\cdot \frac{60}{t},...\right\}
 ```
-We can immediately see that $B_t' \subset B$.
-When evaluating through the set of tempi, we therefore start from the maximum bpm and work downwards. Whenever we encounter a tempo that is guaranteed not to be the optimal (because its loss $\mathcal{L}_t$ is not the lowest so far), we thus know that all other tempi $t'$ that divide $t$ also cannot have an optimal solution. We therefore skip evaluating these tempi further down the line. We do this by simply finding all divisors of $t$ and adding them to an "exclude" set.
+We can immediately see that $B_t^\tick \subset B$.
+When evaluating through the set of tempi, we therefore start from the maximum bpm and work downwards. Whenever we encounter a tempo that is guaranteed not to be the optimal (because its loss $\mathcal{L}_t$ is not the lowest so far), we thus know that all other tempi $t^\tick$ that divide $t$ also cannot have an optimal solution. We therefore skip evaluating these tempi further down the line. We do this by simply finding all divisors of $t$ and adding them to an "exclude" set.
 
 
 
