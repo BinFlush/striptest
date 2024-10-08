@@ -80,7 +80,7 @@ To use the script, you can adjust several parameters to control how the tempo is
 - `-b`, `--base`: Base exposure time in seconds (float). Default is `10`.
 - `-s`, `--stepsize`: Inverse of the stepsize as an integer (int). `1` is one stop, `2` is 1/2 stop, etc. Default is `3`.
 - `-n`, `--numsteps`: Number of steps (int) for the strip test. Default is `7`.
-- `-p`, `--baseplace`: The position of the base value in the test strip (1-indexed). The default is the middle for an uneven `n`, and left to middle for an even `n`.
+- `-p`, `--baseplace`: Amount of steps away from the first value, for the base value to be placed. -p 0 sets the base at the first step. -p -1 sets it 1 step before the output list. By default, base is placed in the middle for uneven n, and just before middle for even n. 
 - `-tmin`, `--tmin`: Minimum tempo (int) in bpm to consider. Default is `40`.
 - `-tmax`, `--tmax`: Maximum tempo (int) in bpm to consider. Default is `208`.
 - `-f`, `--file`: Optional input file with specific tempo options (plaintext file).
@@ -145,22 +145,22 @@ Multiple ranges and single BPMs can be mixed within the same file. Each tempo or
 
 
 ### Extended example
-Let's say our metronome has a range from 30-200 bpm, and that we previously obtained a good exposure at 8 seconds, but the contrast needed modification such that we know that the 8-second exposure might be slightly underexposed at the new contrast setting. We can do the following:
-We make a 5-step teststrip (-n 5) where we place the base of 8 seconds at the first step (-b 8 -p 1), and do increments of 1/6 stops from there (-s 6). Furthermore, we are doing a cumulative teststrip, so each step builds upon the next (-c). For cumulative counting, it is often easier to set the divisions to 1, so we count every beat (-d 1), and in the end, we want to plot the stopwise error from the theoretical targets (--plot). This will result in the following output:
+Let's say our metronome has a range from 30-200 bpm, and that we previously obtained a good exposure at 8 seconds, but the contrast needed modification such that we know that the 8-second exposure will be underexposed by at least 1/6 stop at the new contrast setting. We can do the following:
+We make a 5-step teststrip (-n 5) where we place the base of 8 seconds before the first step (-b 8 -p -1), and do increments of 1/6 stops from there (-s 6). Furthermore, we are doing a cumulative teststrip, so each step builds upon the next (-c). For cumulative counting, it is often easier to set the divisions to 1, so we count every beat (-d 1), and in the end, we want to plot the stopwise error from the theoretical targets (--plot). This will result in the following output:
 ```
-$ python striptest.py -n 5 -b 8 -p 1 -s 6 -tmin 30 -tmax 200 -c -d 1 --plot
+$ python striptest.py -n 5 -b 8 -p -1 -s 6 -tmin 30 -tmax 200 -c -d 1 --plot
 
-TEMPO 180
+TEMPO 160
 Count every beat
 
      Count      Stops    Seconds   Target Sec   % of stepsize Error
-    24              0      8.000        8.000       0.0%
-     3           +1/6      9.000        8.980       2.0%
-     3           +2/6     10.000       10.079      -6.8%
-     4           +3/6     11.333       11.314       1.5%
-     4           +4/6     12.667       12.699      -2.2%
+    24           +1/6      9.000        8.980       2.0%
+     3           +2/6     10.125       10.079       3.9%
+     3           +3/6     11.250       11.314      -4.9%
+     4           +4/6     12.750       12.699       3.5%
+     4           +5/6     14.250       14.254      -0.3%
 ```
-While -6.8% error might seem like a lot, remember it is percentages of the stepsize, so it is not so bad. The output plot shows this:
+While -4.9% error might seem like a lot, remember it is percentages of the stepsize, so it is not so bad. The output plot shows this:
 ![Extended example errors plotted](figures/ext-example.png)
 ## Installing and running
 

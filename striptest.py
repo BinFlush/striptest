@@ -14,7 +14,7 @@ def main():
         args.base, args.stepsize, args.numsteps, args.baseplace, args.divisions, args.cumulative, args.plot)
 
     # A purely integer list representing (fractional)stops to be evaluated and output 
-    int_steps = np.arange(numsteps) - baseplace + 1
+    int_steps = np.arange(numsteps) - baseplace
 
     # The same stops but as correct floats
     # (for actual calculation)
@@ -100,9 +100,10 @@ def parse_arguments():
     parser.add_argument('-n', '--numsteps', type=int, default=7, 
                         help='Number of steps (default: 7)')
 
-    parser.add_argument('-p', '--baseplace', type=int, default=-1, 
-                        help='Baseplace value. This is 1-indexed such that the first value is 1 '
-                             '(default: is middle for uneven n, left to middle for even n)')
+    parser.add_argument('-p', '--baseplace', type=int, default=None, 
+                        help='Amount of steps away from the first value, for the base value to be placed.'
+                             '-p 0 sets the base at the first step. -p -1 sets it 1 step before the output list.'
+                             'By default, base is placed in the middle for uneven n, and just before middle for even n.')
 
     parser.add_argument('-tmin', '--tmin', type=int, default=40, 
                         help='Minimum tempo (default: 40)')
@@ -136,7 +137,7 @@ def parse_arguments():
 
     args = parser.parse_args()
 
-    args.baseplace = args.baseplace if args.baseplace > 0 else (args.numsteps + 1) // 2
+    args.baseplace = args.baseplace if isinstance(args.baseplace, int) else (args.numsteps-1) // 2
 
     if args.stepsize <= 0:
         raise ValueError("Stepsize must be a positive integer.")
@@ -144,8 +145,6 @@ def parse_arguments():
         raise ValueError("Number of steps must be a positive integer.")
     if args.base <= 0:
         raise ValueError("Base must be greater than zero.")
-    if args.baseplace < 1 or args.numsteps < args.baseplace:
-        raise ValueError("baseplace must be in [1,...,numsteps]")
     if args.tmin <= 0 or args.tmax <= 0:
         raise ValueError("All provided tempi must be greater than zero.")
     if args.divisions and args.divisions < 1:
