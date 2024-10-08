@@ -91,6 +91,7 @@ To use the script, you can adjust several parameters to control how the tempo is
   If a file is provided, it overrides `-tmax` and `-tmin`.
 - `-c`, `--cumulative`: Use cumulative timing for the test strip such that each step builds upon the previous. Useful for those who prefer to start counting from 0 on each step. Default is local timing where each step shows the time for its full exposure.
 - `-d`, `--divisions`: Force a specific subdivision pattern for beats. Accepts an integer that sets the divisor (e.g., `2` for halves, `3` for triplets). Overrides the automatic subdivision based on tempo.
+- `--plot`: If specified, plot the achieved stops vs the theoretical stops in the end. Provides a visual reference for the accuracy. 
 
 ### More examples
 
@@ -161,17 +162,27 @@ Count every beat
 ```
 While -6.8% error might seem like a lot, remember it is percentages of the stepsize, so it is not so bad. Here are these exposures plotted against the theoretical stops:
 ![Extended example errors plotted](figures/ext-example.png)
-## Installation
+## Installing an running
 
 1. Clone the repository:
    ```bash
    git clone https://github.com/BinFlush/striptest.git
    ```
 
-2. Install dependencies (numpy):
+2. Navigate to the project directory:
+    ```bash
+    cd striptest
+    ```
+
+3. Install dependencies:
    ```bash
-   pip install numpy
+   pip install -r requirements.txt
    ```
+
+4. Run the script:
+    ```bash
+    python striptest.py
+    ```
 
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request.

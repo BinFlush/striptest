@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 import argparse
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import fractions
 
 def main():
     args = parse_arguments()
 
     tempi = populate_tempi(args.tmin, args.tmax, args.file)
     
-    base, stepsize, numsteps, baseplace, divisions, cumulative = (
-        args.base, args.stepsize, args.numsteps, args.baseplace, args.divisions, args.cumulative)
+    base, stepsize, numsteps, baseplace, divisions, cumulative, plot = (
+        args.base, args.stepsize, args.numsteps, args.baseplace, args.divisions, args.cumulative, args.plot)
 
     # A purely integer list representing (fractional)stops to be evaluated and output 
     int_steps = np.arange(numsteps) - baseplace + 1
@@ -41,7 +44,7 @@ def main():
     print(f"{'Count':>10} {'Stops':>10} {'Seconds':>10} {'Target Sec':>12} {'% of stepsize Error':>21}")
 
     # Format the output for each quad in the winner's list
-    for (n, sec,  steperror), int_step, targ_sec in zip(winner['lst'], int_steps, target_seconds):
+    for (n, sec, _, steperror), int_step, targ_sec in zip(winner['lst'], int_steps, target_seconds):
         count_formatted = format_counts(n, countdivisor)  # Format the beat count properly
         stops_formatted = format_stops(int_step, stepsize)  # Use the int_steps value to format stops
         seconds_formatted = f"{sec:.3f}"  # Show actual seconds with 3 decimal places
@@ -50,6 +53,32 @@ def main():
         
         # Print each row in the formatted table
         print(f"{count_formatted:>10} {stops_formatted:>10} {seconds_formatted:>10} {target_sec_formatted:>12} {error_formatted:>10}")
+        
+    if plot:
+        plotter(steps, winner['lst'][:,2])
+
+
+def plotter(steps, closest_stops):
+# Create the figure and axes
+    fig, ax = plt.subplots(figsize=(8, 1))
+
+# Plot the number line
+    ax.scatter(closest_stops, np.zeros_like(closest_stops), color='blue', marker='o', label='Real')
+    ax.scatter(steps, np.zeros_like(steps), color='red', marker='x', label='Theoretical')
+
+# Add vertical lines to emphasize each point
+    ax.vlines(closest_stops, -0.1, 0.1, color='blue', alpha=0.5)
+    ax.vlines(steps, -0.1, 0.1, color='red', alpha=0.5)
+
+# Formatting the plot
+    ax.set_yticks([])  # Hide y-axis
+    ax.set_xlabel('Stops')
+    ax.set_title('Real exposures vs theoretical exposures')
+    ax.legend()
+    ax.grid(True, axis='x', linestyle='--', alpha=0.6)
+
+# Display the plot
+    plt.show()
 
 
 
@@ -94,6 +123,10 @@ def parse_arguments():
                              'If provided, this overrides the automatic subdivision '
                              'based on tempo (e.g., halves, triplets). Accepts an integer to set the divisor '
                              '(e.g., 2 for halves, 3 for triplets).')
+
+    parser.add_argument('--plot', action='store_true', 
+                        help='If specified, plot the achieved stops vs the theoretical stops'
+                             'at the end. By default, this option is False.')
 
     args = parser.parse_args()
 
@@ -222,13 +255,14 @@ def find_winner(tempi, steps, base, loss_function):
         Mhigh = np.ceil(M)
         M_star = get_optimal_beat_numbers(Mlow, Mhigh, u, steps)
 
-        step_errors = np.log2(M_star) + u - steps
+        stops = np.log2(M_star) + u
+        step_errors = stops - steps
         loss = loss_function(step_errors)
 
         if winner['loss'] >= loss:
             # We have a (better/lower) winner. We can build the rest of the vectors
             closest_sec = M_star * 60 / tempo
-            closest_triplets = np.column_stack( (M_star, closest_sec, step_errors) )
+            closest_triplets = np.column_stack( (M_star, closest_sec, stops, step_errors) )
 
             winner['loss'] = loss
             winner['tempo'] = tempo
