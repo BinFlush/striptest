@@ -302,7 +302,7 @@ t^* = \arg\min_{t \in T} \mathcal{L}_t
 ```
 
 ### Further optimizations
-Any given tempo $t$, has beats $B_t = \{1\cdot \frac{60}{t},2\cdot \frac{60}{t},...\}$.
+Any given tempo $t$, has beats $B_t = \\{1\cdot \frac{60}{t},2\cdot \frac{60}{t},...\\}$.
 If we then consider another tempo $t'=t/n, \quad n \in \mathbb{N}$ with beats 
 ```math
 B_{t'}= \left\{1\cdot \frac{60}{t'},2\cdot \frac{60}{t'},...\right\} = \left\{1n\cdot \frac{60}{t},2n\cdot \frac{60}{t},...\right\}
