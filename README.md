@@ -219,9 +219,9 @@ This software is mostly for those who get satisfaction from using the simple too
 
 That is a great question. I'm glad you asked!
 
-We are looking for the optimal bpm tempo $t \in T \subset \mathbb{N}$ for which there exist beat numbers $\mathbf{M}^\ast \subset \mathbb{N}^n$ such that these beats best match a set of target exposure stops $\mathbf{a}=[a_k]_{k=1}^n$ which describe the deviance from a basetime $b$. 
+We are looking for the optimal bpm tempo $t \in T \subset \mathbb{N}$ for which there exist beat numbers $\mathbf{M}^\ast \subset \mathbb{N}^n$ such that these beats best match a set of target exposure stops $\mathbf{a}=[a_k]_{k=1}^n$ which is a vector of required stopwise deviances from a basetime $b$. 
 
-For a given stop $a_k$, we have the required time (in seconds) for that exposure:
+For a given stop $a_k$, and a base $b$, we have the required time (in seconds) for that exposure:
 
 ```math
 s = b \cdot 2^{a_k}
@@ -244,12 +244,12 @@ Let $u$ be a function of the tempo $t$:
 ```math
 u(t) = \log_2\left(\frac{60}{t \cdot b}\right)
 ```
-Then, we can rewrite $\mathcal{L}$ as:
+Then, we can rewrite $\mathcal{L}_t$ as:
 ```math
 \mathcal{L}_t = \sum_{k=1}^n \epsilon_k = \sum_{k=1}^n \left(\log_2(m^\ast_k) + u(t) - a_k\right)^2, \quad m^\ast \in \mathbb{N}
 ```
 
-If we look at a single $k$, we have:
+If we look at a single $k$, set $\epsilon_k$ to zero, and we have:
 ```math
 \epsilon_k = \left(\log_2(m^\ast_k) + u(t) - a_k\right)^2
 ```
@@ -258,11 +258,11 @@ but we can insert $m$ into this and get:
 \left(\log_2(m_k) + u(t) - a_k\right)^2 = 0 \implies \log_2(m_k) = a_k - u(t) \implies m_k = 2^{a_k - u(t)}
 ```
 
-This is great. We now have $m_k$, but remember it is in $\mathbb{R}$, and we cannot simply round it, since this operation would be done in linear space. We have to find the closest $m^\ast$ in log-space.
+This is great. We now have $m_k$, but remember it is in $\mathbb{R}$, and we cannot simply round it, since this operation would be done in linear space. We have to find the closest $m_k^\ast$ in log-space.
 
 ### Finding the Closest Integer in Log-Space
 
-To find the closest integer beat number $m_k^\ast$ in log-space, we need to find the integers that minimize the error in the logarithmic domain. Since $m_k = 2^{a_k - u}$ is a real number, we denote its closest integers as $m_k^{\text{low}}=\lfloor m_k \rfloor$ and $m_k^{\text{high}} = \lceil m_k \rceil$.
+To do this we need to find the integers that minimize the error in the logarithmic domain. Since $m_k = 2^{a_k - u}$ is a real number, we denote its closest integers as $m_k^{\text{low}}=\lfloor m_k \rfloor$ and $m_k^{\text{high}} = \lceil m_k \rceil$.
 
 We now need to choose between these two candidates based on which one minimizes the error in log-space:
 ```math

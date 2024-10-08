@@ -208,10 +208,12 @@ def closest_np_searchsorted(stops, steps):
     return closest_indices
 
 
-def get_optimal_beat_numbers(Mlow, Mhigh, u, steps):
+def get_optimal_beat_numbers(M, u, steps):
     """Find the closest beat numbers in log-space between Mlow and Mhigh."""
-    e_low = np.abs(np.log2(Mlow) + u - steps)
-    e_high = np.abs(np.log2(Mhigh) + u - steps)
+    Mlow = np.floor(M)
+    Mhigh = np.ceil(M)
+    e_low = (np.log2(Mlow) + u - steps)**2
+    e_high = (np.log2(Mhigh) + u - steps)**2
     return np.where(e_low <= e_high, Mlow, Mhigh)
 
 
@@ -251,9 +253,7 @@ def find_winner(tempi, steps, base, loss_function):
         M = 2**(steps-u)
         # We can't simply round M. 
         # because we need to find the closest in logspace
-        Mlow = np.floor(M)
-        Mhigh = np.ceil(M)
-        M_star = get_optimal_beat_numbers(Mlow, Mhigh, u, steps)
+        M_star = get_optimal_beat_numbers(M, u, steps)
 
         stops = np.log2(M_star) + u
         step_errors = stops - steps
