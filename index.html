@@ -55,7 +55,7 @@
     color: var(--ink);
   }
 
-  form, details div {
+  form, details div, #tones {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: .75rem;
@@ -96,6 +96,7 @@
   }
 
   input[type=range] {
+    margin: 0;
     padding: 0;
     border: 0;
     background: none;
@@ -157,6 +158,11 @@
     cursor: pointer;
   }
 
+  button:disabled {
+    opacity: .4;
+    cursor: default;
+  }
+
   #skip {
     margin-top: 1.25rem;
   }
@@ -170,6 +176,36 @@
     margin: .375rem .125rem 0;
     padding: 0 .5rem;
     font-family: var(--mono);
+  }
+
+  #tones {
+    grid-template-columns: minmax(0, 1fr) auto;
+    margin-bottom: .5rem;
+  }
+
+  #tones div {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: .25rem .375rem;
+    color: var(--muted);
+    font-size: .8125rem;
+  }
+
+  #tones div span {
+    grid-column: 1 / -1;
+  }
+
+  #tones div span::before, tr.grey td:first-child::before {
+    content: "";
+    border: .375rem solid transparent;
+    border-right: 0;
+    border-left: .5rem solid var(--accent);
+  }
+
+  #tones div span::before {
+    display: inline-block;
+    margin-right: .375rem;
+    vertical-align: -.0625rem;
   }
 
   table {
@@ -223,6 +259,16 @@
 
   tbody tr {
     background: hsl(0 0% var(--tone));
+  }
+
+  tr.grey td:first-child {
+    position: relative;
+  }
+
+  tr.grey td:first-child::before {
+    position: absolute;
+    top: calc(50% - .375rem);
+    left: -.875rem;
   }
 
   table + details {
@@ -317,10 +363,18 @@
   <p id="skipped"></p>
 </section>
 
-<label class="wide">
-  <span>Filter <span id="grade"></span></span>
-  <input id="filter" type="range" min="0" max="6" value="3">
-</label>
+<div id="tones">
+  <label>
+    <span>Filter <span id="grade"></span></span>
+    <input id="filter" type="range" min="0" max="6" value="3">
+  </label>
+  <div>
+    <span>Middle grey</span>
+    <button id="up" aria-label="Move middle grey up a row">▲</button>
+    <button id="down" aria-label="Move middle grey down a row">▼</button>
+    <button id="reset" aria-label="Reset middle grey to the base">Reset</button>
+  </div>
+</div>
 
 <table>
   <thead>
@@ -346,7 +400,8 @@
       timer</a>. This website is specifically for using a dedicated metronome, and the accuracy it
       provides.</li>
     <li>The rows are toned to approximate a strip of Ilford Multigrade IV RC Deluxe at the filter
-      set above the table, with the base at middle grey. Your prints may differ.</li>
+      set above the table. Middle grey starts at the base, and the arrows move it to another row.
+      Your prints may differ.</li>
     <li>Everything is calculated in your browser. Nothing is sent anywhere.</li>
   </ul>
 </details>
@@ -475,6 +530,7 @@
   const number = id => field(id).valueAsNumber;
   const SHOWN = 5;
   const skipped = recall();
+  let grey = 0;
 
   function recall() {
     try {
@@ -506,8 +562,9 @@
 
   function tableRow({ step, count, seconds, error }, { stepsize, filter }, every) {
     const tr = document.createElement('tr');
-    const exposed = step / stepsize + error;
-    tr.className = step ? '' : 'base';
+    const exposed = (step - grey) / stepsize + error;
+    tr.classList.toggle('base', !step);
+    tr.classList.toggle('grey', step === grey);
     tr.style.setProperty('--tone', `${(tone(exposed, filter) * 100).toFixed(1)}%`);
     tr.style.color = 10 ** -density(exposed, filter) > .18 ? '#000' : '#FFF';
     tr.append(
@@ -557,6 +614,9 @@
     field('skipped').replaceChildren(...skipping);
     field('forget').textContent = `Forget all skipped tempos (${skipped.size})`;
     field('forget').hidden = !skipped.size;
+    field('up').disabled = !result.rows?.some(row => row.step < grey);
+    field('down').disabled = !result.rows?.some(row => row.step > grey);
+    field('reset').disabled = !grey;
     document.querySelector('tbody').replaceChildren(...rows);
   }
 
@@ -567,6 +627,9 @@
     if (target.matches('#skip')) skipped.add(Number(target.value));
     if (target.matches('#skipped button')) skipped.delete(Number(target.value));
     if (target.matches('#forget')) skipped.clear();
+    if (target.matches('#up')) grey--;
+    if (target.matches('#down')) grey++;
+    if (target.matches('#reset')) grey = 0;
     remember();
     render();
   });
