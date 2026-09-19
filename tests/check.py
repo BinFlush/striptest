@@ -82,7 +82,7 @@ def reference(settings):
 
 
 def random_tempi(rng):
-    """A range or the mechanical scale, sometimes with tempi skipped as the page allows."""
+    """A range or the mechanical scale, sometimes with gaps, the way a tempo file can have."""
     slowest = rng.randint(20, 150)
     mechanical = striptest.parse_tempo_file(MECHANICAL)
     tempi = rng.choice([list(range(slowest, rng.randint(slowest, 300) + 1)), mechanical,
@@ -120,16 +120,16 @@ def density(grey):
 
 
 def swatch_failures(tones):
-    """The page's swatches, for -6 to +6 stops in thirds, should behave like paper."""
-    densities = [density(grey) for grey in tones]
-    lightest, base, darkest = densities[0], densities[18], densities[-1]
-    per_stop = [densities[i + 3] - densities[i] for i in range(15, 22)]
+    """The page's swatches, given as (thirds of a stop, grey), should behave like paper."""
+    densities = {third: density(grey) for third, grey in tones}
+    ordered = [densities[third] for third in sorted(densities)]
+    per_stop = [densities[third + 3] - densities[third] for third in range(-3, 4)]
     checks = [
-        ("the base swatch is 18% middle grey", abs(10 ** -base - 0.18) < 1e-9),
+        ("the base swatch is 18% middle grey", abs(10 ** -densities[0] - 0.18) < 1e-9),
         ("more exposure never prints lighter",
-         all(a <= b + 1e-12 for a, b in zip(densities, densities[1:]))),
+         all(a <= b + 1e-12 for a, b in zip(ordered, ordered[1:]))),
         ("far under is paper white, far over is maximum black",
-         abs(lightest - 0.05) < 1e-9 and abs(darkest - 2.1) < 1e-9),
+         abs(ordered[0] - 0.05) < 1e-9 and abs(ordered[-1] - 2.1) < 1e-9),
         ("around the base every stop adds 0.6 density",
          all(abs(step - 0.6) < 1e-9 for step in per_stop)),
     ]

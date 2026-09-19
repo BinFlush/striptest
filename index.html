@@ -72,7 +72,7 @@
     border-color: var(--accent);
   }
 
-  input:focus-visible, select:focus-visible, summary:focus-visible {
+  input:focus-visible, select:focus-visible, summary:focus-visible, button:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
@@ -122,7 +122,7 @@
 
   button {
     height: 2.75rem;
-    margin: 1.25rem .125rem 0;
+    margin: 0;
     padding: 0 .875rem;
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -132,23 +132,21 @@
     cursor: pointer;
   }
 
-  button:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
+  #forget {
+    grid-column: 1 / -1;
+  }
+
+  #skip {
+    margin-top: 1.25rem;
   }
 
   #skipped {
     font-size: .875rem;
   }
 
-  #forget {
-    grid-column: 1 / -1;
-    margin: 0;
-  }
-
   #skipped button {
     height: 2.25rem;
-    margin-top: .375rem;
+    margin: .375rem .125rem 0;
     padding: 0 .5rem;
     font-family: var(--mono);
   }
@@ -304,11 +302,11 @@
       const rows = steps.map(step => {
         const target = step / stepsize;
         const exact = 2 ** (target - u);
-        const miss = beats => Math.abs(Math.log2(beats) + u - target);
+        const error = beats => Math.log2(beats) + u - target;
         const low = Math.max(1, Math.floor(exact));
         const high = Math.ceil(exact);
-        const beats = miss(low) <= miss(high) ? low : high;
-        return { step, beats, seconds: beats * 60 / tempo, error: Math.log2(beats) + u - target };
+        const beats = Math.abs(error(low)) <= Math.abs(error(high)) ? low : high;
+        return { step, beats, seconds: beats * 60 / tempo, error: error(beats) };
       });
       const loss = rows.reduce((sum, row) => sum + row.error ** 2, 0);
       if (loss <= winner.loss + TIE) winner = { loss, tempo, rows };
@@ -359,7 +357,7 @@
     return `${sign}${percent}%`;
   }
 
-  function ordinal(n) {
+  function nthBeat(n) {
     if (n === 1) return 'beat';
     const teens = n % 100 >= 11 && n % 100 <= 13;
     return `${n}${teens ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'} beat`;
@@ -371,14 +369,13 @@
   const field = id => document.getElementById(id);
   const number = id => field(id).valueAsNumber;
   const SHOWN = 5;
-  const saved = recall();
-  const skipped = new Set(Array.isArray(saved.skipped) ? saved.skipped : []);
+  const skipped = recall();
 
   function recall() {
     try {
-      return JSON.parse(localStorage.getItem('striptest')) ?? {};
+      return new Set(JSON.parse(localStorage.getItem('striptest')).skipped);
     } catch {
-      return {};
+      return new Set();
     }
   }
 
@@ -410,6 +407,19 @@
     return button;
   }
 
+  function tableRow({ step, count, seconds, error }, { stepsize }, every) {
+    const tr = document.createElement('tr');
+    tr.className = step ? '' : 'base';
+    tr.append(
+      swatch(step / stepsize),
+      cell(formatCount(count, every)),
+      cell(formatStops(step, stepsize)),
+      cell(seconds.toFixed(2)),
+      cell(formatError(error * stepsize)),
+    );
+    return tr;
+  }
+
   function settings() {
     field('tmax').setCustomValidity('');
     if (!form.checkValidity()) return null;
@@ -417,12 +427,12 @@
     field('tmax').setCustomValidity(tempi.length ? '' : 'No tempo in this range');
     if (!tempi.length) return null;
     const numsteps = number('numsteps');
-    const middle = Math.floor((numsteps - 1) / 2);
+    const place = number('baseplace');
     return {
       base: number('base'),
       stepsize: Number(field('stepsize').value),
       numsteps,
-      baseplace: Number.isNaN(number('baseplace')) ? middle : number('baseplace') - 1,
+      baseplace: Number.isNaN(place) ? Math.floor((numsteps - 1) / 2) : place - 1,
       tempi,
       cumulative: field('cumulative').checked,
       divisions: Number(field('divisions').value),
@@ -435,35 +445,26 @@
     const skipping = result.passed.slice(0, SHOWN).map(chip);
     if (skipping.length) skipping.unshift('Skipping ');
     if (result.passed.length > SHOWN) skipping.push(` and ${result.passed.length - SHOWN} more`);
+    const rows = (result.rows ?? []).map(row => tableRow(row, chosen, result.every));
     field('tempo').textContent = result.tempo ?? '?';
-    field('notice').textContent = result.tempo ? `and count every ${ordinal(result.every)}.` : '';
+    field('notice').textContent = result.tempo ? `and count every ${nthBeat(result.every)}.` : '';
     field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
+    field('skip').value = result.tempo ?? '';
     field('skip').hidden = !result.tempo;
     field('skipped').replaceChildren(...skipping);
     field('forget').textContent = `Forget all skipped tempos (${skipped.size})`;
     field('forget').hidden = !skipped.size;
-    document.querySelector('tbody').replaceChildren(...(result.rows ?? []).map(row => {
-      const tr = document.createElement('tr');
-      tr.className = row.step ? '' : 'base';
-      tr.append(
-        swatch(row.step / chosen.stepsize),
-        cell(formatCount(row.count, result.every)),
-        cell(formatStops(row.step, chosen.stepsize)),
-        cell(row.seconds.toFixed(2)),
-        cell(formatError(row.error * chosen.stepsize)),
-      );
-      return tr;
-    }));
-    remember();
+    document.querySelector('tbody').replaceChildren(...rows);
   }
 
   addEventListener('input', render);
 
   addEventListener('click', ({ target }) => {
     if (!(target instanceof HTMLButtonElement)) return;
-    if (target.matches('#skip')) skipped.add(Number(field('tempo').value));
+    if (target.matches('#skip')) skipped.add(Number(target.value));
     if (target.matches('#skipped button')) skipped.delete(Number(target.value));
     if (target.matches('#forget')) skipped.clear();
+    remember();
     render();
   });
 

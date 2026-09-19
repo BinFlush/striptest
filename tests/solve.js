@@ -17,5 +17,6 @@ const results = JSON.parse(fs.readFileSync(0, 'utf8')).map(({ skipped, ...settin
   return { tempo, every, beats, counts: rows.map(row => row.count), passed };
 });
 
-const tones = Array.from({ length: 37 }, (_, i) => context.page.tone((i - 18) / 3));
+const thirds = Array.from({ length: 37 }, (_, i) => i - 18);
+const tones = thirds.map(third => [third, context.page.tone(third / 3)]);
 console.log(JSON.stringify({ results, tones }));
