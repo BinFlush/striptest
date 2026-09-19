@@ -120,6 +120,39 @@
     letter-spacing: -.04em;
   }
 
+  button {
+    height: 2.75rem;
+    margin: 1.25rem .125rem 0;
+    padding: 0 .875rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  #skipped {
+    font-size: .875rem;
+  }
+
+  #forget {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+
+  #skipped button {
+    height: 2.25rem;
+    margin-top: .375rem;
+    padding: 0 .5rem;
+    font-family: var(--mono);
+  }
+
   table {
     width: 100%;
     border-collapse: collapse;
@@ -230,6 +263,7 @@
         <input id="cumulative" type="checkbox">
         Count each step from zero, adding to the one before
       </label>
+      <button id="forget" type="button"></button>
     </div>
   </details>
 </form>
@@ -238,6 +272,8 @@
   <p>Set your metronome to</p>
   <output id="tempo"></output>
   <p id="notice"></p>
+  <button id="skip"></button>
+  <p id="skipped"></p>
 </section>
 
 <table>
@@ -294,6 +330,18 @@
     return { tempo: winner.tempo, every, rows };
   }
 
+  function solveSkipping(settings, skipped) {
+    const passed = [];
+    let tempi = settings.tempi;
+    while (tempi.length) {
+      const result = solve({ ...settings, tempi });
+      if (!skipped.has(result.tempo)) return { ...result, passed };
+      passed.push(result.tempo);
+      tempi = tempi.filter(tempo => tempo !== result.tempo);
+    }
+    return { passed };
+  }
+
   function formatCount(count, every) {
     const whole = Math.floor(count / every);
     const rest = count % every;
@@ -325,6 +373,24 @@
   const form = document.querySelector('form');
   const field = id => document.getElementById(id);
   const number = id => field(id).valueAsNumber;
+  const SHOWN = 5;
+  const saved = recall();
+  const skipped = new Set(Array.isArray(saved.skipped) ? saved.skipped : []);
+
+  function recall() {
+    try {
+      return JSON.parse(localStorage.getItem('striptest')) ?? {};
+    } catch {
+      return {};
+    }
+  }
+
+  function remember() {
+    try {
+      const memory = { scale: field('scale').value, skipped: [...skipped] };
+      localStorage.setItem('striptest', JSON.stringify(memory));
+    } catch {}
+  }
 
   function cell(text) {
     const td = document.createElement('td');
@@ -338,6 +404,14 @@
     tone.style.setProperty('--tone', `${Math.min(94, Math.max(8, 55 - stops * 22))}%`);
     td.append(tone);
     return td;
+  }
+
+  function chip(tempo) {
+    const button = document.createElement('button');
+    button.textContent = `${tempo} ×`;
+    button.value = tempo;
+    button.setAttribute('aria-label', `Bring back ${tempo}`);
+    return button;
   }
 
   function settings() {
@@ -361,10 +435,18 @@
 
   function render() {
     const chosen = settings();
-    const result = chosen && solve(chosen);
-    field('tempo').textContent = result ? result.tempo : '?';
-    field('notice').textContent = result ? `and count every ${ordinal(result.every)}.` : '';
-    document.querySelector('tbody').replaceChildren(...(result ? result.rows : []).map(row => {
+    const result = chosen ? solveSkipping(chosen, skipped) : { passed: [] };
+    const skipping = result.passed.slice(0, SHOWN).map(chip);
+    if (skipping.length) skipping.unshift('Skipping ');
+    if (result.passed.length > SHOWN) skipping.push(` and ${result.passed.length - SHOWN} more`);
+    field('tempo').textContent = result.tempo ?? '?';
+    field('notice').textContent = result.tempo ? `and count every ${ordinal(result.every)}.` : '';
+    field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
+    field('skip').hidden = !result.tempo;
+    field('skipped').replaceChildren(...skipping);
+    field('forget').textContent = `Forget all skipped tempos (${skipped.size})`;
+    field('forget').hidden = !skipped.size;
+    document.querySelector('tbody').replaceChildren(...(result.rows ?? []).map(row => {
       const tr = document.createElement('tr');
       tr.className = row.step ? '' : 'base';
       tr.append(
@@ -376,8 +458,20 @@
       );
       return tr;
     }));
+    remember();
   }
 
   addEventListener('input', render);
+
+  addEventListener('click', ({ target }) => {
+    if (!(target instanceof HTMLButtonElement)) return;
+    if (target.matches('#skip')) skipped.add(Number(field('tempo').value));
+    if (target.matches('#skipped button')) skipped.delete(Number(target.value));
+    if (target.matches('#forget')) skipped.clear();
+    render();
+  });
+
+  if (saved.scale) field('scale').value = saved.scale;
+  document.querySelector('details').open = field('scale').value !== 'any';
   render();
 </script>
