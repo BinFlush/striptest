@@ -95,6 +95,13 @@
     outline-offset: 1px;
   }
 
+  input[type=range] {
+    padding: 0;
+    border: 0;
+    background: none;
+    accent-color: var(--accent);
+  }
+
   input[type=checkbox] {
     width: 1.25rem;
     height: 1.25rem;
@@ -310,6 +317,11 @@
   <p id="skipped"></p>
 </section>
 
+<label class="wide">
+  <span>Filter <span id="grade"></span></span>
+  <input id="filter" type="range" min="0" max="6" value="3">
+</label>
+
 <table>
   <thead>
     <tr><th>Count</th><th>Stops</th><th>Seconds</th><th>Step<br>error</th></tr>
@@ -333,8 +345,8 @@
       <a href="https://gotimer.org/photography/enlarger-timer" target="_blank">GoTimer's enlarger
       timer</a>. This website is specifically for using a dedicated metronome, and the accuracy it
       provides.</li>
-    <li>The rows are toned to approximate a strip of Ilford Multigrade IV RC Deluxe at filter 2,
-      with the base at middle grey. Your prints may differ.</li>
+    <li>The rows are toned to approximate a strip of Ilford Multigrade IV RC Deluxe at the filter
+      set above the table, with the base at middle grey. Your prints may differ.</li>
     <li>Everything is calculated in your browser. Nothing is sent anywhere.</li>
   </ul>
 </details>
@@ -346,10 +358,24 @@
 <script>
   const TIE = 1e-12;
 
-  // Print density per third of a stop for a grade 2 paper: Ilford Multigrade IV RC Deluxe
-  // at filter 2, read off the curves in Ilford's data sheet. PAPER[GREY] is 18% middle grey.
-  const PAPER = [.03, .05, .1, .18, .3, .43, .59, .745, .91, 1.13, 1.35, 1.63, 1.84, 1.96, 2.02];
-  const GREY = 7;
+  // Print density per third of a stop for Ilford Multigrade IV RC Deluxe at each filter. The
+  // curve shapes are read off the plots in Ilford's data sheet; the exposure scale is set so
+  // every ISO range matches the sheet's table. Each list starts with the third of a stop its
+  // first density belongs to, counted from the base, where the density is 18% middle grey.
+  const PAPER = {
+    '00': [-8, .03, .07, .15, .25, .35, .43, .52, .63, .745, .85, .96, 1.07, 1.18, 1.27, 1.37, 1.48,
+      1.58, 1.67, 1.75, 1.82, 1.89, 1.94, 1.97, 2, 2.02],
+    '0': [-8, .03, .07, .12, .22, .32, .43, .52, .63, .745, .86, .98, 1.09, 1.2, 1.32, 1.47, 1.6,
+      1.72, 1.83, 1.93, 1.99, 2.02],
+    '1': [-7, .03, .08, .17, .28, .39, .5, .6, .745, .9, 1.05, 1.18, 1.33, 1.54, 1.73, 1.86, 1.95,
+      2, 2.02],
+    '2': [-7, .03, .05, .11, .21, .31, .43, .57, .745, .93, 1.11, 1.32, 1.58, 1.8, 1.91, 2.01,
+      2.02],
+    '3': [-7, .03, .05, .07, .15, .25, .39, .53, .745, .99, 1.27, 1.64, 1.85, 1.96, 2.02],
+    '4': [-4, .03, .1, .25, .45, .745, 1.14, 1.68, 1.95, 2.03],
+    '5': [-2, .03, .25, .745, 1.38, 1.8, 1.97, 2.03],
+  };
+  const FILTERS = ['00', '0', '1', '2', '3', '4', '5'];
 
   function range(from, to) {
     return Array.from({ length: to - from + 1 }, (_, i) => from + i);
@@ -394,15 +420,16 @@
     return { passed };
   }
 
-  function density(stops) {
-    const place = Math.min(PAPER.length - 1, Math.max(0, GREY + stops * 3));
+  function density(stops, filter) {
+    const [first, ...curve] = PAPER[filter];
+    const place = Math.min(curve.length - 1, Math.max(0, stops * 3 - first));
     const below = Math.floor(place);
-    const above = Math.min(PAPER.length - 1, below + 1);
-    return PAPER[below] + (PAPER[above] - PAPER[below]) * (place - below);
+    const above = Math.min(curve.length - 1, below + 1);
+    return curve[below] + (curve[above] - curve[below]) * (place - below);
   }
 
-  function tone(stops) {
-    return 1.055 * (10 ** -density(stops)) ** (1 / 2.4) - .055;
+  function tone(stops, filter) {
+    return 1.055 * (10 ** -density(stops, filter)) ** (1 / 2.4) - .055;
   }
 
   function formatCount(count, every) {
@@ -467,12 +494,12 @@
     return button;
   }
 
-  function tableRow({ step, count, seconds, error }, { stepsize }, every) {
+  function tableRow({ step, count, seconds, error }, { stepsize, filter }, every) {
     const tr = document.createElement('tr');
     const exposed = step / stepsize + error;
     tr.className = step ? '' : 'base';
-    tr.style.setProperty('--tone', `${(tone(exposed) * 100).toFixed(1)}%`);
-    tr.style.color = 10 ** -density(exposed) > .18 ? '#000' : '#FFF';
+    tr.style.setProperty('--tone', `${(tone(exposed, filter) * 100).toFixed(1)}%`);
+    tr.style.color = 10 ** -density(exposed, filter) > .18 ? '#000' : '#FFF';
     tr.append(
       cell(formatCount(count, every)),
       cell(formatStops(step, stepsize)),
@@ -498,12 +525,15 @@
       tempi,
       cumulative: field('cumulative').checked,
       divisions: Number(field('divisions').value),
+      filter: FILTERS[number('filter')],
     };
   }
 
   function render() {
     const chosen = settings();
     const result = chosen ? solveSkipping(chosen, skipped) : { passed: [] };
+    field('grade').textContent = FILTERS[number('filter')];
+    field('filter').setAttribute('aria-valuetext', FILTERS[number('filter')]);
     const skipping = result.passed.slice(0, SHOWN).map(chip);
     if (skipping.length) skipping.unshift('Skipping ');
     if (result.passed.length > SHOWN) skipping.push(` and ${result.passed.length - SHOWN} more`);

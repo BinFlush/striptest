@@ -29,6 +29,10 @@ ROUND_BASES = [4, 5, 6, 8, 10, 12, 16, 20, 32]
 # The tempo file from the README: a realistic metronome scale, full of gaps
 MECHANICAL = ["40:60 [2]", "60:72 [3]", "72:120 [4]", "120:144 [6]", "144:208 [8]"]
 
+# Ilford's ISO range (R, ISO 6846) for Multigrade IV RC Deluxe at each filter, from the table in
+# "MULTIGRADE RC PAPERS Technical Information" (Oct 2020). The page's row tones must have these.
+ISO_RANGE = {"00": 1.80, "0": 1.60, "1": 1.30, "2": 1.10, "3": 0.90, "4": 0.60, "5": 0.40}
+
 # The README's worked examples: settings, then the tempo and counts it prints
 README = [
     (dict(base=10.0, stepsize=3, numsteps=7, baseplace=3, tempi=list(range(40, 209)),
@@ -119,30 +123,31 @@ def density(grey):
     return -np.log10(((grey + 0.055) / 1.055) ** 2.4)
 
 
-def tone_failures(tones):
-    """The page's row tones, given as (thirds of a stop, grey), should be a grade 2 paper.
+def tone_failures(filter_name, tones):
+    """The page's row tones at one filter, given as (thirds of a stop, grey), against Ilford.
 
-    ISO 6846 measures a paper's grade as its log exposure range R: from the exposure that
+    ISO 6846 measures a paper's contrast as its log exposure range R: from the exposure that
     gives 0.04 above the paper's minimum density to the one that gives 90% of its maximum
-    above the minimum. Grade 2 is R 0.95 to 1.15; Ilford states 1.10 for the paper used.
+    above the minimum.
     """
     thirds = sorted(third for third, _ in tones)
     densities = [density(grey) for _, grey in sorted(tones)]
     lightest, darkest = densities[0], densities[-1]
     low, high = lightest + 0.04, lightest + 0.9 * (darkest - lightest)
-    stops = (np.interp(high, densities, thirds) - np.interp(low, densities, thirds)) / 3
-    iso_range = stops * np.log10(2)
+    rising = np.array(densities) + np.arange(len(densities)) * 1e-9
+    stops = (np.interp(high, rising, thirds) - np.interp(low, rising, thirds)) / 3
+    iso_range, published = stops * np.log10(2), ISO_RANGE[filter_name]
     base = densities[thirds.index(0)]
     checks = [
         ("the base row is 18% middle grey", abs(10 ** -base - 0.18) < 0.0005),
         ("more exposure never prints lighter",
          all(a <= b + 1e-12 for a, b in zip(densities, densities[1:]))),
         ("far under is paper white, far over is the paper's maximum black",
-         abs(lightest - 0.03) < 1e-9 and abs(darkest - 2.02) < 1e-9),
-        (f"the paper's ISO range is grade 2 (0.95 to 1.15), got {iso_range:.2f}",
-         0.95 <= iso_range <= 1.15),
+         abs(lightest - 0.03) < 1e-9 and 2.0 < darkest < 2.05),
+        (f"the ISO range is Ilford's {published:.2f}, got {iso_range:.2f}",
+         abs(iso_range - published) <= 0.02),
     ]
-    return [f"row tones: {name}" for name, holds in checks if not holds]
+    return [f"filter {filter_name}: {name}" for name, holds in checks if not holds]
 
 
 def page(all_settings):
@@ -174,7 +179,10 @@ def main():
                             f"  settings {settings}\n  README   {tempo} {printed}\n"
                             f"  got      {ours['tempo']} {ours['printed']}")
 
-    failures += tone_failures(answer["tones"])
+    if sorted(answer["tones"]) != sorted(ISO_RANGE):
+        failures.append("the page does not offer exactly Ilford's seven filters")
+    for filter_name, tones in answer["tones"].items():
+        failures += tone_failures(filter_name, tones)
 
     for settings, ours, theirs in zip(all_settings, expected, answer["results"]):
         if ours["direct"] not in (None, ours.get("tempo")):

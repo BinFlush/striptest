@@ -17,6 +17,7 @@ const results = JSON.parse(fs.readFileSync(0, 'utf8')).map(({ skipped, ...settin
   return { tempo, every, beats, counts: rows.map(row => row.count), passed };
 });
 
-const thirds = Array.from({ length: 37 }, (_, i) => i - 18);
-const tones = thirds.map(third => [third, context.page.tone(third / 3)]);
+const thirds = Array.from({ length: 61 }, (_, i) => i - 30);
+const tones = Object.fromEntries(['00', '0', '1', '2', '3', '4', '5'].map(filter =>
+  [filter, thirds.map(third => [third, context.page.tone(third / 3, filter)])]));
 console.log(JSON.stringify({ results, tones }));
