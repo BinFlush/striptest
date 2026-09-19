@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import fractions
 
 def main():
@@ -65,6 +63,9 @@ def print_output(winner, int_steps, target_seconds, countdivisor, stepsize, subd
 
 
 def plotter(steps, closest_stops):
+    # Only needed for --plot, so numpy alone is enough for everything else
+    import matplotlib.pyplot as plt
+
 # Create the figure and axes
     fig, ax = plt.subplots(figsize=(8, 1))
 
