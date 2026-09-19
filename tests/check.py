@@ -26,7 +26,7 @@ import striptest
 STEPSIZES = [1, 2, 3, 4, 6, 12]
 ROUND_BASES = [4, 5, 6, 8, 10, 12, 16, 20, 32]
 
-# The tempo file from the README, which the page offers as its "Mechanical" scale
+# The tempo file from the README: a realistic metronome scale, full of gaps
 MECHANICAL = ["40:60 [2]", "60:72 [3]", "72:120 [4]", "120:144 [6]", "144:208 [8]"]
 
 # The README's worked examples: settings, then the tempo and counts it prints
@@ -143,10 +143,7 @@ def main():
                             f"  settings {settings}\n  README   {tempo} {printed}\n"
                             f"  got      {ours['tempo']} {ours['printed']}")
 
-    if answer["mechanical"] != striptest.parse_tempo_file(MECHANICAL):
-        failures.append("the page's Mechanical scale differs from the README's tempo file")
-
-    for settings, ours, theirs in zip(all_settings, expected, answer["results"]):
+    for settings, ours, theirs in zip(all_settings, expected, answer):
         if ours["direct"] not in (None, ours.get("tempo")):
             failures.append(f"passing over skipped tempi ends at {ours['tempo']}, but solving "
                             f"without them gives {ours['direct']}\n  settings {settings}")

@@ -235,11 +235,11 @@
   <details>
     <summary>Metronome and counting</summary>
     <div>
-      <label>Tempo scale
-        <select id="scale">
-          <option value="any">Any tempo</option>
-          <option value="mechanical">Mechanical</option>
-        </select>
+      <label>Slowest, bpm
+        <input id="tmin" type="number" value="40" min="1" max="600" required inputmode="numeric">
+      </label>
+      <label>Fastest, bpm
+        <input id="tmax" type="number" value="208" min="1" max="600" required inputmode="numeric">
       </label>
       <label>Count every
         <select id="divisions">
@@ -249,12 +249,6 @@
           <option value="3">3rd beat</option>
           <option value="4">4th beat</option>
         </select>
-      </label>
-      <label>Slowest, bpm
-        <input id="tmin" type="number" value="40" min="1" max="600" required inputmode="numeric">
-      </label>
-      <label>Fastest, bpm
-        <input id="tmax" type="number" value="208" min="1" max="600" required inputmode="numeric">
       </label>
       <label>Base is step
         <input id="baseplace" type="number" min="-50" max="50" placeholder="middle">
@@ -289,18 +283,10 @@
 </footer>
 
 <script>
-  const MECHANICAL = [[40, 60, 2], [60, 72, 3], [72, 120, 4], [120, 144, 6], [144, 208, 8]];
   const TIE = 1e-12;
 
-  function range(from, to, step) {
-    return Array.from({ length: Math.floor((to - from) / step) + 1 }, (_, i) => from + i * step);
-  }
-
-  function tempoList(scale, tmin, tmax) {
-    const all = scale === 'mechanical'
-      ? MECHANICAL.flatMap(([from, to, step]) => range(from, to, step))
-      : range(tmin, tmax, 1);
-    return [...new Set(all)].filter(tempo => tempo >= tmin && tempo <= tmax).sort((a, b) => a - b);
+  function range(from, to) {
+    return Array.from({ length: to - from + 1 }, (_, i) => from + i);
   }
 
   function solve({ base, stepsize, numsteps, baseplace, tempi, cumulative, divisions }) {
@@ -387,8 +373,7 @@
 
   function remember() {
     try {
-      const memory = { scale: field('scale').value, skipped: [...skipped] };
-      localStorage.setItem('striptest', JSON.stringify(memory));
+      localStorage.setItem('striptest', JSON.stringify({ skipped: [...skipped] }));
     } catch {}
   }
 
@@ -417,7 +402,7 @@
   function settings() {
     field('tmax').setCustomValidity('');
     if (!form.checkValidity()) return null;
-    const tempi = tempoList(field('scale').value, number('tmin'), number('tmax'));
+    const tempi = range(number('tmin'), number('tmax'));
     field('tmax').setCustomValidity(tempi.length ? '' : 'No tempo in this range');
     if (!tempi.length) return null;
     const numsteps = number('numsteps');
@@ -471,7 +456,5 @@
     render();
   });
 
-  if (saved.scale) field('scale').value = saved.scale;
-  document.querySelector('details').open = field('scale').value !== 'any';
   render();
 </script>
