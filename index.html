@@ -37,6 +37,24 @@
     font: 1rem/1.5 system-ui, sans-serif;
   }
 
+  nav {
+    display: flex;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+  }
+
+  nav a {
+    padding: .5rem 0;
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  nav [aria-current] {
+    border-bottom: 2px solid var(--accent);
+    color: var(--ink);
+  }
+
   form, details div {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -213,6 +231,11 @@
     color: inherit;
   }
 </style>
+
+<nav>
+  <a href="https://time.lutzen.co/">Time</a>
+  <a aria-current="page">Striptest</a>
+</nav>
 
 <form>
   <label>Base, seconds
