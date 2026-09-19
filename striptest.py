@@ -3,6 +3,9 @@ import argparse
 import numpy as np
 import fractions
 
+# Losses closer than this are the same exposures; the slower tempo then wins.
+TIE = 1e-12
+
 def main():
     args = parse_arguments()
 
@@ -264,7 +267,7 @@ def find_winner(tempi, steps, base, loss_function):
         step_errors = stops - steps
         loss = loss_function(step_errors)
 
-        if winner['loss'] >= loss:
+        if loss <= winner['loss'] + TIE:
             # We have a (better/lower) winner. We can build the rest of the vectors
             closest_sec = M_star * 60 / tempo
             closest_triplets = np.column_stack( (M_star, closest_sec, stops, step_errors) )
