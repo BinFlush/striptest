@@ -217,6 +217,21 @@
     background: hsl(0 0% var(--tone));
   }
 
+  table + details {
+    margin-top: 2rem;
+  }
+
+  ul {
+    margin: .5rem 0 0;
+    padding-left: 1.25rem;
+    color: var(--muted);
+    font-size: .875rem;
+  }
+
+  li {
+    margin-bottom: .375rem;
+  }
+
   footer {
     margin-top: 2rem;
     color: var(--muted);
@@ -300,6 +315,28 @@
   </thead>
   <tbody></tbody>
 </table>
+
+<details>
+  <summary>How to use</summary>
+  <ul>
+    <li>Set any metronome, a physical one or an app, to the tempo shown. If it can accent beats,
+      let it accent the one you count.</li>
+    <li>Start the exposure on the count of zero. Keep counting, and cover the next patch of the
+      strip at each count in the table.</li>
+    <li>Ticking "Count each step from zero" restarts the count for every patch. This can be
+      easier to count when you want to stop exposing between each patch.</li>
+    <li>If your metronome lacks the tempo shown, press "My metronome can't do …". The next best
+      tempo appears, and the choice is remembered on this device.</li>
+    <li>There is purposely no built-in metronome. If you want that, it's better to simply find an
+      f-stop timer, something like
+      <a href="https://gotimer.org/photography/enlarger-timer" target="_blank">GoTimer's enlarger
+      timer</a>. This website is specifically for using a dedicated metronome, and the accuracy it
+      provides.</li>
+    <li>The grey patches show a grade 2 paper, Ilford Multigrade IV RC Deluxe at filter 2, with
+      the base at middle grey. Your print will differ.</li>
+    <li>Everything is calculated in your browser. Nothing is sent anywhere.</li>
+  </ul>
+</details>
 
 <footer>
   <a href="https://github.com/BinFlush/striptest#readme" target="_blank">How it works and source</a>
