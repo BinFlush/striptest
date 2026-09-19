@@ -307,10 +307,11 @@
 
 <script>
   const TIE = 1e-12;
-  const WHITE = .05;
-  const BLACK = 2.1;
-  const GREY = -Math.log10(.18);
-  const CONTRAST = .6;
+
+  // Print density per third of a stop for a grade 2 paper: Ilford Multigrade IV RC Deluxe
+  // at filter 2, read off the curves in Ilford's data sheet. PAPER[GREY] is 18% middle grey.
+  const PAPER = [.03, .05, .1, .18, .3, .43, .59, .745, .91, 1.13, 1.35, 1.63, 1.84, 1.96, 2.02];
+  const GREY = 7;
 
   function range(from, to) {
     return Array.from({ length: to - from + 1 }, (_, i) => from + i);
@@ -356,7 +357,10 @@
   }
 
   function tone(stops) {
-    const density = Math.min(BLACK, Math.max(WHITE, GREY + CONTRAST * stops));
+    const place = Math.min(PAPER.length - 1, Math.max(0, GREY + stops * 3));
+    const below = Math.floor(place);
+    const above = Math.min(PAPER.length - 1, below + 1);
+    const density = PAPER[below] + (PAPER[above] - PAPER[below]) * (place - below);
     return 1.055 * (10 ** -density) ** (1 / 2.4) - .055;
   }
 

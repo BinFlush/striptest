@@ -120,18 +120,27 @@ def density(grey):
 
 
 def swatch_failures(tones):
-    """The page's swatches, given as (thirds of a stop, grey), should behave like paper."""
-    densities = {third: density(grey) for third, grey in tones}
-    ordered = [densities[third] for third in sorted(densities)]
-    per_stop = [densities[third + 3] - densities[third] for third in range(-3, 4)]
+    """The page's swatches, given as (thirds of a stop, grey), should be a grade 2 paper.
+
+    ISO 6846 measures a paper's grade as its log exposure range R: from the exposure that
+    gives 0.04 above the paper's minimum density to the one that gives 90% of its maximum
+    above the minimum. Grade 2 is R 0.95 to 1.15; Ilford states 1.10 for the paper used.
+    """
+    thirds = sorted(third for third, _ in tones)
+    densities = [density(grey) for _, grey in sorted(tones)]
+    lightest, darkest = densities[0], densities[-1]
+    low, high = lightest + 0.04, lightest + 0.9 * (darkest - lightest)
+    stops = (np.interp(high, densities, thirds) - np.interp(low, densities, thirds)) / 3
+    iso_range = stops * np.log10(2)
+    base = densities[thirds.index(0)]
     checks = [
-        ("the base swatch is 18% middle grey", abs(10 ** -densities[0] - 0.18) < 1e-9),
+        ("the base swatch is 18% middle grey", abs(10 ** -base - 0.18) < 0.0005),
         ("more exposure never prints lighter",
-         all(a <= b + 1e-12 for a, b in zip(ordered, ordered[1:]))),
-        ("far under is paper white, far over is maximum black",
-         abs(ordered[0] - 0.05) < 1e-9 and abs(ordered[-1] - 2.1) < 1e-9),
-        ("around the base every stop adds 0.6 density",
-         all(abs(step - 0.6) < 1e-9 for step in per_stop)),
+         all(a <= b + 1e-12 for a, b in zip(densities, densities[1:]))),
+        ("far under is paper white, far over is the paper's maximum black",
+         abs(lightest - 0.03) < 1e-9 and abs(darkest - 2.02) < 1e-9),
+        (f"the paper's ISO range is grade 2 (0.95 to 1.15), got {iso_range:.2f}",
+         0.95 <= iso_range <= 1.15),
     ]
     return [f"swatches: {name}" for name, holds in checks if not holds]
 
