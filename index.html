@@ -381,11 +381,19 @@
     return Array.from({ length: to - from + 1 }, (_, i) => from + i);
   }
 
+  function divisors(number) {
+    return range(2, Math.floor(Math.sqrt(number)))
+      .filter(divisor => number % divisor === 0)
+      .flatMap(divisor => [divisor, number / divisor]);
+  }
+
   function solve({ base, stepsize, numsteps, baseplace, tempi, cumulative, divisions }) {
     const steps = Array.from({ length: numsteps }, (_, i) => i - baseplace);
+    const excluded = new Set();
     let winner = { loss: Infinity };
 
     for (const tempo of [...tempi].reverse()) {
+      if (excluded.has(tempo)) continue;
       const u = Math.log2(60 / (base * tempo));
       const rows = steps.map(step => {
         const target = step / stepsize;
@@ -397,7 +405,9 @@
         return { step, beats, seconds: beats * 60 / tempo, error: error(beats) };
       });
       const loss = rows.reduce((sum, row) => sum + row.error ** 2, 0);
+      // A tempo that divides a losing one has only some of its beats, so it cannot win either
       if (loss <= winner.loss + TIE) winner = { loss, tempo, rows };
+      else divisors(tempo).forEach(divisor => excluded.add(divisor));
     }
 
     const rows = winner.rows.map((row, i, all) => ({
