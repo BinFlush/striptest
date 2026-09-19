@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import numpy as np
-import fractions
 
 # Losses closer than this are the same exposures; the slower tempo then wins.
 TIE = 1e-12
@@ -204,18 +203,6 @@ def find_divisors(n):
     potential_divisors = np.arange(2, int(np.sqrt(n)) + 1)
     divisors = potential_divisors[n % potential_divisors == 0]
     return set(divisors).union(n // divisors)
-
-def closest_np_searchsorted(stops, steps):
-    # Use binary search
-    closest_indices = np.searchsorted(stops, steps)
-    # ensure we will be within range
-    high_indices = np.clip(closest_indices, 1, len(stops) - 1)
-    low_indices = high_indices - 1
-    low_diffs = np.abs(stops[low_indices] - steps)
-    high_diffs = np.abs(stops[high_indices] - steps)
-    closest_indices = np.where(low_diffs < high_diffs, low_indices, high_indices)
-    return closest_indices
-
 
 def get_optimal_beat_numbers(M, u, steps):
     """Find the closest beat numbers in log-space between Mlow and Mhigh."""
