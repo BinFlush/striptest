@@ -101,7 +101,7 @@
     accent-color: var(--accent);
   }
 
-  details {
+  details, #forget {
     grid-column: 1 / -1;
   }
 
@@ -148,10 +148,6 @@
     color: var(--muted);
     font: inherit;
     cursor: pointer;
-  }
-
-  #forget {
-    grid-column: 1 / -1;
   }
 
   #skip {
@@ -281,16 +277,20 @@
         <input id="cumulative" type="checkbox">
         Count each step from zero, adding to the one before
       </label>
-      <button id="forget" type="button"></button>
+      <button id="forget" type="button" hidden></button>
     </div>
   </details>
 </form>
+
+<noscript>
+  This page needs JavaScript. Nothing is sent anywhere: it all runs in your browser.
+</noscript>
 
 <section>
   <p>Set your metronome to</p>
   <output id="tempo"></output>
   <p id="notice"></p>
-  <button id="skip"></button>
+  <button id="skip" hidden></button>
   <p id="skipped"></p>
 </section>
 
