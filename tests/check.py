@@ -119,8 +119,8 @@ def density(grey):
     return -np.log10(((grey + 0.055) / 1.055) ** 2.4)
 
 
-def swatch_failures(tones):
-    """The page's swatches, given as (thirds of a stop, grey), should be a grade 2 paper.
+def tone_failures(tones):
+    """The page's row tones, given as (thirds of a stop, grey), should be a grade 2 paper.
 
     ISO 6846 measures a paper's grade as its log exposure range R: from the exposure that
     gives 0.04 above the paper's minimum density to the one that gives 90% of its maximum
@@ -134,7 +134,7 @@ def swatch_failures(tones):
     iso_range = stops * np.log10(2)
     base = densities[thirds.index(0)]
     checks = [
-        ("the base swatch is 18% middle grey", abs(10 ** -base - 0.18) < 0.0005),
+        ("the base row is 18% middle grey", abs(10 ** -base - 0.18) < 0.0005),
         ("more exposure never prints lighter",
          all(a <= b + 1e-12 for a, b in zip(densities, densities[1:]))),
         ("far under is paper white, far over is the paper's maximum black",
@@ -142,7 +142,7 @@ def swatch_failures(tones):
         (f"the paper's ISO range is grade 2 (0.95 to 1.15), got {iso_range:.2f}",
          0.95 <= iso_range <= 1.15),
     ]
-    return [f"swatches: {name}" for name, holds in checks if not holds]
+    return [f"row tones: {name}" for name, holds in checks if not holds]
 
 
 def page(all_settings):
@@ -174,7 +174,7 @@ def main():
                             f"  settings {settings}\n  README   {tempo} {printed}\n"
                             f"  got      {ours['tempo']} {ours['printed']}")
 
-    failures += swatch_failures(answer["tones"])
+    failures += tone_failures(answer["tones"])
 
     for settings, ours, theirs in zip(all_settings, expected, answer["results"]):
         if ours["direct"] not in (None, ours.get("tempo")):
