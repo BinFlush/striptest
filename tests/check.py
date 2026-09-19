@@ -44,10 +44,29 @@ README = [
 
 
 def reference(settings):
-    """What striptest.py computes for these settings, as plain numbers."""
+    """What striptest.py computes for these settings, as plain numbers.
+
+    The page lets people skip tempi their metronome lacks and shows which better
+    ones it passed over. striptest.py has no such option, so the reference is its
+    own ranking: take the winner, and while that one is skipped, drop it and ask again.
+    """
     steps = (np.arange(settings["numsteps"]) - settings["baseplace"]) / settings["stepsize"]
     loss = lambda errors: np.sum(np.abs(errors) ** 2)
-    winner = striptest.find_winner(settings["tempi"], steps, settings["base"], loss)
+    skipped = set(settings.get("skipped", []))
+    tempi, passed, winner = list(settings["tempi"]), [], None
+    while tempi:
+        winner = striptest.find_winner(tempi, steps, settings["base"], loss)
+        if winner["tempo"] not in skipped:
+            break
+        passed.append(int(winner["tempo"]))
+        tempi.remove(winner["tempo"])
+    if not tempi:
+        return dict(passed=passed, direct=None)
+
+    # Passing over skipped winners one by one has to end where solving without them starts
+    allowed = [tempo for tempo in settings["tempi"] if tempo not in skipped]
+    direct = int(striptest.find_winner(allowed, steps, settings["base"], loss)["tempo"])
+
     beats = [int(n) for n in winner["lst"][:, 0]]
     divisions = settings["divisions"] or None
     every, _ = striptest.finalize_timing(winner, settings["cumulative"], divisions)
@@ -57,20 +76,39 @@ def reference(settings):
         beats=beats,
         counts=[int(round(n * every)) for n in winner["lst"][:, 0]],
         printed=[striptest.format_counts(n, every).strip() for n in winner["lst"][:, 0]],
+        passed=passed,
+        direct=direct,
     )
+
+
+def random_tempi(rng):
+    """A range or the mechanical scale, sometimes with tempi skipped as the page allows."""
+    slowest = rng.randint(20, 150)
+    mechanical = striptest.parse_tempo_file(MECHANICAL)
+    tempi = rng.choice([list(range(slowest, rng.randint(slowest, 300) + 1)), mechanical,
+                        [t for t in mechanical if t >= slowest] or mechanical])
+    if rng.random() < 0.4:
+        kept = rng.sample(tempi, rng.randint(1, len(tempi)))
+        tempi = sorted(kept)
+    return tempi
+
+
+def random_skipped(rng, tempi):
+    """Usually nothing or a handful, now and then most or all of the list."""
+    most = rng.choice([0, 0, 6, 6, 6, len(tempi)])
+    return sorted(rng.sample(tempi, rng.randint(0, min(most, len(tempi)))))
 
 
 def random_settings(rng):
     numsteps = rng.randint(1, 24)
-    slowest = rng.randint(20, 150)
-    mechanical = striptest.parse_tempo_file(MECHANICAL)
+    tempi = random_tempi(rng)
     return dict(
         base=rng.choice([round(rng.uniform(0.5, 120), 2), float(rng.choice(ROUND_BASES))]),
         stepsize=rng.choice(STEPSIZES),
         numsteps=numsteps,
         baseplace=rng.randint(-3, numsteps + 2),
-        tempi=rng.choice([list(range(slowest, rng.randint(slowest, 300) + 1)), mechanical,
-                          [t for t in mechanical if t >= slowest] or mechanical]),
+        tempi=tempi,
+        skipped=random_skipped(rng, tempi),
         cumulative=rng.random() < 0.4,
         divisions=rng.choice([0, 0, 0, 1, 2, 3, 4]),
     )
@@ -109,7 +147,10 @@ def main():
         failures.append("the page's Mechanical scale differs from the README's tempo file")
 
     for settings, ours, theirs in zip(all_settings, expected, answer["results"]):
-        ours = {key: ours[key] for key in theirs}
+        if ours["direct"] not in (None, ours.get("tempo")):
+            failures.append(f"passing over skipped tempi ends at {ours['tempo']}, but solving "
+                            f"without them gives {ours['direct']}\n  settings {settings}")
+        ours = {key: ours.get(key) for key in theirs}
         if ours != theirs:
             failures.append(f"index.html disagrees with striptest.py\n  settings {settings}\n"
                             f"  python   {ours}\n  page     {theirs}")
