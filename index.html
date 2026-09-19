@@ -197,7 +197,9 @@
 
   td span {
     display: block;
+    box-sizing: border-box;
     height: 2.25rem;
+    border: 1px solid var(--line);
     border-radius: 4px;
     background: hsl(0 0% var(--tone));
   }
@@ -284,6 +286,10 @@
 
 <script>
   const TIE = 1e-12;
+  const WHITE = .05;
+  const BLACK = 2.1;
+  const GREY = -Math.log10(.18);
+  const CONTRAST = .6;
 
   function range(from, to) {
     return Array.from({ length: to - from + 1 }, (_, i) => from + i);
@@ -326,6 +332,11 @@
       tempi = tempi.filter(tempo => tempo !== result.tempo);
     }
     return { passed };
+  }
+
+  function tone(stops) {
+    const density = Math.min(BLACK, Math.max(WHITE, GREY + CONTRAST * stops));
+    return 1.055 * (10 ** -density) ** (1 / 2.4) - .055;
   }
 
   function formatCount(count, every) {
@@ -385,9 +396,9 @@
 
   function swatch(stops) {
     const td = document.createElement('td');
-    const tone = document.createElement('span');
-    tone.style.setProperty('--tone', `${Math.min(94, Math.max(8, 55 - stops * 22))}%`);
-    td.append(tone);
+    const patch = document.createElement('span');
+    patch.style.setProperty('--tone', `${(tone(stops) * 100).toFixed(1)}%`);
+    td.append(patch);
     return td;
   }
 

@@ -8,13 +8,14 @@ const vm = require('vm');
 const page = fs.readFileSync(`${__dirname}/../index.html`, 'utf8');
 const algorithm = page.match(/<script>([\s\S]*?)<\/script>/)[1];
 const context = vm.createContext({});
-vm.runInContext(`${algorithm}\nthis.solveSkipping = solveSkipping;`, context);
+vm.runInContext(`${algorithm}\nthis.page = { solveSkipping, tone };`, context);
 
 const results = JSON.parse(fs.readFileSync(0, 'utf8')).map(({ skipped, ...settings }) => {
-  const { tempo, every, rows, passed } = context.solveSkipping(settings, new Set(skipped));
+  const { tempo, every, rows, passed } = context.page.solveSkipping(settings, new Set(skipped));
   if (!rows) return { passed };
   const beats = rows.map(row => row.beats);
   return { tempo, every, beats, counts: rows.map(row => row.count), passed };
 });
 
-console.log(JSON.stringify(results));
+const tones = Array.from({ length: 37 }, (_, i) => context.page.tone((i - 18) / 3));
+console.log(JSON.stringify({ results, tones }));

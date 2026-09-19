@@ -114,6 +114,28 @@ def random_settings(rng):
     )
 
 
+def density(grey):
+    """Reflection density of a grey given as an sRGB value from 0 to 1."""
+    return -np.log10(((grey + 0.055) / 1.055) ** 2.4)
+
+
+def swatch_failures(tones):
+    """The page's swatches, for -6 to +6 stops in thirds, should behave like paper."""
+    densities = [density(grey) for grey in tones]
+    lightest, base, darkest = densities[0], densities[18], densities[-1]
+    per_stop = [densities[i + 3] - densities[i] for i in range(15, 22)]
+    checks = [
+        ("the base swatch is 18% middle grey", abs(10 ** -base - 0.18) < 1e-9),
+        ("more exposure never prints lighter",
+         all(a <= b + 1e-12 for a, b in zip(densities, densities[1:]))),
+        ("far under is paper white, far over is maximum black",
+         abs(lightest - 0.05) < 1e-9 and abs(darkest - 2.1) < 1e-9),
+        ("around the base every stop adds 0.6 density",
+         all(abs(step - 0.6) < 1e-9 for step in per_stop)),
+    ]
+    return [f"swatches: {name}" for name, holds in checks if not holds]
+
+
 def page(all_settings):
     """What index.html computes for the same settings."""
     command = ["node", str(ROOT / "tests" / "solve.js")]
@@ -143,7 +165,9 @@ def main():
                             f"  settings {settings}\n  README   {tempo} {printed}\n"
                             f"  got      {ours['tempo']} {ours['printed']}")
 
-    for settings, ours, theirs in zip(all_settings, expected, answer):
+    failures += swatch_failures(answer["tones"])
+
+    for settings, ours, theirs in zip(all_settings, expected, answer["results"]):
         if ours["direct"] not in (None, ours.get("tempo")):
             failures.append(f"passing over skipped tempi ends at {ours['tempo']}, but solving "
                             f"without them gives {ours['direct']}\n  settings {settings}")
