@@ -515,6 +515,26 @@
     return { tempo: winner.tempo, every, rows };
   }
 
+  // The strip timed with a timer instead: every patch gets its seconds to a tenth, never less
+  // than one, and `add` is what the strip is given once the patch before has been covered
+  function timed({ base, stepsize, numsteps, baseplace }) {
+    const steps = Array.from({ length: numsteps }, (_, i) => i - baseplace);
+    const rows = steps.map(step => {
+      const exact = base * 2 ** (step / stepsize);
+      const seconds = Math.max(.1, Math.round(exact * 10) / 10);
+      return { step, seconds, error: Math.log2(seconds / exact) };
+    });
+    return rows.map((row, i, all) => ({
+      ...row,
+      add: i ? row.seconds - all[i - 1].seconds : row.seconds,
+    }));
+  }
+
+  // How far a strip's patches land from their exact exposures at worst, as a share of the seconds
+  function worst(rows) {
+    return Math.max(...rows.map(row => Math.abs(2 ** row.error - 1)));
+  }
+
   function solveSkipping(settings, skipped) {
     const passed = [];
     let tempi = settings.tempi;
@@ -605,6 +625,11 @@
     const rest = count % every;
     if (!rest) return String(whole);
     return whole ? `${whole}+${rest}/${every}` : `${rest}/${every}`;
+  }
+
+  // Only the first patch is given all of its seconds at once
+  function formatAdd(add, seconds) {
+    return `${add < seconds ? '+' : ''}${add.toFixed(1)}`;
   }
 
   function formatStops(step, stepsize) {

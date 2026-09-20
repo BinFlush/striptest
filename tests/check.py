@@ -76,6 +76,7 @@ def reference(settings):
     direct = int(striptest.find_winner(allowed, steps, settings["base"], loss)["tempo"])
 
     beats = [int(n) for n in winner["lst"][:, 0]]
+    seconds = np.array(beats) * 60 / winner["tempo"]
     divisions = settings["divisions"] or None
     every, _ = striptest.finalize_timing(winner, settings["cumulative"], divisions)
     return dict(
@@ -86,6 +87,7 @@ def reference(settings):
         printed=[striptest.format_counts(n, every).strip() for n in winner["lst"][:, 0]],
         passed=passed,
         direct=direct,
+        worst=float(np.max(np.abs(seconds / (settings["base"] * 2.0 ** steps) - 1))),
     )
 
 
@@ -228,6 +230,30 @@ def speed_failures(speeds):
     return failures
 
 
+def timer_failures(settings, rows):
+    """The same strip timed with a timer: each patch gets its f-stop seconds, to a tenth.
+
+    `add` is what the strip is given once the patch before has been covered, so the additions
+    must run up to each patch's seconds. The error is what the rounding costs, in stops.
+    """
+    steps = np.arange(settings["numsteps"]) - settings["baseplace"]
+    exact = settings["base"] * 2.0 ** (steps / settings["stepsize"])
+    seconds, error, add = (np.array([row[key] for row in rows], dtype=float)
+                           for key in ("seconds", "error", "add"))
+    checks = [
+        ("one row for each step", [row["step"] for row in rows] == list(steps)),
+        ("seconds are whole tenths, and at least one",
+         np.allclose(seconds * 10, np.round(seconds * 10), atol=1e-6) and seconds.min() > 0.09),
+        ("seconds are the f-stop times, to the nearest tenth",
+         all(abs(got - want) <= 0.05 + 1e-9 for got, want in zip(seconds, exact) if want > 0.05)),
+        ("the error is what rounding the seconds costs, in stops",
+         np.allclose(error, np.log2(seconds / exact), atol=1e-9)),
+        ("what is added runs up to each patch's seconds",
+         np.allclose(np.cumsum(add), seconds, atol=1e-9)),
+    ]
+    return [f"timer: {name}\n  settings {settings}" for name, holds in checks if not holds]
+
+
 def page(all_settings):
     """What index.html computes for the same settings."""
     command = ["node", str(ROOT / "tests" / "solve.js")]
@@ -265,10 +291,18 @@ def main():
     failures += strip_failures(answer["strips"], answer["zones"]["printed"])
     failures += speed_failures(answer["speeds"])
 
+    if answer["added"] != ["5.0", "+1.3", "0.1", "+12.0"]:
+        failures.append(f"timer: what is added is written as {answer['added']}")
+    for settings, rows in zip(all_settings, answer["timers"]):
+        failures += timer_failures(settings, rows)
+
     for settings, ours, theirs in zip(all_settings, expected, answer["results"]):
         if ours["direct"] not in (None, ours.get("tempo")):
             failures.append(f"passing over skipped tempi ends at {ours['tempo']}, but solving "
                             f"without them gives {ours['direct']}\n  settings {settings}")
+        if not np.isclose(theirs.pop("worst", 0), ours.get("worst", 0), rtol=1e-9, atol=1e-9):
+            failures.append(f"the patch furthest from its exact time is not {ours['worst']:.6f} "
+                            f"of it off\n  settings {settings}")
         ours = {key: ours.get(key) for key in theirs}
         if ours != theirs:
             failures.append(f"index.html disagrees with striptest.py\n  settings {settings}\n"

@@ -8,16 +8,24 @@ const vm = require('vm');
 const page = fs.readFileSync(`${__dirname}/../index.html`, 'utf8');
 const algorithm = page.match(/<script>([\s\S]*?)<\/script>/)[1];
 const context = vm.createContext({});
-const used = '{ solveSkipping, density, shade, borders, zoneOf, edges, probed, PRINTED }';
+const used = `{ solveSkipping, timed, worst, formatAdd,
+  density, shade, borders, zoneOf, edges, probed, PRINTED }`;
 vm.runInContext(`${algorithm}\nthis.page = ${used};`, context);
-const { solveSkipping, density, shade, borders, zoneOf, edges, probed, PRINTED } = context.page;
+const { solveSkipping, timed, worst, formatAdd } = context.page;
+const { density, shade, borders, zoneOf, edges, probed, PRINTED } = context.page;
 
-const results = JSON.parse(fs.readFileSync(0, 'utf8')).map(({ skipped, ...settings }) => {
+const asked = JSON.parse(fs.readFileSync(0, 'utf8'));
+const results = asked.map(({ skipped, ...settings }) => {
   const { tempo, every, rows, passed } = solveSkipping(settings, new Set(skipped));
   if (!rows) return { passed };
   const beats = rows.map(row => row.beats);
-  return { tempo, every, beats, counts: rows.map(row => row.count), passed };
+  return { tempo, every, beats, counts: rows.map(row => row.count), passed, worst: worst(rows) };
 });
+
+// The same strips timed with a timer, and how what is added for a patch is written
+const timers = asked.map(settings => timed(settings));
+const added = [[5, 5], [6.3 - 5, 6.3], [0.1, 0.1], [12, 22]]
+  .map(([add, seconds]) => formatAdd(add, seconds));
 
 // The grey on the screen for every third of a stop, ten stops either side of the base
 const filters = ['00', '0', '1', '2', '3', '4', '5'];
@@ -59,4 +67,4 @@ const speeds = pairs.map(([filter, other]) => ({
   other,
   probed: [-1, 0, 1].map(exposed => [exposed, probed(measured, exposed, filter, other)]),
 }));
-console.log(JSON.stringify({ results, tones, zones, strips, speeds }));
+console.log(JSON.stringify({ results, timers, added, tones, zones, strips, speeds }));
