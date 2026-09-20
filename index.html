@@ -275,11 +275,6 @@
     touch-action: pan-y pinch-zoom;
   }
 
-  .probing {
-    -webkit-user-select: none;
-    user-select: none;
-  }
-
   .probing small {
     visibility: hidden;
   }
@@ -721,20 +716,18 @@
   }
 
   // While a finger or the mouse slides across the rows, every strip shows in full the tone that
-  // the part of the picture under it has in that row. The row slid on is boxed and stands in as
-  // the reference: it runs evenly through the scale, and the others are reckoned from it.
-  function probe({ clientX, clientY }) {
+  // the part of the picture under it has in that row. The row the slide began on is boxed and
+  // stands in as the reference: it runs evenly through the scale, the others are reckoned from it.
+  function probe({ clientX }) {
     const strips = [...document.querySelectorAll('tr.zones div')];
     const box = strips[0].getBoundingClientRect();
     const share = clamp((clientX - box.left - strips[0].clientLeft) / strips[0].clientWidth, 0, 1);
-    const under = document.elementFromPoint(clientX, clientY)?.closest('tbody tr');
-    const before = document.querySelector('tr.active');
-    const active = (under?.matches('.zones') ? under.previousSibling : under) ?? before;
+    const began = touched.target.closest('tr');
+    const active = began.matches('.zones') ? began.previousSibling : began;
     const held = active.nextSibling.querySelector('div');
     const rise = active.getBoundingClientRect().top - held.getBoundingClientRect().top;
     probing = true;
     document.querySelector('tbody').classList.add('probing');
-    before?.classList.remove('active');
     active.classList.add('active');
     held.style.setProperty('--rise', `${rise}px`);
     for (const strip of strips) {
@@ -808,6 +801,14 @@
     const along = Math.abs(event.clientY - touched.clientY);
     if (probing || across > along) probe(event);
   });
+
+  // Nothing in the rows can be selected or dragged off: a browser that starts doing either stops
+  // reporting the pointer, and the slide would never be seen to end
+  for (const taken of ['selectstart', 'dragstart']) {
+    addEventListener(taken, event => {
+      if (document.querySelector('tbody').contains(event.target)) event.preventDefault();
+    });
+  }
 
   for (const over of ['pointerup', 'pointercancel']) {
     addEventListener(over, () => {
