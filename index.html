@@ -225,9 +225,9 @@
   }
 
   td {
-    padding: .5rem 0;
+    padding: .5rem 0 .125rem;
     border: solid var(--line);
-    border-width: 1px 0;
+    border-width: 1px 0 0;
     font-size: .9375rem;
     text-align: right;
   }
@@ -258,10 +258,6 @@
     font-weight: 600;
   }
 
-  tbody td {
-    background-image: var(--strip);
-  }
-
   tbody span {
     background-image: var(--lettering);
     -webkit-background-clip: text;
@@ -269,10 +265,45 @@
     -webkit-text-fill-color: transparent;
   }
 
+  tr.zones td {
+    padding: 0;
+    border-width: 0 1px 1px;
+  }
+
+  tr.zones div {
+    display: grid;
+    position: relative;
+  }
+
+  tr.zones div::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: auto 0 0;
+    height: var(--height);
+    background-image: var(--strip);
+  }
+
+  small {
+    overflow: hidden;
+    padding: 0 .125rem .25rem;
+    color: #000;
+    font: 600 .5625rem/1 system-ui, sans-serif;
+    text-align: center;
+  }
+
+  small:nth-child(-n+5) {
+    color: #FFF;
+  }
+
   @media print, (forced-colors: active) {
-    tbody td, tbody span {
+    tr.zones div::before, tbody span {
       background-image: none;
       -webkit-text-fill-color: currentColor;
+    }
+
+    small {
+      visibility: hidden;
     }
   }
 
@@ -415,9 +446,10 @@
       timer</a>. This website is specifically for using a dedicated metronome, and the accuracy it
       provides.</li>
     <li>The rows are toned to approximate a strip of Ilford Multigrade IV RC Deluxe at the filter
-      set above the table. The marked row runs through the paper's whole scale, from white to
-      black, and every other row is the same scale shifted by its exposure. The mark starts at the
-      base, and the arrows move it to another row. Your prints may differ.</li>
+      set above the table, cut into the zones of the Zone System: 0 is full black, V middle grey
+      and X paper white. The marked row runs through the whole scale, and every other row is the
+      same scale shifted by its exposure. The mark starts at the base, and the arrows move it to
+      another row. Your prints may differ.</li>
     <li>Everything is calculated in your browser. Nothing is sent anywhere.</li>
   </ul>
 </details>
@@ -447,6 +479,17 @@
     '5': [-2, .03, .25, .745, 1.38, 1.8, 1.97, 2.03],
   };
   const FILTERS = ['00', '0', '1', '2', '3', '4', '5'];
+
+  // The print's zones. Only Zone V is a fixed tone, 18% grey. The others are taken to be what a
+  // normally developed negative prints as at filter 2: Adams's targets of 0.1 density at Zone I
+  // and 1.3 at Zone VIII make a zone 1.2 / 7 of density, and PLACED the exposure each zone gets.
+  const NUMERALS = ['0', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  const PLACED = NUMERALS.map((_, zone) => (5 - zone) * 1.2 / 7 / Math.log10(2));
+  const PRINTED = PLACED.map(stops => density(stops, '2'));
+
+  function clamp(value, low, high) {
+    return Math.min(high, Math.max(low, value));
+  }
 
   function range(from, to) {
     return Array.from({ length: to - from + 1 }, (_, i) => from + i);
@@ -503,7 +546,7 @@
 
   function density(stops, filter) {
     const [first, ...curve] = PAPER[filter];
-    const place = Math.min(curve.length - 1, Math.max(0, stops * 3 - first));
+    const place = clamp(stops * 3 - first, 0, curve.length - 1);
     const below = Math.floor(place);
     const above = Math.min(curve.length - 1, below + 1);
     return curve[below] + (curve[above] - curve[below]) * (place - below);
@@ -513,11 +556,24 @@
     return 1.055 * (10 ** -density(stops, filter)) ** (1 / 2.4) - .055;
   }
 
-  // The stops, counted from middle grey, over which the paper goes from white to black at a
-  // filter. In twelfths, so that a browser blending greys between them stays on the curve.
+  // The exposures, in stops from middle grey, between which the paper goes from white to black
   function scale(filter) {
     const [first, ...curve] = PAPER[filter];
-    return range(first * 4, (first + curve.length - 1) * 4).map(twelfth => twelfth / 12);
+    return [first / 3, (first + curve.length - 1) / 3];
+  }
+
+  // The exposure, in stops from middle grey, that gives a print density at a filter
+  function exposure(wanted, filter) {
+    const [first, ...curve] = PAPER[filter];
+    const printed = clamp(wanted, curve[0], curve[curve.length - 1]);
+    const above = Math.max(1, curve.findIndex(step => step >= printed));
+    const below = above - 1;
+    return (first + below + (printed - curve[below]) / (curve[above] - curve[below])) / 3;
+  }
+
+  // The exposures at which one zone gives way to the next, from Zone 0 up: halfway in density
+  function borders(filter) {
+    return PRINTED.slice(1).map((zone, below) => exposure((zone + PRINTED[below]) / 2, filter));
   }
 
   function formatCount(count, every) {
@@ -569,12 +625,14 @@
     } catch {}
   }
 
+  function element(name, ...content) {
+    const made = document.createElement(name);
+    made.append(...content);
+    return made;
+  }
+
   function cell(text) {
-    const td = document.createElement('td');
-    const span = document.createElement('span');
-    span.textContent = text;
-    td.append(span);
-    return td;
+    return element('td', element('span', text));
   }
 
   function chip(tempo) {
@@ -588,14 +646,16 @@
   function tableRow({ step, count, seconds, error }, { stepsize, filter }, every) {
     const tr = document.createElement('tr');
     const exposed = (step - grey) / stepsize + error;
-    const scaled = scale(filter);
-    const width = (scaled.length - 1) / 12;
-    const place = stops => (stops - exposed - scaled[0]) / width * 100;
-    const strip = scaled.map(stops =>
-      `hsl(0 0% ${(tone(stops, filter) * 100).toFixed(1)}%) ${place(stops).toFixed(2)}%`);
+    const [light, dark] = scale(filter);
+    const place = stops => (dark - stops + exposed) / (dark - light) * 100;
+    const edges = [0, ...borders(filter).map(stops => clamp(place(stops), 0, 100)), 100];
+    const widths = PLACED.map((_, zone) => `minmax(0, ${edges[zone + 1] - edges[zone]}fr)`);
+    const strip = PLACED.map((stops, zone) =>
+      `hsl(0 0% ${(tone(stops, '2') * 100).toFixed(1)}%) ${edges[zone]}% ${edges[zone + 1]}%`);
+    const ruler = element('div', ...NUMERALS.map(numeral => element('small', numeral)));
+    const zones = element('tr', element('td', ruler));
     tr.classList.toggle('base', !step);
     tr.classList.toggle('grey', step === grey);
-    tr.style.setProperty('--strip', `linear-gradient(to right, ${strip})`);
     tr.dataset.turn = place(0);
     tr.append(
       cell(formatCount(count, every)),
@@ -603,21 +663,39 @@
       cell(seconds.toFixed(2)),
       cell(formatError(error * stepsize)),
     );
-    return tr;
+    zones.className = 'zones';
+    zones.setAttribute('aria-hidden', 'true');
+    zones.firstChild.colSpan = tr.cells.length;
+    ruler.style.gridTemplateColumns = widths.join(' ');
+    ruler.style.setProperty('--strip', `linear-gradient(to right, ${strip})`);
+    return [tr, zones];
   }
 
-  // Slices each row's gradient over its cells, and turns the lettering from black to white at
-  // the gap between characters that is nearest to the row's middle grey
+  // Lets each strip of zones reach up behind its numbers, turns their lettering from white to
+  // black at the gap between characters nearest to middle grey, and hides numerals that do not
+  // fit. Everything is measured before anything is changed, so the page is laid out only once.
   function align() {
-    for (const td of document.querySelectorAll('tbody td')) {
-      const row = td.parentNode.getBoundingClientRect();
-      const text = td.firstChild.getBoundingClientRect();
-      const letter = text.width / td.textContent.length;
-      const middle = row.left + row.width * td.parentNode.dataset.turn / 100 - text.left;
-      td.style.backgroundSize = `${row.width}px 100%`;
-      td.style.backgroundPositionX = `${row.left - td.getBoundingClientRect().left}px`;
-      td.firstChild.style.setProperty('--lettering',
-        `linear-gradient(to right, #000 ${Math.round(middle / letter) * letter}px, #FFF 0)`);
+    const measured = [...document.querySelectorAll('tr.zones div')].map(ruler => {
+      const numbers = ruler.closest('tr').previousSibling;
+      const strip = ruler.getBoundingClientRect();
+      const middle = strip.left + strip.width * numbers.dataset.turn / 100;
+      return {
+        ruler,
+        height: strip.bottom - numbers.getBoundingClientRect().top,
+        fits: [...ruler.children].map(numeral => numeral.scrollWidth <= numeral.clientWidth),
+        turns: [...numbers.querySelectorAll('span')].map(span => {
+          const text = span.getBoundingClientRect();
+          const letter = text.width / span.textContent.length;
+          return [span, Math.round((middle - text.left) / letter) * letter];
+        }),
+      };
+    });
+    for (const { ruler, height, fits, turns } of measured) {
+      ruler.style.setProperty('--height', `${height}px`);
+      fits.forEach((fit, zone) => ruler.children[zone].style.visibility = fit ? '' : 'hidden');
+      for (const [span, turn] of turns) {
+        span.style.setProperty('--lettering', `linear-gradient(to right, #FFF ${turn}px, #000 0)`);
+      }
     }
   }
 
@@ -649,7 +727,7 @@
     const skipping = result.passed.slice(0, SHOWN).map(chip);
     if (skipping.length) skipping.unshift('Skipping ');
     if (result.passed.length > SHOWN) skipping.push(` and ${result.passed.length - SHOWN} more`);
-    const rows = (result.rows ?? []).map(row => tableRow(row, chosen, result.every));
+    const rows = (result.rows ?? []).flatMap(row => tableRow(row, chosen, result.every));
     const notice = result.tempo ? `and count every ${nthBeat(result.every)}, from zero.` : '';
     field('tempo').textContent = result.tempo ?? '?';
     field('notice').textContent = notice;

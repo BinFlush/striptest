@@ -8,7 +8,8 @@ const vm = require('vm');
 const page = fs.readFileSync(`${__dirname}/../index.html`, 'utf8');
 const algorithm = page.match(/<script>([\s\S]*?)<\/script>/)[1];
 const context = vm.createContext({});
-vm.runInContext(`${algorithm}\nthis.page = { solveSkipping, tone };`, context);
+const used = '{ solveSkipping, tone, density, borders, PRINTED }';
+vm.runInContext(`${algorithm}\nthis.page = ${used};`, context);
 
 const results = JSON.parse(fs.readFileSync(0, 'utf8')).map(({ skipped, ...settings }) => {
   const { tempo, every, rows, passed } = context.page.solveSkipping(settings, new Set(skipped));
@@ -17,7 +18,17 @@ const results = JSON.parse(fs.readFileSync(0, 'utf8')).map(({ skipped, ...settin
   return { tempo, every, beats, counts: rows.map(row => row.count), passed };
 });
 
+const filters = ['00', '0', '1', '2', '3', '4', '5'];
 const thirds = Array.from({ length: 61 }, (_, i) => i - 30);
-const tones = Object.fromEntries(['00', '0', '1', '2', '3', '4', '5'].map(filter =>
+const tones = Object.fromEntries(filters.map(filter =>
   [filter, thirds.map(third => [third, context.page.tone(third / 3, filter)])]));
-console.log(JSON.stringify({ results, tones }));
+
+// The print's zones: their densities, and per filter the exposure where each gives way to the
+// next together with the density the paper really has there
+const reached = filter => context.page.borders(filter).map(stops =>
+  [stops, context.page.density(stops, filter)]);
+const zones = {
+  printed: [...context.page.PRINTED],
+  borders: Object.fromEntries(filters.map(filter => [filter, reached(filter)])),
+};
+console.log(JSON.stringify({ results, tones, zones }));

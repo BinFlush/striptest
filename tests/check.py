@@ -150,6 +150,33 @@ def tone_failures(filter_name, tones):
     return [f"filter {filter_name}: {name}" for name, holds in checks if not holds]
 
 
+def zone_failures(zones):
+    """The zones the page cuts each strip into.
+
+    Zone V is 18% grey by definition, Zone 0 the paper's full black and Zone X its white. One
+    zone gives way to the next where the print is halfway between their densities, so the
+    exposure the page finds for each border must really give that density on the curve.
+    """
+    printed = zones["printed"]
+    checks = [
+        ("there are eleven, Zone 0 to Zone X", len(printed) == 11),
+        ("Zone V is 18% middle grey", abs(10 ** -printed[5] - 0.18) < 0.0005),
+        ("Zone 0 is full black and Zone X paper white",
+         2.0 < printed[0] < 2.05 and abs(printed[10] - 0.03) < 1e-9),
+        ("every zone prints lighter than the one below it",
+         all(a > b for a, b in zip(printed, printed[1:]))),
+    ]
+    for filter_name, found in zones["borders"].items():
+        halfway = [(a + b) / 2 for a, b in zip(printed, printed[1:])]
+        checks += [
+            (f"filter {filter_name}: each border is where the print is halfway between two zones",
+             all(abs(density - wanted) < 1e-9 for (_, density), wanted in zip(found, halfway))),
+            (f"filter {filter_name}: borders come at ever less exposure towards Zone X",
+             all(a > b for (a, _), (b, _) in zip(found, found[1:]))),
+        ]
+    return [f"zones: {name}" for name, holds in checks if not holds]
+
+
 def page(all_settings):
     """What index.html computes for the same settings."""
     command = ["node", str(ROOT / "tests" / "solve.js")]
@@ -183,6 +210,7 @@ def main():
         failures.append("the page does not offer exactly Ilford's seven filters")
     for filter_name, tones in answer["tones"].items():
         failures += tone_failures(filter_name, tones)
+    failures += zone_failures(answer["zones"])
 
     for settings, ours, theirs in zip(all_settings, expected, answer["results"]):
         if ours["direct"] not in (None, ours.get("tempo")):
