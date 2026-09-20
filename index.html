@@ -195,7 +195,7 @@
     grid-column: 1 / -1;
   }
 
-  #tones div span::before, tr.grey td:first-child span::before {
+  #tones div span::before, tr.grey + tr div::before {
     content: "";
     width: .5rem;
     height: .75rem;
@@ -225,11 +225,14 @@
   }
 
   td {
-    padding: .5rem 0 .125rem;
+    padding: .375rem 0 0;
     border: solid var(--line);
     border-width: 1px 0 0;
+    background: var(--surface);
+    color: var(--muted);
     font-size: .9375rem;
     text-align: right;
+    vertical-align: baseline;
   }
 
   td:first-child {
@@ -249,46 +252,38 @@
     padding-right: .75rem;
   }
 
+  td:first-child, td:nth-child(2) {
+    color: var(--ink);
+  }
+
   td:first-child {
     font-size: 1.375rem;
     font-weight: 600;
+    line-height: 1.2;
   }
 
   tr.base td:nth-child(2) {
     font-weight: 600;
   }
 
-  tbody span {
-    background-image: var(--lettering);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
   tr.zones td {
-    padding: 0;
+    padding: .25rem .75rem .5rem;
     border-width: 0 1px 1px;
   }
 
   tr.zones div {
     display: grid;
     position: relative;
-  }
-
-  tr.zones div::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    inset: auto 0 0;
-    height: var(--height);
+    border: 1px solid var(--line);
+    border-radius: 4px;
     background-image: var(--strip);
   }
 
   small {
     overflow: hidden;
-    padding: 0 .125rem .25rem;
+    padding: .5625rem .125rem;
     color: #000;
-    font: 600 .5625rem/1 system-ui, sans-serif;
+    font: 600 .5625rem/1 Georgia, serif;
     text-align: center;
   }
 
@@ -296,25 +291,16 @@
     color: #FFF;
   }
 
-  @media print, (forced-colors: active) {
-    tr.zones div::before, tbody span {
-      background-image: none;
-      -webkit-text-fill-color: currentColor;
-    }
-
-    small {
-      visibility: hidden;
-    }
-  }
-
-  tr.grey td:first-child span {
-    position: relative;
-  }
-
-  tr.grey td:first-child span::before {
+  tr.grey + tr div::before {
     position: absolute;
     top: calc(50% - .375rem);
-    left: -1.625rem;
+    left: -1.75rem;
+  }
+
+  @media print, (forced-colors: active) {
+    tr.zones div {
+      display: none;
+    }
   }
 
   table + details {
@@ -445,11 +431,11 @@
       <a href="https://gotimer.org/photography/enlarger-timer" target="_blank">GoTimer's enlarger
       timer</a>. This website is specifically for using a dedicated metronome, and the accuracy it
       provides.</li>
-    <li>The rows are toned to approximate a strip of Ilford Multigrade IV RC Deluxe at the filter
-      set above the table, cut into the zones of the Zone System: 0 is full black, V middle grey
-      and X paper white. The marked row runs through the whole scale, and every other row is the
-      same scale shifted by its exposure. The mark starts at the base, and the arrows move it to
-      another row. Your prints may differ.</li>
+    <li>The strip under each row approximates a test strip of Ilford Multigrade IV RC Deluxe at
+      the filter set above the table, cut into the zones of the Zone System: 0 is full black, V
+      middle grey and X paper white. The marked row runs through the whole scale, and every other
+      row is the same scale shifted by its exposure. The mark starts at the base, and the arrows
+      move it to another row. Your prints may differ.</li>
     <li>Everything is calculated in your browser. Nothing is sent anywhere.</li>
   </ul>
 </details>
@@ -631,10 +617,6 @@
     return made;
   }
 
-  function cell(text) {
-    return element('td', element('span', text));
-  }
-
   function chip(tempo) {
     const button = document.createElement('button');
     button.textContent = `${tempo} ×`;
@@ -656,12 +638,11 @@
     const zones = element('tr', element('td', ruler));
     tr.classList.toggle('base', !step);
     tr.classList.toggle('grey', step === grey);
-    tr.dataset.turn = place(0);
     tr.append(
-      cell(formatCount(count, every)),
-      cell(formatStops(step, stepsize)),
-      cell(seconds.toFixed(2)),
-      cell(formatError(error * stepsize)),
+      element('td', formatCount(count, every)),
+      element('td', formatStops(step, stepsize)),
+      element('td', seconds.toFixed(2)),
+      element('td', formatError(error * stepsize)),
     );
     zones.className = 'zones';
     zones.setAttribute('aria-hidden', 'true');
@@ -671,32 +652,12 @@
     return [tr, zones];
   }
 
-  // Lets each strip of zones reach up behind its numbers, turns their lettering from white to
-  // black at the gap between characters nearest to middle grey, and hides numerals that do not
-  // fit. Everything is measured before anything is changed, so the page is laid out only once.
-  function align() {
-    const measured = [...document.querySelectorAll('tr.zones div')].map(ruler => {
-      const numbers = ruler.closest('tr').previousSibling;
-      const strip = ruler.getBoundingClientRect();
-      const middle = strip.left + strip.width * numbers.dataset.turn / 100;
-      return {
-        ruler,
-        height: strip.bottom - numbers.getBoundingClientRect().top,
-        fits: [...ruler.children].map(numeral => numeral.scrollWidth <= numeral.clientWidth),
-        turns: [...numbers.querySelectorAll('span')].map(span => {
-          const text = span.getBoundingClientRect();
-          const letter = text.width / span.textContent.length;
-          return [span, Math.round((middle - text.left) / letter) * letter];
-        }),
-      };
-    });
-    for (const { ruler, height, fits, turns } of measured) {
-      ruler.style.setProperty('--height', `${height}px`);
-      fits.forEach((fit, zone) => ruler.children[zone].style.visibility = fit ? '' : 'hidden');
-      for (const [span, turn] of turns) {
-        span.style.setProperty('--lettering', `linear-gradient(to right, #FFF ${turn}px, #000 0)`);
-      }
-    }
+  // Hides the numerals that do not fit in their zone. All are measured before any is changed,
+  // so the page is laid out only once.
+  function fit() {
+    const numerals = [...document.querySelectorAll('small')];
+    const fits = numerals.map(numeral => numeral.scrollWidth <= numeral.clientWidth);
+    numerals.forEach((numeral, n) => numeral.style.visibility = fits[n] ? '' : 'hidden');
   }
 
   function settings() {
@@ -741,11 +702,11 @@
     field('down').disabled = !result.rows?.some(row => row.step > grey);
     field('reset').disabled = !grey;
     document.querySelector('tbody').replaceChildren(...rows);
-    align();
+    fit();
   }
 
   addEventListener('input', render);
-  new ResizeObserver(align).observe(document.querySelector('table'));
+  new ResizeObserver(fit).observe(document.querySelector('table'));
 
   addEventListener('click', ({ target }) => {
     if (!(target instanceof HTMLButtonElement)) return;
