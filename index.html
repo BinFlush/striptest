@@ -656,17 +656,18 @@
     return tr;
   }
 
-  // Every row is exposed so many stops more than the reference row, whose own error is `datum`
-  function tableRow({ step, count, seconds, error }, { stepsize, filter }, every, datum) {
+  // Every row is exposed so many stops more than `anchor`, the reference row, errors included
+  function tableRow({ step, count, seconds, error }, { stepsize, filter }, every, anchor) {
     const tr = element('tr',
       element('td', formatCount(count, every)),
       element('td', formatStops(step, stepsize)),
       element('td', seconds.toFixed(2)),
       element('td', formatError(error * stepsize)),
     );
-    const zones = zonesRow((step - reference) / stepsize + error - datum, filter);
+    const exposed = (step - anchor.step) / stepsize + error - anchor.error;
+    const zones = zonesRow(exposed, filter);
     tr.classList.toggle('base', !step);
-    tr.classList.toggle('reference', step === reference);
+    tr.classList.toggle('reference', step === anchor.step);
     tr.dataset.step = step;
     zones.firstChild.colSpan = tr.cells.length;
     return [tr, zones];
@@ -747,8 +748,11 @@
     const skipping = result.passed.slice(0, SHOWN).map(chip);
     if (skipping.length) skipping.unshift('Skipping ');
     if (result.passed.length > SHOWN) skipping.push(` and ${result.passed.length - SHOWN} more`);
-    const datum = result.rows?.find(row => row.step === reference)?.error ?? 0;
-    const rows = (result.rows ?? []).flatMap(row => tableRow(row, chosen, result.every, datum));
+    const found = result.rows ?? [];
+    // The reference is the row nearest to the step that was chosen: the strip may have lost it
+    const anchor = found.reduce((near, row) =>
+      Math.abs(row.step - reference) < Math.abs(near.step - reference) ? row : near, found[0]);
+    const rows = found.flatMap(row => tableRow(row, chosen, result.every, anchor));
     const notice = result.tempo ? `and count every ${nthBeat(result.every)}, from zero.` : '';
     field('grade').textContent = grade;
     field('filter').setAttribute('aria-valuetext', grade);
