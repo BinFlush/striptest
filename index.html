@@ -263,7 +263,7 @@
   }
 
   tbody span {
-    background-image: var(--ink);
+    background-image: var(--lettering);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -596,7 +596,7 @@
     tr.classList.toggle('base', !step);
     tr.classList.toggle('grey', step === grey);
     tr.style.setProperty('--strip', `linear-gradient(to right, ${strip})`);
-    tr.style.setProperty('--ink', `linear-gradient(to right, #000 ${place(0)}%, #FFF 0)`);
+    tr.dataset.turn = place(0);
     tr.append(
       cell(formatCount(count, every)),
       cell(formatStops(step, stepsize)),
@@ -606,12 +606,18 @@
     return tr;
   }
 
+  // Slices each row's gradient over its cells, and turns the lettering from black to white at
+  // the gap between characters that is nearest to the row's middle grey
   function align() {
-    for (const piece of document.querySelectorAll('tbody td, tbody span')) {
-      const row = piece.closest('tr').getBoundingClientRect();
-      const { left } = piece.getBoundingClientRect();
-      piece.style.backgroundSize = `${row.width}px 100%`;
-      piece.style.backgroundPositionX = `${row.left - left}px`;
+    for (const td of document.querySelectorAll('tbody td')) {
+      const row = td.parentNode.getBoundingClientRect();
+      const text = td.firstChild.getBoundingClientRect();
+      const letter = text.width / td.textContent.length;
+      const middle = row.left + row.width * td.parentNode.dataset.turn / 100 - text.left;
+      td.style.backgroundSize = `${row.width}px 100%`;
+      td.style.backgroundPositionX = `${row.left - td.getBoundingClientRect().left}px`;
+      td.firstChild.style.setProperty('--lettering',
+        `linear-gradient(to right, #000 ${Math.round(middle / letter) * letter}px, #FFF 0)`);
     }
   }
 
