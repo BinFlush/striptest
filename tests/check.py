@@ -158,6 +158,8 @@ def zone_failures(zones):
     exposure the page finds for each border must really give that density on the curve.
     """
     printed = zones["printed"]
+    halfway = [(a + b) / 2 for a, b in zip(printed, printed[1:])]
+    numbers = [0.0] + [float(zone) for zone in range(11)] + [10.0]
     checks = [
         ("there are eleven, Zone 0 to Zone X", len(printed) == 11),
         ("Zone V is 18% middle grey", abs(10 ** -printed[5] - 0.18) < 0.0005),
@@ -165,39 +167,41 @@ def zone_failures(zones):
          2.0 < printed[0] < 2.05 and abs(printed[10] - 0.03) < 1e-9),
         ("every zone prints lighter than the one below it",
          all(a > b for a, b in zip(printed, printed[1:]))),
+        ("a density gets the number of its zone, 0 beyond black and 10 beyond white",
+         all(abs(got - number) < 1e-9 for (_, got), number in zip(zones["numbered"], numbers))),
     ]
-    # zoneOf() numbers a density: whole numbers on the zones, clamped beyond black and white
-    wanted = [0.0] + [float(zone) for zone in range(11)] + [10.0]
-    checks.append(("a density gets the number of its zone, 0 beyond black and 10 beyond white",
-                   all(abs(number - want) < 1e-9
-                       for (_, number), want in zip(zones["numbered"], wanted))))
     for filter_name, found in zones["borders"].items():
-        halfway = [(a + b) / 2 for a, b in zip(printed, printed[1:])]
         checks += [
             (f"filter {filter_name}: each border is where the print is halfway between two zones",
-             all(abs(density - wanted) < 1e-9 for (_, density), wanted in zip(found, halfway))),
+             all(abs(reached - half) < 1e-9 for (_, reached), half in zip(found, halfway))),
             (f"filter {filter_name}: borders come at ever less exposure towards Zone X",
              all(a > b for (a, _), (b, _) in zip(found, found[1:]))),
         ]
-    # A row is drawn as zones between edges, and probed as a density at one place. Both must
-    # tell the same story: the zone a place lies in is the zone nearest to its probed density.
-    nearest = lambda density: min(range(11), key=lambda zone: abs(printed[zone] - density))
-    halfway = [(a + b) / 2 for a, b in zip(printed, printed[1:])]
-    disagree = []
-    for row in zones["rows"]:
-        evenly = abs(row["exposed"]) < 1e-12
-        if evenly and any(abs(edge - 100 * k / 11) > 1e-9 for k, edge in enumerate(row["edges"])):
-            disagree.append(f"filter {row['filter']}: the reference row is not an even scale")
-        for share, density in row["probed"]:
-            on_a_border = (any(abs(edge - 100 * share) < 1e-6 for edge in row["edges"])
-                           or any(abs(density - half) < 1e-9 for half in halfway))
-            drawn = max(zone for zone in range(11) if row["edges"][zone] <= 100 * share + 1e-9)
-            if not on_a_border and drawn != nearest(density):
-                disagree.append(f"filter {row['filter']}, {row['exposed']:+.3f} stops, {share:.4f} "
-                                f"along: drawn as zone {drawn}, probed as {nearest(density)}")
-    checks.append((f"the zones drawn and the tone probed agree at every place: {disagree[:3]}",
-                   not disagree))
     return [f"zones: {name}" for name, holds in checks if not holds]
+
+
+def strip_failures(strips, printed):
+    """A row is drawn as zones between edges, and probed as a density at one place.
+
+    Both must tell the same story: the zone a place lies in is the zone nearest to the density
+    probed there. And a row exposed like the reference is an even scale, at every filter.
+    """
+    halfway = [(a + b) / 2 for a, b in zip(printed, printed[1:])]
+    nearest = lambda reached: min(range(11), key=lambda zone: abs(printed[zone] - reached))
+    failures = []
+    for strip in strips:
+        name = f"filter {strip['filter']}, {strip['exposed']:+.3f} stops"
+        even = [100 * zone / 11 for zone in range(12)]
+        if not strip["exposed"] and any(abs(a - b) > 1e-9 for a, b in zip(strip["edges"], even)):
+            failures.append(f"strips: {name}: the reference row is not an even scale")
+        for share, reached in strip["probed"]:
+            on_a_border = (any(abs(edge - 100 * share) < 1e-6 for edge in strip["edges"])
+                           or any(abs(reached - half) < 1e-9 for half in halfway))
+            drawn = max(zone for zone in range(11) if strip["edges"][zone] <= 100 * share + 1e-9)
+            if not on_a_border and drawn != nearest(reached):
+                failures.append(f"strips: {name}, {share:.4f} along: drawn as zone {drawn}, "
+                                f"probed as zone {nearest(reached)}")
+    return failures
 
 
 def page(all_settings):
@@ -234,6 +238,7 @@ def main():
     for filter_name, tones in answer["tones"].items():
         failures += tone_failures(filter_name, tones)
     failures += zone_failures(answer["zones"])
+    failures += strip_failures(answer["strips"], answer["zones"]["printed"])
 
     for settings, ours, theirs in zip(all_settings, expected, answer["results"]):
         if ours["direct"] not in (None, ours.get("tempo")):
