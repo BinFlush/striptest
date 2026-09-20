@@ -8,7 +8,7 @@ const vm = require('vm');
 const page = fs.readFileSync(`${__dirname}/../index.html`, 'utf8');
 const algorithm = page.match(/<script>([\s\S]*?)<\/script>/)[1];
 const context = vm.createContext({});
-const used = '{ solveSkipping, tone, density, borders, zoneOf, edges, probed, PRINTED }';
+const used = '{ solveSkipping, shade, density, borders, zoneOf, edges, probed, PRINTED }';
 vm.runInContext(`${algorithm}\nthis.page = ${used};`, context);
 
 const results = JSON.parse(fs.readFileSync(0, 'utf8')).map(({ skipped, ...settings }) => {
@@ -19,9 +19,10 @@ const results = JSON.parse(fs.readFileSync(0, 'utf8')).map(({ skipped, ...settin
 });
 
 const filters = ['00', '0', '1', '2', '3', '4', '5'];
+const grey = (stops, filter) => context.page.shade(context.page.density(stops, filter));
 const thirds = Array.from({ length: 61 }, (_, i) => i - 30);
 const tones = Object.fromEntries(filters.map(filter =>
-  [filter, thirds.map(third => [third, context.page.tone(third / 3, filter)])]));
+  [filter, thirds.map(third => [third, grey(third / 3, filter)])]));
 
 // The print's zones: their densities, and per filter the exposure where each gives way to the
 // next together with the density the paper really has there

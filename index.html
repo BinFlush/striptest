@@ -447,12 +447,12 @@
   };
   const FILTERS = ['00', '0', '1', '2', '3', '4', '5'];
 
-  // The print's zones. Only Zone V is a fixed tone, 18% grey. The others are taken to be what a
-  // normally developed negative prints as at filter 2: Adams's targets of 0.1 density at Zone I
-  // and 1.3 at Zone VIII make a zone 1.2 / 7 of density, and PLACED the exposure each zone gets.
+  // The print's zones, and the density of each. Only Zone V is a fixed tone, 18% grey. The others
+  // are taken to be what a normally developed negative prints as at filter 2: Adams's targets of
+  // 0.1 density at Zone I and 1.3 at Zone VIII make a zone 1.2 / 7 of density, which is that
+  // divided by log 2 in stops of exposure on the paper.
   const NUMERALS = ['0', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-  const PLACED = NUMERALS.map((_, zone) => (5 - zone) * 1.2 / 7 / Math.log10(2));
-  const PRINTED = PLACED.map(stops => density(stops, '2'));
+  const PRINTED = NUMERALS.map((_, zone) => density((5 - zone) * 1.2 / 7 / Math.log10(2), '2'));
 
   function clamp(value, low, high) {
     return Math.min(high, Math.max(low, value));
@@ -519,12 +519,9 @@
     return curve[below] + (curve[above] - curve[below]) * (place - below);
   }
 
+  // The grey of a print density on a screen, from 0 for black to 1 for white
   function shade(printed) {
     return 1.055 * (10 ** -printed) ** (1 / 2.4) - .055;
-  }
-
-  function tone(stops, filter) {
-    return shade(density(stops, filter));
   }
 
   // The exposures, in stops from middle grey, between which the paper goes from white to black
@@ -645,9 +642,9 @@
     const tr = document.createElement('tr');
     const exposed = (step - reference) / stepsize + error - datum;
     const ends = edges(exposed, filter);
-    const widths = PLACED.map((_, zone) => `minmax(0, ${ends[zone + 1] - ends[zone]}fr)`);
-    const strip = PLACED.map((stops, zone) =>
-      `hsl(0 0% ${(tone(stops, '2') * 100).toFixed(1)}%) ${ends[zone]}% ${ends[zone + 1]}%`);
+    const widths = NUMERALS.map((_, zone) => `minmax(0, ${ends[zone + 1] - ends[zone]}fr)`);
+    const strip = PRINTED.map((printed, zone) =>
+      `hsl(0 0% ${(shade(printed) * 100).toFixed(1)}%) ${ends[zone]}% ${ends[zone + 1]}%`);
     const numerals = NUMERALS.map(numeral => element('small', numeral));
     const ruler = element('div', ...numerals, element('b'));
     const zones = element('tr', element('td', ruler));
