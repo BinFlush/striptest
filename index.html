@@ -55,7 +55,7 @@
     color: var(--ink);
   }
 
-  form, details div, #tones {
+  form, details div {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: .75rem;
@@ -158,11 +158,6 @@
     cursor: pointer;
   }
 
-  button:disabled {
-    opacity: .4;
-    cursor: default;
-  }
-
   #skip {
     margin-top: 1.25rem;
   }
@@ -178,39 +173,9 @@
     font-family: var(--mono);
   }
 
-  #tones {
-    grid-template-columns: minmax(0, 1fr) auto;
-    margin-bottom: .5rem;
-  }
-
-  #tones div {
-    display: grid;
-    grid-template-columns: repeat(3, auto);
-    gap: .25rem .375rem;
-    color: var(--muted);
-    font-size: .8125rem;
-  }
-
-  #tones div span {
-    grid-column: 1 / -1;
-  }
-
-  #tones div span::before, tr.reference + tr div::before {
-    content: "";
-    width: .5rem;
-    height: .75rem;
-    background: var(--accent);
-    clip-path: polygon(0 0, 100% 50%, 0 100%);
-  }
-
-  #tones div span::before {
-    display: inline-block;
-    margin-right: .375rem;
-    vertical-align: -.0625rem;
-  }
-
   table {
     width: 100%;
+    margin-top: .5rem;
     border-collapse: collapse;
     font-family: var(--mono);
     font-variant-numeric: tabular-nums;
@@ -272,6 +237,7 @@
   }
 
   tbody {
+    cursor: pointer;
     touch-action: pan-y pinch-zoom;
   }
 
@@ -314,12 +280,6 @@
 
   small:nth-child(-n+5) {
     color: #FFF;
-  }
-
-  tr.reference + tr div::before {
-    position: absolute;
-    top: calc(50% - .375rem);
-    left: -1.75rem;
   }
 
   @media print, (forced-colors: active) {
@@ -420,18 +380,10 @@
   <p id="skipped"></p>
 </section>
 
-<div id="tones">
-  <label>
-    <span>Filter <span id="grade"></span></span>
-    <input id="filter" type="range" min="0" max="6" value="3">
-  </label>
-  <div>
-    <span>Reference</span>
-    <button id="up" aria-label="Move the reference up a row">▲</button>
-    <button id="down" aria-label="Move the reference down a row">▼</button>
-    <button id="reset" aria-label="Reset the reference to the base">Reset</button>
-  </div>
-</div>
+<label>
+  <span>Filter <span id="grade"></span></span>
+  <input id="filter" type="range" min="0" max="6" value="3">
+</label>
 
 <table>
   <thead>
@@ -460,11 +412,11 @@
       in the zones of the Zone System: 0 is full black, V middle grey and X paper white. Read
       them up and down. A place along the strips is one part of the picture: find its tone in
       the reference row, and the zone straight above or below is what that part prints as at
-      that row's exposure. The reference starts at the base, and the arrows move it to another
-      row. Your prints may differ.</li>
-    <li>Slide a finger sideways across the rows, or drag with the mouse, to follow one part of the
+      that row's exposure. The reference starts at the base: tap or click another row to make
+      that one the reference. Your prints may differ.</li>
+    <li>Slide a finger sideways across a row, or drag with the mouse, to follow one part of the
       picture: every strip then shows its tone in full, and the zone it is nearest to. The row
-      you slide on is boxed, and stands in as the reference for as long as you hold.</li>
+      you slide on is boxed, and becomes the reference.</li>
     <li>Everything is calculated in your browser. Nothing is sent anywhere.</li>
   </ul>
 </details>
@@ -700,7 +652,7 @@
     const ruler = element('div', ...numerals, element('b'));
     const zones = element('tr', element('td', ruler));
     tr.classList.toggle('base', !step);
-    tr.classList.toggle('reference', step === reference);
+    tr.dataset.step = step;
     tr.append(
       element('td', formatCount(count, every)),
       element('td', formatStops(step, stepsize)),
@@ -724,17 +676,22 @@
     numerals.forEach((numeral, n) => numeral.style.visibility = fits[n] ? '' : 'hidden');
   }
 
+  // The row of numbers that something in the table body belongs to
+  function rowOf(element) {
+    const tr = element.closest('tr');
+    return tr.matches('.zones') ? tr.previousSibling : tr;
+  }
+
   // While a finger or the mouse slides across the rows, every strip shows in full the tone that
   // the part of the picture under it has in that row, and names the zone it is nearest to. The
-  // row the slide began on is boxed and stands in as the reference: it runs evenly through the
-  // scale, and the others are reckoned from it. Nothing is taken out of the page meanwhile: a
-  // finger that loses the element it touched may stop being reported.
+  // row the slide began on is boxed and is the reference from then on: it runs evenly through
+  // the scale, and the others are reckoned from it. Nothing is taken out of the page meanwhile:
+  // a finger that loses the element it touched may stop being reported.
   function probe({ clientX }) {
     const strips = [...document.querySelectorAll('tr.zones div')];
     const box = strips[0].getBoundingClientRect();
     const share = clamp((clientX - box.left - strips[0].clientLeft) / strips[0].clientWidth, 0, 1);
-    const began = touched.target.closest('tr');
-    const active = began.matches('.zones') ? began.previousSibling : began;
+    const active = rowOf(touched.target);
     const held = active.nextSibling.querySelector('div');
     const rise = active.getBoundingClientRect().top - held.getBoundingClientRect().top;
     probing = true;
@@ -790,9 +747,6 @@
     field('skipped').replaceChildren(...skipping);
     field('forget').textContent = `Forget all skipped tempos (${skipped.size})`;
     field('forget').hidden = !skipped.size;
-    field('up').disabled = !result.rows?.some(row => row.step < reference);
-    field('down').disabled = !result.rows?.some(row => row.step > reference);
-    field('reset').disabled = !reference;
     document.querySelector('tbody').replaceChildren(...rows);
     fit();
   }
@@ -800,12 +754,12 @@
   addEventListener('input', render);
   new ResizeObserver(fit).observe(document.querySelector('table'));
 
-  // The mouse probes from the moment it is pressed. A finger only once it moves more sideways
-  // than up or down, so that scrolling the page over the rows does not make them flicker.
+  // A tap or click on a row makes it the reference, and so does a slide along it. The slide only
+  // begins once the pointer moves more sideways than up or down, so that scrolling the page
+  // over the rows does not make them flicker; a scroll ends in `pointercancel` and sets nothing.
   addEventListener('pointerdown', event => {
     if (!(event.target instanceof Element) || !event.target.closest('tbody')) return;
     touched = event;
-    if (event.pointerType !== 'touch') probe(event);
   });
 
   addEventListener('pointermove', event => {
@@ -824,11 +778,13 @@
   }
 
   for (const over of ['pointerup', 'pointercancel']) {
-    addEventListener(over, () => {
-      document.querySelector('tbody').classList.remove('probing');
-      if (probing) render();
+    addEventListener(over, ({ type }) => {
+      if (!touched) return;
+      if (type === 'pointerup') reference = Number(rowOf(touched.target).dataset.step);
       touched = null;
       probing = false;
+      document.querySelector('tbody').classList.remove('probing');
+      render();
     });
   }
 
@@ -837,9 +793,6 @@
     if (target.matches('#skip')) skipped.add(Number(target.value));
     if (target.matches('#skipped button')) skipped.delete(Number(target.value));
     if (target.matches('#forget')) skipped.clear();
-    if (target.matches('#up')) reference--;
-    if (target.matches('#down')) reference++;
-    if (target.matches('#reset')) reference = 0;
     remember();
     render();
   });
