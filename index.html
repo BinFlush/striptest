@@ -431,11 +431,12 @@
       <a href="https://gotimer.org/photography/enlarger-timer" target="_blank">GoTimer's enlarger
       timer</a>. This website is specifically for using a dedicated metronome, and the accuracy it
       provides.</li>
-    <li>The strip under each row approximates a test strip of Ilford Multigrade IV RC Deluxe at
-      the filter set above the table, cut into the zones of the Zone System: 0 is full black, V
-      middle grey and X paper white. The reference row runs through the whole scale, and every
-      other row is the same scale shifted by its exposure. The reference starts at the base, and
-      the arrows move it to another row. Your prints may differ.</li>
+    <li>The strips approximate Ilford Multigrade IV RC Deluxe at the filter set above the table,
+      in the zones of the Zone System: 0 is full black, V middle grey and X paper white. Read
+      them up and down. A place along the strips is one part of the picture: find its tone in
+      the reference row, and the zone straight above or below is what that part prints as at
+      that row's exposure. The reference starts at the base, and the arrows move it to another
+      row. Your prints may differ.</li>
     <li>Everything is calculated in your browser. Nothing is sent anywhere.</li>
   </ul>
 </details>
@@ -562,6 +563,14 @@
     return PRINTED.slice(1).map((zone, below) => exposure((zone + PRINTED[below]) / 2, filter));
   }
 
+  // The zone a print density is, as a number: 5 on Zone V, 5.5 halfway in density to Zone VI
+  function zoneOf(printed) {
+    const found = PRINTED.findIndex(zone => zone <= printed);
+    const above = found < 0 ? PRINTED.length - 1 : Math.max(1, found);
+    const below = above - 1;
+    return below + clamp((PRINTED[below] - printed) / (PRINTED[below] - PRINTED[above]), 0, 1);
+  }
+
   function formatCount(count, every) {
     const whole = Math.floor(count / every);
     const rest = count % every;
@@ -625,12 +634,16 @@
     return button;
   }
 
-  function tableRow({ step, count, seconds, error }, { stepsize, filter }, every) {
+  // A place along the strips is one part of the picture, and it sits where the zone it prints as
+  // in the reference row puts it: the reference row is an even scale, and the other rows show
+  // what each of its tones becomes with their exposure. `datum` is the reference row's own error.
+  function tableRow({ step, count, seconds, error }, { stepsize, filter }, every, datum) {
     const tr = document.createElement('tr');
-    const exposed = (step - reference) / stepsize + error;
+    const exposed = (step - reference) / stepsize + error - datum;
     const [light, dark] = scale(filter);
-    const place = stops => (dark - stops + exposed) / (dark - light) * 100;
-    const edges = [0, ...borders(filter).map(stops => clamp(place(stops), 0, 100)), 100];
+    const place = stops => stops > dark ? 0 : stops < light ? 100
+      : (zoneOf(density(stops, filter)) + .5) / NUMERALS.length * 100;
+    const edges = [0, ...borders(filter).map(stops => place(stops - exposed)), 100];
     const widths = PLACED.map((_, zone) => `minmax(0, ${edges[zone + 1] - edges[zone]}fr)`);
     const strip = PLACED.map((stops, zone) =>
       `hsl(0 0% ${(tone(stops, '2') * 100).toFixed(1)}%) ${edges[zone]}% ${edges[zone + 1]}%`);
@@ -688,7 +701,8 @@
     const skipping = result.passed.slice(0, SHOWN).map(chip);
     if (skipping.length) skipping.unshift('Skipping ');
     if (result.passed.length > SHOWN) skipping.push(` and ${result.passed.length - SHOWN} more`);
-    const rows = (result.rows ?? []).flatMap(row => tableRow(row, chosen, result.every));
+    const datum = result.rows?.find(row => row.step === reference)?.error ?? 0;
+    const rows = (result.rows ?? []).flatMap(row => tableRow(row, chosen, result.every, datum));
     const notice = result.tempo ? `and count every ${nthBeat(result.every)}, from zero.` : '';
     field('tempo').textContent = result.tempo ?? '?';
     field('notice').textContent = notice;

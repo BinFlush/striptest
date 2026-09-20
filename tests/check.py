@@ -166,6 +166,11 @@ def zone_failures(zones):
         ("every zone prints lighter than the one below it",
          all(a > b for a, b in zip(printed, printed[1:]))),
     ]
+    # zoneOf() numbers a density: whole numbers on the zones, clamped beyond black and white
+    wanted = [0.0] + [float(zone) for zone in range(11)] + [10.0]
+    checks.append(("a density gets the number of its zone, 0 beyond black and 10 beyond white",
+                   all(abs(number - want) < 1e-9
+                       for (_, number), want in zip(zones["numbered"], wanted))))
     for filter_name, found in zones["borders"].items():
         halfway = [(a + b) / 2 for a, b in zip(printed, printed[1:])]
         checks += [

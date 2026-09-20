@@ -8,7 +8,7 @@ const vm = require('vm');
 const page = fs.readFileSync(`${__dirname}/../index.html`, 'utf8');
 const algorithm = page.match(/<script>([\s\S]*?)<\/script>/)[1];
 const context = vm.createContext({});
-const used = '{ solveSkipping, tone, density, borders, PRINTED }';
+const used = '{ solveSkipping, tone, density, borders, zoneOf, PRINTED }';
 vm.runInContext(`${algorithm}\nthis.page = ${used};`, context);
 
 const results = JSON.parse(fs.readFileSync(0, 'utf8')).map(({ skipped, ...settings }) => {
@@ -27,8 +27,10 @@ const tones = Object.fromEntries(filters.map(filter =>
 // next together with the density the paper really has there
 const reached = filter => context.page.borders(filter).map(stops =>
   [stops, context.page.density(stops, filter)]);
+const asked = [3, ...context.page.PRINTED, 0];
 const zones = {
   printed: [...context.page.PRINTED],
   borders: Object.fromEntries(filters.map(filter => [filter, reached(filter)])),
+  numbered: asked.map(printed => [printed, context.page.zoneOf(printed)]),
 };
 console.log(JSON.stringify({ results, tones, zones }));
