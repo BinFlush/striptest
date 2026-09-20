@@ -195,7 +195,7 @@
     grid-column: 1 / -1;
   }
 
-  #tones div span::before, tr.grey + tr div::before {
+  #tones div span::before, tr.reference + tr div::before {
     content: "";
     width: .5rem;
     height: .75rem;
@@ -291,7 +291,7 @@
     color: #FFF;
   }
 
-  tr.grey + tr div::before {
+  tr.reference + tr div::before {
     position: absolute;
     top: calc(50% - .375rem);
     left: -1.75rem;
@@ -401,10 +401,10 @@
     <input id="filter" type="range" min="0" max="6" value="3">
   </label>
   <div>
-    <span>Middle grey</span>
-    <button id="up" aria-label="Move middle grey up a row">▲</button>
-    <button id="down" aria-label="Move middle grey down a row">▼</button>
-    <button id="reset" aria-label="Reset middle grey to the base">Reset</button>
+    <span>Reference</span>
+    <button id="up" aria-label="Move the reference up a row">▲</button>
+    <button id="down" aria-label="Move the reference down a row">▼</button>
+    <button id="reset" aria-label="Reset the reference to the base">Reset</button>
   </div>
 </div>
 
@@ -433,9 +433,9 @@
       provides.</li>
     <li>The strip under each row approximates a test strip of Ilford Multigrade IV RC Deluxe at
       the filter set above the table, cut into the zones of the Zone System: 0 is full black, V
-      middle grey and X paper white. The marked row runs through the whole scale, and every other
-      row is the same scale shifted by its exposure. The mark starts at the base, and the arrows
-      move it to another row. Your prints may differ.</li>
+      middle grey and X paper white. The reference row runs through the whole scale, and every
+      other row is the same scale shifted by its exposure. The reference starts at the base, and
+      the arrows move it to another row. Your prints may differ.</li>
     <li>Everything is calculated in your browser. Nothing is sent anywhere.</li>
   </ul>
 </details>
@@ -595,7 +595,7 @@
   const number = id => field(id).valueAsNumber;
   const SHOWN = 5;
   const skipped = recall();
-  let grey = 0;
+  let reference = 0;
 
   function recall() {
     try {
@@ -627,7 +627,7 @@
 
   function tableRow({ step, count, seconds, error }, { stepsize, filter }, every) {
     const tr = document.createElement('tr');
-    const exposed = (step - grey) / stepsize + error;
+    const exposed = (step - reference) / stepsize + error;
     const [light, dark] = scale(filter);
     const place = stops => (dark - stops + exposed) / (dark - light) * 100;
     const edges = [0, ...borders(filter).map(stops => clamp(place(stops), 0, 100)), 100];
@@ -637,7 +637,7 @@
     const ruler = element('div', ...NUMERALS.map(numeral => element('small', numeral)));
     const zones = element('tr', element('td', ruler));
     tr.classList.toggle('base', !step);
-    tr.classList.toggle('grey', step === grey);
+    tr.classList.toggle('reference', step === reference);
     tr.append(
       element('td', formatCount(count, every)),
       element('td', formatStops(step, stepsize)),
@@ -698,9 +698,9 @@
     field('skipped').replaceChildren(...skipping);
     field('forget').textContent = `Forget all skipped tempos (${skipped.size})`;
     field('forget').hidden = !skipped.size;
-    field('up').disabled = !result.rows?.some(row => row.step < grey);
-    field('down').disabled = !result.rows?.some(row => row.step > grey);
-    field('reset').disabled = !grey;
+    field('up').disabled = !result.rows?.some(row => row.step < reference);
+    field('down').disabled = !result.rows?.some(row => row.step > reference);
+    field('reset').disabled = !reference;
     document.querySelector('tbody').replaceChildren(...rows);
     fit();
   }
@@ -713,9 +713,9 @@
     if (target.matches('#skip')) skipped.add(Number(target.value));
     if (target.matches('#skipped button')) skipped.delete(Number(target.value));
     if (target.matches('#forget')) skipped.clear();
-    if (target.matches('#up')) grey--;
-    if (target.matches('#down')) grey++;
-    if (target.matches('#reset')) grey = 0;
+    if (target.matches('#up')) reference--;
+    if (target.matches('#down')) reference++;
+    if (target.matches('#reset')) reference = 0;
     remember();
     render();
   });
