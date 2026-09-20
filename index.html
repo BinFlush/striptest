@@ -195,7 +195,7 @@
     grid-column: 1 / -1;
   }
 
-  #tones div span::before, tr.grey td:first-child::before {
+  #tones div span::before, tr.grey td:first-child span::before {
     content: "";
     width: .5rem;
     height: .75rem;
@@ -258,18 +258,32 @@
     font-weight: 600;
   }
 
-  tbody tr {
-    background: hsl(0 0% var(--tone));
+  tbody td {
+    background-image: var(--strip);
   }
 
-  tr.grey td:first-child {
+  tbody span {
+    background-image: var(--ink);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  @media print, (forced-colors: active) {
+    tbody td, tbody span {
+      background-image: none;
+      -webkit-text-fill-color: currentColor;
+    }
+  }
+
+  tr.grey td:first-child span {
     position: relative;
   }
 
-  tr.grey td:first-child::before {
+  tr.grey td:first-child span::before {
     position: absolute;
     top: calc(50% - .375rem);
-    left: -.875rem;
+    left: -1.625rem;
   }
 
   table + details {
@@ -401,8 +415,9 @@
       timer</a>. This website is specifically for using a dedicated metronome, and the accuracy it
       provides.</li>
     <li>The rows are toned to approximate a strip of Ilford Multigrade IV RC Deluxe at the filter
-      set above the table. Middle grey starts at the base, and the arrows move it to another row.
-      Your prints may differ.</li>
+      set above the table. The marked row runs through the paper's whole scale, from white to
+      black, and every other row is the same scale shifted by its exposure. The mark starts at the
+      base, and the arrows move it to another row. Your prints may differ.</li>
     <li>Everything is calculated in your browser. Nothing is sent anywhere.</li>
   </ul>
 </details>
@@ -498,6 +513,13 @@
     return 1.055 * (10 ** -density(stops, filter)) ** (1 / 2.4) - .055;
   }
 
+  // The stops, counted from middle grey, over which the paper goes from white to black at a
+  // filter. In twelfths, so that a browser blending greys between them stays on the curve.
+  function scale(filter) {
+    const [first, ...curve] = PAPER[filter];
+    return range(first * 4, (first + curve.length - 1) * 4).map(twelfth => twelfth / 12);
+  }
+
   function formatCount(count, every) {
     const whole = Math.floor(count / every);
     const rest = count % every;
@@ -549,7 +571,9 @@
 
   function cell(text) {
     const td = document.createElement('td');
-    td.textContent = text;
+    const span = document.createElement('span');
+    span.textContent = text;
+    td.append(span);
     return td;
   }
 
@@ -564,10 +588,15 @@
   function tableRow({ step, count, seconds, error }, { stepsize, filter }, every) {
     const tr = document.createElement('tr');
     const exposed = (step - grey) / stepsize + error;
+    const scaled = scale(filter);
+    const width = (scaled.length - 1) / 12;
+    const place = stops => (stops - exposed - scaled[0]) / width * 100;
+    const strip = scaled.map(stops =>
+      `hsl(0 0% ${(tone(stops, filter) * 100).toFixed(1)}%) ${place(stops).toFixed(2)}%`);
     tr.classList.toggle('base', !step);
     tr.classList.toggle('grey', step === grey);
-    tr.style.setProperty('--tone', `${(tone(exposed, filter) * 100).toFixed(1)}%`);
-    tr.style.color = 10 ** -density(exposed, filter) > .18 ? '#000' : '#FFF';
+    tr.style.setProperty('--strip', `linear-gradient(to right, ${strip})`);
+    tr.style.setProperty('--ink', `linear-gradient(to right, #000 ${place(0)}%, #FFF 0)`);
     tr.append(
       cell(formatCount(count, every)),
       cell(formatStops(step, stepsize)),
@@ -575,6 +604,15 @@
       cell(formatError(error * stepsize)),
     );
     return tr;
+  }
+
+  function align() {
+    for (const piece of document.querySelectorAll('tbody td, tbody span')) {
+      const row = piece.closest('tr').getBoundingClientRect();
+      const { left } = piece.getBoundingClientRect();
+      piece.style.backgroundSize = `${row.width}px 100%`;
+      piece.style.backgroundPositionX = `${row.left - left}px`;
+    }
   }
 
   function settings() {
@@ -619,9 +657,11 @@
     field('down').disabled = !result.rows?.some(row => row.step > grey);
     field('reset').disabled = !grey;
     document.querySelector('tbody').replaceChildren(...rows);
+    align();
   }
 
   addEventListener('input', render);
+  new ResizeObserver(align).observe(document.querySelector('table'));
 
   addEventListener('click', ({ target }) => {
     if (!(target instanceof HTMLButtonElement)) return;
