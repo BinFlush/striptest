@@ -33,6 +33,10 @@ MECHANICAL = ["40:60 [2]", "60:72 [3]", "72:120 [4]", "120:144 [6]", "144:208 [8
 # "MULTIGRADE RC PAPERS Technical Information" (Oct 2020). The page's row tones must have these.
 ISO_RANGE = {"00": 1.80, "0": 1.60, "1": 1.30, "2": 1.10, "3": 0.90, "4": 0.60, "5": 0.40}
 
+# Its ISO speed (P) at each filter, from the next table in that sheet. Two filters are compared
+# by these: the speed is measured where the print is 0.6 above paper white.
+ISO_SPEED = {"00": 200, "0": 200, "1": 200, "2": 200, "3": 200, "4": 100, "5": 100}
+
 # The README's worked examples: settings, then the tempo and counts it prints
 README = [
     (dict(base=10.0, stepsize=3, numsteps=7, baseplace=3, tempi=list(range(40, 209)),
@@ -184,15 +188,17 @@ def strip_failures(strips, printed):
     """A row is drawn as zones between edges, and probed as a density at one place.
 
     Both must tell the same story: the zone a place lies in is the zone nearest to the density
-    probed there. And a row exposed like the reference is an even scale, at every filter.
+    probed there, whether the row is at the reference row's filter or at another. And a row
+    exposed like the reference, at its filter, is an even scale.
     """
     halfway = [(a + b) / 2 for a, b in zip(printed, printed[1:])]
     nearest = lambda reached: min(range(11), key=lambda zone: abs(printed[zone] - reached))
     failures = []
     for strip in strips:
-        name = f"filter {strip['filter']}, {strip['exposed']:+.3f} stops"
+        name = f"filter {strip['other']} against {strip['filter']}, {strip['exposed']:+.3f} stops"
         even = [100 * zone / 11 for zone in range(12)]
-        if not strip["exposed"] and any(abs(a - b) > 1e-9 for a, b in zip(strip["edges"], even)):
+        is_reference = strip["other"] == strip["filter"] and not strip["exposed"]
+        if is_reference and any(abs(a - b) > 1e-9 for a, b in zip(strip["edges"], even)):
             failures.append(f"strips: {name}: the reference row is not an even scale")
         for share, reached in strip["probed"]:
             on_a_border = (any(abs(edge - 100 * share) < 1e-6 for edge in strip["edges"])
@@ -201,6 +207,24 @@ def strip_failures(strips, printed):
             if not on_a_border and drawn != nearest(reached):
                 failures.append(f"strips: {name}, {share:.4f} along: drawn as zone {drawn}, "
                                 f"probed as zone {nearest(reached)}")
+    return failures
+
+
+def speed_failures(speeds):
+    """Two filters are lined up by their ISO speeds.
+
+    The speed says how much light the tone 0.6 above paper white takes. So where the reference
+    row has that tone, a row at another filter has it too when it gets as many stops more as
+    its filter is slower, and with half the speed that is one stop.
+    """
+    failures = []
+    for pair in speeds:
+        slower = np.log2(ISO_SPEED[pair["filter"]] / ISO_SPEED[pair["other"]])
+        for exposed, reached in pair["probed"]:
+            if (exposed == slower) != (abs(reached - 0.63) < 1e-9):
+                failures.append(f"speeds: filter {pair['other']} against {pair['filter']}, given "
+                                f"{exposed:+d} stops, prints the tone speed is measured at as "
+                                f"{reached:.3f}")
     return failures
 
 
@@ -239,6 +263,7 @@ def main():
         failures += tone_failures(filter_name, tones)
     failures += zone_failures(answer["zones"])
     failures += strip_failures(answer["strips"], answer["zones"]["printed"])
+    failures += speed_failures(answer["speeds"])
 
     for settings, ours, theirs in zip(all_settings, expected, answer["results"]):
         if ours["direct"] not in (None, ours.get("tempo")):

@@ -35,16 +35,28 @@ const zones = {
     [filter, borders(filter).map(stops => [stops, density(stops, filter)])])),
 };
 
-// Rows given from two stops less to two stops more than the reference, in sixths and a bit:
-// where their zones begin and end, and the density probed at 401 places along them
-const shares = Array.from({ length: 401 }, (_, i) => i / 400);
-const strips = filters.flatMap(filter => Array.from({ length: 25 }, (_, i) => {
+// Rows given from two stops less to two stops more than the reference, in sixths and a bit, at
+// the reference row's filter and at every other: where their zones begin and end, and the
+// density probed at 201 places along them
+const shares = Array.from({ length: 201 }, (_, i) => i / 200);
+const pairs = filters.flatMap(filter => filters.map(other => [filter, other]));
+const strips = pairs.flatMap(([filter, other]) => Array.from({ length: 25 }, (_, i) => {
   const exposed = (i - 12) / 6 + 0.013 * (i % 3);
   return {
     filter,
+    other,
     exposed,
-    edges: [...edges(exposed, filter)],
-    probed: shares.map(share => [share, probed(share, exposed, filter)]),
+    edges: [...edges(exposed, filter, other)],
+    probed: shares.map(share => [share, probed(share, exposed, filter, other)]),
   };
 }));
-console.log(JSON.stringify({ results, tones, zones, strips }));
+
+// The tone ISO speed is measured at, 0.6 above paper white, found in the reference row and
+// probed at every filter there, in rows given a stop less, the same and a stop more
+const measured = (zoneOf(0.63) + 0.5) / 11;
+const speeds = pairs.map(([filter, other]) => ({
+  filter,
+  other,
+  probed: [-1, 0, 1].map(exposed => [exposed, probed(measured, exposed, filter, other)]),
+}));
+console.log(JSON.stringify({ results, tones, zones, strips, speeds }));
