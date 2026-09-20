@@ -247,7 +247,7 @@
     background-image: var(--strip);
   }
 
-  tr.reference + tr div::after {
+  tr.reference + tr div:last-child::after {
     content: "";
     position: absolute;
     inset: var(--rise) calc(-.75rem - 1px) calc(-.5rem - 1px);
@@ -381,6 +381,14 @@
   <span>Filter <span id="grade"></span></span>
   <input id="filter" type="range" min="0" max="6" value="3">
 </label>
+
+<details id="compare">
+  <summary>Compare with another filter</summary>
+  <label>
+    <span>Other filter <span id="othergrade"></span></span>
+    <input id="other" type="range" min="0" max="6" value="4">
+  </label>
+</details>
 
 <table>
   <thead>
@@ -655,26 +663,34 @@
     return button;
   }
 
-  // The strip under a row's numbers: its zones, a numeral on each, and an empty label over them
-  // all for the slide to write in
-  function zonesRow(exposed, filter) {
-    const ends = edges(exposed, filter, filter);
+  // A strip: a row's zones at one filter, a numeral on each, and an empty label over them all
+  // for the slide to write in
+  function zoneStrip(exposed, filter, other) {
+    const ends = edges(exposed, filter, other);
     const widths = NUMERALS.map((_, zone) => `minmax(0, ${ends[zone + 1] - ends[zone]}fr)`);
     const greys = PRINTED.map((printed, zone) =>
       `${grey(printed)} ${ends[zone]}% ${ends[zone + 1]}%`);
     const numerals = NUMERALS.map(numeral => element('small', numeral));
     const strip = element('div', ...numerals, element('b'));
-    const tr = element('tr', element('td', strip));
-    tr.className = 'zones';
-    tr.setAttribute('aria-hidden', 'true');
     strip.dataset.exposed = exposed;
+    strip.dataset.filter = other;
     strip.style.gridTemplateColumns = widths.join(' ');
     strip.style.setProperty('--strip', `linear-gradient(to right, ${greys})`);
+    return strip;
+  }
+
+  // The strips under a row's numbers: one at the filter printed with, which is the first, and
+  // under it one at the filter it is compared with
+  function zonesRow(exposed, filters) {
+    const strips = filters.map(other => zoneStrip(exposed, filters[0], other));
+    const tr = element('tr', element('td', ...strips));
+    tr.className = 'zones';
+    tr.setAttribute('aria-hidden', 'true');
     return tr;
   }
 
   // Every row is exposed so many stops more than `anchor`, the reference row, errors included
-  function tableRow({ step, count, seconds, error }, { stepsize, filter }, every, anchor) {
+  function tableRow({ step, count, seconds, error }, { stepsize, filters }, every, anchor) {
     const tr = element('tr',
       element('td', formatCount(count, every)),
       element('td', formatStops(step, stepsize)),
@@ -682,7 +698,7 @@
       element('td', formatError(error * stepsize)),
     );
     const exposed = (step - anchor.step) / stepsize + error - anchor.error;
-    const zones = zonesRow(exposed, filter);
+    const zones = zonesRow(exposed, filters);
     tr.classList.toggle('base', !step);
     tr.classList.toggle('reference', step === anchor.step);
     tr.dataset.step = step;
@@ -690,9 +706,9 @@
     return [tr, zones];
   }
 
-  // Boxes the reference row: its strip draws the box, which has to reach up over the numbers
+  // Boxes the reference row: its last strip draws the box, which has to reach up over the rest
   function box(row) {
-    const strip = row.nextSibling.querySelector('div');
+    const strip = row.nextSibling.querySelector('div:last-child');
     const rise = row.getBoundingClientRect().top - strip.getBoundingClientRect().top;
     document.querySelector('tr.reference')?.classList.remove('reference');
     row.classList.add('reference');
@@ -726,13 +742,12 @@
     const share = clamp((clientX - left - strips[0].clientLeft) / strips[0].clientWidth, 0, 1);
     const active = rowOf(touched.target);
     const held = active.nextSibling.querySelector('div');
-    const grade = FILTERS[number('filter')];
     probing = true;
     document.querySelector('tbody').classList.add('probing');
     box(active);
     for (const strip of strips) {
       const exposed = strip.dataset.exposed - held.dataset.exposed;
-      const printed = probed(share, exposed, grade, grade);
+      const printed = probed(share, exposed, held.dataset.filter, strip.dataset.filter);
       strip.style.setProperty('--strip', `linear-gradient(${grey(printed)}, ${grey(printed)})`);
       strip.lastChild.textContent = NUMERALS[Math.round(zoneOf(printed))];
       strip.lastChild.style.color = 10 ** -printed > .18 ? '#000' : '#FFF';
@@ -747,6 +762,8 @@
     if (!tempi.length) return null;
     const numsteps = number('numsteps');
     const place = number('baseplace');
+    const filters = [FILTERS[number('filter')]];
+    if (field('compare').open) filters.push(FILTERS[number('other')]);
     return {
       base: number('base'),
       stepsize: Number(field('stepsize').value),
@@ -755,7 +772,7 @@
       tempi,
       cumulative: field('cumulative').checked,
       divisions: Number(field('divisions').value),
-      filter: FILTERS[number('filter')],
+      filters,
     };
   }
 
@@ -763,6 +780,7 @@
     const chosen = settings();
     const result = chosen ? solveSkipping(chosen, skipped) : { passed: [] };
     const grade = FILTERS[number('filter')];
+    const other = FILTERS[number('other')];
     const skipping = result.passed.slice(0, SHOWN).map(chip);
     if (skipping.length) skipping.unshift('Skipping ');
     if (result.passed.length > SHOWN) skipping.push(` and ${result.passed.length - SHOWN} more`);
@@ -774,6 +792,8 @@
     const notice = result.tempo ? `and count every ${nthBeat(result.every)}, from zero.` : '';
     field('grade').textContent = grade;
     field('filter').setAttribute('aria-valuetext', grade);
+    field('othergrade').textContent = other;
+    field('other').setAttribute('aria-valuetext', other);
     field('tempo').textContent = result.tempo ?? '?';
     field('notice').textContent = notice;
     field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
@@ -787,6 +807,7 @@
   }
 
   addEventListener('input', render);
+  field('compare').addEventListener('toggle', render);
   new ResizeObserver(fit).observe(document.querySelector('table'));
 
   // A tap or click on a row makes it the reference, and so does a slide along it. The slide only
