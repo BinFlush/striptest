@@ -279,6 +279,14 @@
     visibility: hidden;
   }
 
+  tr.zones b {
+    position: absolute;
+    inset: 0;
+    padding: .5625rem 0;
+    font: 600 .5625rem/1 Georgia, serif;
+    text-align: center;
+  }
+
   tr.active + tr div::after {
     content: "";
     position: absolute;
@@ -455,8 +463,8 @@
       that row's exposure. The reference starts at the base, and the arrows move it to another
       row. Your prints may differ.</li>
     <li>Slide a finger sideways across the rows, or drag with the mouse, to follow one part of the
-      picture: every strip then shows its tone in full. The row you slide on is boxed, and stands
-      in as the reference for as long as you hold.</li>
+      picture: every strip then shows its tone in full, and the zone it is nearest to. The row
+      you slide on is boxed, and stands in as the reference for as long as you hold.</li>
     <li>Everything is calculated in your browser. Nothing is sent anywhere.</li>
   </ul>
 </details>
@@ -688,7 +696,8 @@
     const widths = PLACED.map((_, zone) => `minmax(0, ${ends[zone + 1] - ends[zone]}fr)`);
     const strip = PLACED.map((stops, zone) =>
       `hsl(0 0% ${(tone(stops, '2') * 100).toFixed(1)}%) ${ends[zone]}% ${ends[zone + 1]}%`);
-    const ruler = element('div', ...NUMERALS.map(numeral => element('small', numeral)));
+    const numerals = NUMERALS.map(numeral => element('small', numeral));
+    const ruler = element('div', ...numerals, element('b'));
     const zones = element('tr', element('td', ruler));
     tr.classList.toggle('base', !step);
     tr.classList.toggle('reference', step === reference);
@@ -716,8 +725,10 @@
   }
 
   // While a finger or the mouse slides across the rows, every strip shows in full the tone that
-  // the part of the picture under it has in that row. The row the slide began on is boxed and
-  // stands in as the reference: it runs evenly through the scale, the others are reckoned from it.
+  // the part of the picture under it has in that row, and names the zone it is nearest to. The
+  // row the slide began on is boxed and stands in as the reference: it runs evenly through the
+  // scale, and the others are reckoned from it. Nothing is taken out of the page meanwhile: a
+  // finger that loses the element it touched may stop being reported.
   function probe({ clientX }) {
     const strips = [...document.querySelectorAll('tr.zones div')];
     const box = strips[0].getBoundingClientRect();
@@ -735,6 +746,8 @@
       const printed = probed(share, exposed, FILTERS[number('filter')]);
       const grey = `hsl(0 0% ${(shade(printed) * 100).toFixed(1)}%)`;
       strip.style.setProperty('--strip', `linear-gradient(${grey}, ${grey})`);
+      strip.lastChild.textContent = NUMERALS[Math.round(zoneOf(printed))];
+      strip.lastChild.style.color = 10 ** -printed > .18 ? '#000' : '#FFF';
     }
   }
 
