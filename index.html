@@ -565,10 +565,11 @@
 
   // The print density that row has at one place, given as a share of the way along the strip
   function probed(share, exposed, filter) {
+    const [, dark] = scale(filter);
     const zone = clamp(share * NUMERALS.length - .5, 0, NUMERALS.length - 1);
     const below = Math.min(NUMERALS.length - 2, Math.floor(zone));
     const printed = PRINTED[below] + (PRINTED[below + 1] - PRINTED[below]) * (zone - below);
-    const stops = zone ? exposure(printed, filter) : scale(filter)[1];
+    const stops = zone > 0 ? exposure(printed, filter) : dark;
     return density(stops + exposed, filter);
   }
 
@@ -629,40 +630,48 @@
     return made;
   }
 
+  function grey(printed) {
+    return `hsl(0 0% ${(shade(printed) * 100).toFixed(1)}%)`;
+  }
+
   function chip(tempo) {
-    const button = document.createElement('button');
-    button.textContent = `${tempo} ×`;
+    const button = element('button', `${tempo} ×`);
     button.value = tempo;
     button.setAttribute('aria-label', `Bring back ${tempo}`);
     return button;
   }
 
-  // Every row is exposed so many stops more than the reference row, whose own error is `datum`
-  function tableRow({ step, count, seconds, error }, { stepsize, filter }, every, datum) {
-    const tr = document.createElement('tr');
-    const exposed = (step - reference) / stepsize + error - datum;
+  // The strip under a row's numbers: its zones, a numeral on each, and an empty label over them
+  // all for the slide to write in
+  function zonesRow(exposed, filter) {
     const ends = edges(exposed, filter);
     const widths = NUMERALS.map((_, zone) => `minmax(0, ${ends[zone + 1] - ends[zone]}fr)`);
-    const strip = PRINTED.map((printed, zone) =>
-      `hsl(0 0% ${(shade(printed) * 100).toFixed(1)}%) ${ends[zone]}% ${ends[zone + 1]}%`);
+    const greys = PRINTED.map((printed, zone) =>
+      `${grey(printed)} ${ends[zone]}% ${ends[zone + 1]}%`);
     const numerals = NUMERALS.map(numeral => element('small', numeral));
-    const ruler = element('div', ...numerals, element('b'));
-    const zones = element('tr', element('td', ruler));
-    tr.classList.toggle('base', !step);
-    tr.classList.toggle('reference', step === reference);
-    tr.dataset.step = step;
-    tr.append(
+    const strip = element('div', ...numerals, element('b'));
+    const tr = element('tr', element('td', strip));
+    tr.className = 'zones';
+    tr.setAttribute('aria-hidden', 'true');
+    strip.dataset.exposed = exposed;
+    strip.style.gridTemplateColumns = widths.join(' ');
+    strip.style.setProperty('--strip', `linear-gradient(to right, ${greys})`);
+    return tr;
+  }
+
+  // Every row is exposed so many stops more than the reference row, whose own error is `datum`
+  function tableRow({ step, count, seconds, error }, { stepsize, filter }, every, datum) {
+    const tr = element('tr',
       element('td', formatCount(count, every)),
       element('td', formatStops(step, stepsize)),
       element('td', seconds.toFixed(2)),
       element('td', formatError(error * stepsize)),
     );
-    zones.className = 'zones';
-    zones.setAttribute('aria-hidden', 'true');
+    const zones = zonesRow((step - reference) / stepsize + error - datum, filter);
+    tr.classList.toggle('base', !step);
+    tr.classList.toggle('reference', step === reference);
+    tr.dataset.step = step;
     zones.firstChild.colSpan = tr.cells.length;
-    ruler.dataset.exposed = exposed;
-    ruler.style.gridTemplateColumns = widths.join(' ');
-    ruler.style.setProperty('--strip', `linear-gradient(to right, ${strip})`);
     return [tr, zones];
   }
 
@@ -686,8 +695,8 @@
   }
 
   // The row of numbers that something in the table body belongs to
-  function rowOf(element) {
-    const tr = element.closest('tr');
+  function rowOf(target) {
+    const tr = target.closest('tr');
     return tr.matches('.zones') ? tr.previousSibling : tr;
   }
 
@@ -708,8 +717,7 @@
     for (const strip of strips) {
       const exposed = strip.dataset.exposed - held.dataset.exposed;
       const printed = probed(share, exposed, FILTERS[number('filter')]);
-      const grey = `hsl(0 0% ${(shade(printed) * 100).toFixed(1)}%)`;
-      strip.style.setProperty('--strip', `linear-gradient(${grey}, ${grey})`);
+      strip.style.setProperty('--strip', `linear-gradient(${grey(printed)}, ${grey(printed)})`);
       strip.lastChild.textContent = NUMERALS[Math.round(zoneOf(printed))];
       strip.lastChild.style.color = 10 ** -printed > .18 ? '#000' : '#FFF';
     }
@@ -738,14 +746,15 @@
   function render() {
     const chosen = settings();
     const result = chosen ? solveSkipping(chosen, skipped) : { passed: [] };
-    field('grade').textContent = FILTERS[number('filter')];
-    field('filter').setAttribute('aria-valuetext', FILTERS[number('filter')]);
+    const grade = FILTERS[number('filter')];
     const skipping = result.passed.slice(0, SHOWN).map(chip);
     if (skipping.length) skipping.unshift('Skipping ');
     if (result.passed.length > SHOWN) skipping.push(` and ${result.passed.length - SHOWN} more`);
     const datum = result.rows?.find(row => row.step === reference)?.error ?? 0;
     const rows = (result.rows ?? []).flatMap(row => tableRow(row, chosen, result.every, datum));
     const notice = result.tempo ? `and count every ${nthBeat(result.every)}, from zero.` : '';
+    field('grade').textContent = grade;
+    field('filter').setAttribute('aria-valuetext', grade);
     field('tempo').textContent = result.tempo ?? '?';
     field('notice').textContent = notice;
     field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
