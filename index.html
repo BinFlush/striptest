@@ -103,14 +103,33 @@
     accent-color: var(--accent);
   }
 
-  input[type=checkbox] {
+  input[type=checkbox], input[type=radio] {
     width: 1.25rem;
     height: 1.25rem;
     accent-color: var(--accent);
   }
 
-  details, #forget {
+  details, #forget, fieldset {
     grid-column: 1 / -1;
+  }
+
+  fieldset {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem 1.5rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  legend {
+    padding: 0 0 .25rem;
+    color: var(--muted);
+    font-size: .8125rem;
+  }
+
+  .timer .metronome, .metronome .timer {
+    display: none;
   }
 
   summary {
@@ -139,8 +158,11 @@
     color: var(--muted);
   }
 
-  #tempo {
+  output {
     display: block;
+  }
+
+  #tempo {
     color: var(--accent);
     font: 600 5.5rem/1.1 var(--mono);
     letter-spacing: -.04em;
@@ -162,7 +184,7 @@
     margin-top: 1.25rem;
   }
 
-  #skipped {
+  #skipped, .timer #notice {
     font-size: .875rem;
   }
 
@@ -334,17 +356,28 @@
   <label>Steps
     <input id="numsteps" type="number" value="7" min="1" max="24" required inputmode="numeric">
   </label>
+  <fieldset>
+    <legend>Timed with</legend>
+    <label class="wide">
+      <input id="timer" type="radio" name="timing" checked>
+      a timer
+    </label>
+    <label class="wide">
+      <input id="metronome" type="radio" name="timing">
+      a metronome
+    </label>
+  </fieldset>
 
   <details>
     <summary>Metronome and counting</summary>
     <div>
-      <label>Slowest, bpm
+      <label class="metronome">Slowest, bpm
         <input id="tmin" type="number" value="40" min="1" max="600" required inputmode="numeric">
       </label>
-      <label>Fastest, bpm
+      <label class="metronome">Fastest, bpm
         <input id="tmax" type="number" value="208" min="1" max="600" required inputmode="numeric">
       </label>
-      <label>Count every
+      <label class="metronome">Count every
         <select id="divisions">
           <option value="0">Auto</option>
           <option value="1">beat</option>
@@ -356,11 +389,11 @@
       <label>Base is step
         <input id="baseplace" type="number" min="-50" max="50" placeholder="middle">
       </label>
-      <label class="wide">
+      <label class="wide metronome">
         <input id="cumulative" type="checkbox">
         Count each step from zero, adding to the one before
       </label>
-      <button id="forget" type="button" hidden></button>
+      <button id="forget" class="metronome" type="button" hidden></button>
     </div>
   </details>
 </form>
@@ -370,11 +403,11 @@
 </noscript>
 
 <section>
-  <p>Set your metronome to</p>
-  <output id="tempo"></output>
+  <p class="metronome">Set your metronome to</p>
+  <output id="tempo" class="metronome"></output>
   <p id="notice"></p>
-  <button id="skip" hidden></button>
-  <p id="skipped"></p>
+  <button id="skip" class="metronome" hidden></button>
+  <p id="skipped" class="metronome"></p>
 </section>
 
 <label>
@@ -392,7 +425,8 @@
 
 <table>
   <thead>
-    <tr><th>Count</th><th>Stops</th><th>Seconds</th><th>Step<br>error</th></tr>
+    <tr class="timer"><th>Add</th><th>Stops</th><th>Seconds</th></tr>
+    <tr class="metronome"><th>Count</th><th>Stops</th><th>Seconds</th><th>Step<br>error</th></tr>
   </thead>
   <tbody></tbody>
 </table>
@@ -657,22 +691,24 @@
   const field = id => document.getElementById(id);
   const number = id => field(id).valueAsNumber;
   const SHOWN = 5;
-  const skipped = recall();
+  const { skipped, metronome } = recall();
   let reference = 0;
   let touched = null;
   let probing = false;
 
   function recall() {
     try {
-      return new Set(JSON.parse(localStorage.getItem('striptest')).skipped);
+      const { skipped, metronome } = JSON.parse(localStorage.getItem('striptest'));
+      return { skipped: new Set(skipped), metronome };
     } catch {
-      return new Set();
+      return { skipped: new Set() };
     }
   }
 
   function remember() {
     try {
-      localStorage.setItem('striptest', JSON.stringify({ skipped: [...skipped] }));
+      const kept = { skipped: [...skipped], metronome: field('metronome').checked };
+      localStorage.setItem('striptest', JSON.stringify(kept));
     } catch {}
   }
 
@@ -720,13 +756,13 @@
   }
 
   // Every row is exposed so many stops more than `anchor`, the reference row, errors included
-  function tableRow({ step, count, seconds, error }, { stepsize, filters }, every, anchor) {
-    const tr = element('tr',
-      element('td', formatCount(count, every)),
-      element('td', formatStops(step, stepsize)),
-      element('td', seconds.toFixed(2)),
-      element('td', formatError(error * stepsize)),
-    );
+  function tableRow(row, { stepsize, filters }, every, anchor) {
+    const { step, seconds, error } = row;
+    const texts = 'add' in row
+      ? [formatAdd(row.add, seconds), formatStops(step, stepsize), seconds.toFixed(1)]
+      : [formatCount(row.count, every), formatStops(step, stepsize), seconds.toFixed(2),
+        formatError(error * stepsize)];
+    const tr = element('tr', ...texts.map(text => element('td', text)));
     const exposed = (step - anchor.step) / stepsize + error - anchor.error;
     const zones = zonesRow(exposed, filters);
     tr.classList.toggle('base', !step);
@@ -784,12 +820,15 @@
     }
   }
 
+  // What is typed in, once the strip itself is filled in. There are tempi only when the rest is
+  // filled in too: a timer's table can do without them.
   function settings() {
+    const strip = [field('base'), field('numsteps'), field('baseplace')];
     field('tmax').setCustomValidity('');
-    if (!form.checkValidity()) return null;
-    const tempi = range(number('tmin'), number('tmax'));
-    field('tmax').setCustomValidity(tempi.length ? '' : 'No tempo in this range');
-    if (!tempi.length) return null;
+    if (!strip.every(input => input.validity.valid)) return null;
+    const complete = form.checkValidity();
+    const tempi = complete ? range(number('tmin'), number('tmax')) : [];
+    field('tmax').setCustomValidity(complete && !tempi.length ? 'No tempo in this range' : '');
     const numsteps = number('numsteps');
     const place = number('baseplace');
     const filters = [FILTERS[number('filter')]];
@@ -806,20 +845,33 @@
     };
   }
 
+  // What a timer's table says about the other way of timing the strip
+  function offer({ tempo, rows }) {
+    const share = (worst(rows) * 100).toFixed(1);
+    return `No timer? A metronome at ${tempo} bpm gets every patch ` +
+      `within ${share}% of its exact time.`;
+  }
+
   function render() {
+    const timer = field('timer').checked;
     const chosen = settings();
-    const result = chosen ? solveSkipping(chosen, skipped) : { passed: [] };
+    const result = chosen?.tempi.length ? solveSkipping(chosen, skipped) : { passed: [] };
     const grade = FILTERS[number('filter')];
     const other = FILTERS[number('other')];
     const skipping = result.passed.slice(0, SHOWN).map(chip);
     if (skipping.length) skipping.unshift('Skipping ');
     if (result.passed.length > SHOWN) skipping.push(` and ${result.passed.length - SHOWN} more`);
-    const found = result.rows ?? [];
+    const found = (timer ? chosen && timed(chosen) : result.rows) ?? [];
     // The reference is the row nearest to the step that was chosen: the strip may have lost it
     const anchor = found.reduce((near, row) =>
       Math.abs(row.step - reference) < Math.abs(near.step - reference) ? row : near, found[0]);
     const rows = found.flatMap(row => tableRow(row, chosen, result.every, anchor));
-    const notice = result.tempo ? `and count every ${nthBeat(result.every)}, from zero.` : '';
+    const notice = !result.tempo ? ''
+      : timer ? offer(result)
+      : `and count every ${nthBeat(result.every)}, from zero.`;
+    const fold = timer ? 'Placing the base' : 'Metronome and counting';
+    document.body.className = timer ? 'timer' : 'metronome';
+    form.querySelector('summary').textContent = fold;
     field('grade').textContent = grade;
     field('filter').setAttribute('aria-valuetext', grade);
     field('othergrade').textContent = other;
@@ -838,6 +890,7 @@
 
   addEventListener('input', render);
   field('compare').addEventListener('toggle', render);
+  document.querySelector('fieldset').addEventListener('change', remember);
   new ResizeObserver(fit).observe(document.querySelector('table'));
 
   // A tap or click on a row makes it the reference, and so does a slide along it. The slide only
@@ -883,5 +936,6 @@
     render();
   });
 
+  field('metronome').checked = metronome || location.hash === '#metronome';
   render();
 </script>
