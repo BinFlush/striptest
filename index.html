@@ -769,7 +769,7 @@
   // over the rows does not make them flicker; a scroll ends in `pointercancel` and sets nothing.
   addEventListener('pointerdown', event => {
     if (!(event.target instanceof Element) || !event.target.closest('tbody')) return;
-    touched = event;
+    if (event.isPrimary && !event.button) touched = event;
   });
 
   addEventListener('pointermove', event => {
