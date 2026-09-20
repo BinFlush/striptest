@@ -8,7 +8,7 @@ const vm = require('vm');
 const page = fs.readFileSync(`${__dirname}/../index.html`, 'utf8');
 const algorithm = page.match(/<script>([\s\S]*?)<\/script>/)[1];
 const context = vm.createContext({});
-const used = '{ solveSkipping, tone, density, borders, zoneOf, PRINTED }';
+const used = '{ solveSkipping, tone, density, borders, zoneOf, edges, probed, PRINTED }';
 vm.runInContext(`${algorithm}\nthis.page = ${used};`, context);
 
 const results = JSON.parse(fs.readFileSync(0, 'utf8')).map(({ skipped, ...settings }) => {
@@ -28,9 +28,23 @@ const tones = Object.fromEntries(filters.map(filter =>
 const reached = filter => context.page.borders(filter).map(stops =>
   [stops, context.page.density(stops, filter)]);
 const asked = [3, ...context.page.PRINTED, 0];
+
+// Rows given from two stops less to two stops more than the reference, in sixths and a bit:
+// where their zones begin and end, and the density probed at 401 places along them
+const shares = Array.from({ length: 401 }, (_, i) => i / 400);
+const rows = filters.flatMap(filter => Array.from({ length: 25 }, (_, i) => {
+  const exposed = (i - 12) / 6 + 0.013 * (i % 3);
+  return {
+    filter,
+    exposed,
+    edges: [...context.page.edges(exposed, filter)],
+    probed: shares.map(share => [share, context.page.probed(share, exposed, filter)]),
+  };
+}));
 const zones = {
   printed: [...context.page.PRINTED],
   borders: Object.fromEntries(filters.map(filter => [filter, reached(filter)])),
   numbered: asked.map(printed => [printed, context.page.zoneOf(printed)]),
+  rows,
 };
 console.log(JSON.stringify({ results, tones, zones }));

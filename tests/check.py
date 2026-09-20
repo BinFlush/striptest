@@ -179,6 +179,24 @@ def zone_failures(zones):
             (f"filter {filter_name}: borders come at ever less exposure towards Zone X",
              all(a > b for (a, _), (b, _) in zip(found, found[1:]))),
         ]
+    # A row is drawn as zones between edges, and probed as a density at one place. Both must
+    # tell the same story: the zone a place lies in is the zone nearest to its probed density.
+    nearest = lambda density: min(range(11), key=lambda zone: abs(printed[zone] - density))
+    halfway = [(a + b) / 2 for a, b in zip(printed, printed[1:])]
+    disagree = []
+    for row in zones["rows"]:
+        evenly = abs(row["exposed"]) < 1e-12
+        if evenly and any(abs(edge - 100 * k / 11) > 1e-9 for k, edge in enumerate(row["edges"])):
+            disagree.append(f"filter {row['filter']}: the reference row is not an even scale")
+        for share, density in row["probed"]:
+            on_a_border = (any(abs(edge - 100 * share) < 1e-6 for edge in row["edges"])
+                           or any(abs(density - half) < 1e-9 for half in halfway))
+            drawn = max(zone for zone in range(11) if row["edges"][zone] <= 100 * share + 1e-9)
+            if not on_a_border and drawn != nearest(density):
+                disagree.append(f"filter {row['filter']}, {row['exposed']:+.3f} stops, {share:.4f} "
+                                f"along: drawn as zone {drawn}, probed as {nearest(density)}")
+    checks.append((f"the zones drawn and the tone probed agree at every place: {disagree[:3]}",
+                   not disagree))
     return [f"zones: {name}" for name, holds in checks if not holds]
 
 
