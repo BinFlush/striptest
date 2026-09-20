@@ -197,9 +197,10 @@
 
   #tones div span::before, tr.grey td:first-child::before {
     content: "";
-    border: .375rem solid transparent;
-    border-right: 0;
-    border-left: .5rem solid var(--accent);
+    width: .5rem;
+    height: .75rem;
+    background: var(--accent);
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
   }
 
   #tones div span::before {
