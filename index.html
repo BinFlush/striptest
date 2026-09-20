@@ -284,6 +284,14 @@
     visibility: hidden;
   }
 
+  tr.active + tr div::after {
+    content: "";
+    position: absolute;
+    inset: var(--rise) calc(-.75rem - 1px) calc(-.5rem - 1px);
+    border: 2px solid var(--accent);
+    pointer-events: none;
+  }
+
   tr.zones div {
     display: grid;
     position: relative;
@@ -452,7 +460,8 @@
       that row's exposure. The reference starts at the base, and the arrows move it to another
       row. Your prints may differ.</li>
     <li>Slide a finger sideways across the rows, or drag with the mouse, to follow one part of the
-      picture: every strip then shows its tone in full.</li>
+      picture: every strip then shows its tone in full. The row you slide on is boxed, and stands
+      in as the reference for as long as you hold.</li>
     <li>Everything is calculated in your browser. Nothing is sent anywhere.</li>
   </ul>
 </details>
@@ -712,15 +721,25 @@
   }
 
   // While a finger or the mouse slides across the rows, every strip shows in full the tone that
-  // the part of the picture under it has in that row
-  function probe({ clientX }) {
+  // the part of the picture under it has in that row. The row slid on is boxed and stands in as
+  // the reference: it runs evenly through the scale, and the others are reckoned from it.
+  function probe({ clientX, clientY }) {
     const strips = [...document.querySelectorAll('tr.zones div')];
     const box = strips[0].getBoundingClientRect();
     const share = clamp((clientX - box.left - strips[0].clientLeft) / strips[0].clientWidth, 0, 1);
+    const under = document.elementFromPoint(clientX, clientY)?.closest('tbody tr');
+    const before = document.querySelector('tr.active');
+    const active = (under?.matches('.zones') ? under.previousSibling : under) ?? before;
+    const held = active.nextSibling.querySelector('div');
+    const rise = active.getBoundingClientRect().top - held.getBoundingClientRect().top;
     probing = true;
     document.querySelector('tbody').classList.add('probing');
+    before?.classList.remove('active');
+    active.classList.add('active');
+    held.style.setProperty('--rise', `${rise}px`);
     for (const strip of strips) {
-      const printed = probed(share, Number(strip.dataset.exposed), FILTERS[number('filter')]);
+      const exposed = strip.dataset.exposed - held.dataset.exposed;
+      const printed = probed(share, exposed, FILTERS[number('filter')]);
       const grey = `hsl(0 0% ${(shade(printed) * 100).toFixed(1)}%)`;
       strip.style.setProperty('--strip', `linear-gradient(${grey}, ${grey})`);
     }
