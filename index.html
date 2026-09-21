@@ -195,6 +195,10 @@
     font-family: var(--mono);
   }
 
+  body > label + label {
+    margin-top: .75rem;
+  }
+
   table {
     width: 100%;
     margin-top: .5rem;
@@ -410,6 +414,9 @@
   <p id="skipped" class="metronome"></p>
 </section>
 
+<label>Paper
+  <select id="paper"></select>
+</label>
 <label>
   <span>Filter <span id="grade"></span></span>
   <input id="filter" type="range" min="0" max="6" value="3">
@@ -736,15 +743,15 @@
   const field = id => document.getElementById(id);
   const number = id => field(id).valueAsNumber;
   const SHOWN = 5;
-  const { skipped, metronome } = recall();
+  const { skipped, metronome, paper } = recall();
   let reference = 0;
   let touched = null;
   let probing = false;
 
   function recall() {
     try {
-      const { skipped, metronome } = JSON.parse(localStorage.getItem('striptest'));
-      return { skipped: new Set(skipped), metronome };
+      const { skipped, metronome, paper } = JSON.parse(localStorage.getItem('striptest'));
+      return { skipped: new Set(skipped), metronome, paper };
     } catch {
       return { skipped: new Set() };
     }
@@ -752,7 +759,11 @@
 
   function remember() {
     try {
-      const kept = { skipped: [...skipped], metronome: field('metronome').checked };
+      const kept = {
+        skipped: [...skipped],
+        metronome: field('metronome').checked,
+        paper: field('paper').value,
+      };
       localStorage.setItem('striptest', JSON.stringify(kept));
     } catch {}
   }
@@ -853,7 +864,7 @@
     const share = clamp((clientX - left - strips[0].clientLeft) / strips[0].clientWidth, 0, 1);
     const active = rowOf(touched.target);
     const held = active.nextSibling.querySelector('div');
-    const paper = 'Multigrade IV RC Deluxe';
+    const paper = field('paper').value;
     probing = true;
     document.querySelector('tbody').classList.add('probing');
     box(active);
@@ -888,7 +899,7 @@
       cumulative: field('cumulative').checked,
       divisions: Number(field('divisions').value),
       filters,
-      paper: 'Multigrade IV RC Deluxe',
+      paper: field('paper').value,
     };
   }
 
@@ -938,6 +949,7 @@
   addEventListener('input', render);
   field('compare').addEventListener('toggle', render);
   document.querySelector('fieldset').addEventListener('change', remember);
+  field('paper').addEventListener('change', remember);
   new ResizeObserver(fit).observe(document.querySelector('table'));
 
   // A tap or click on a row makes it the reference, and so does a slide along it. The slide only
@@ -983,6 +995,8 @@
     render();
   });
 
+  field('paper').append(...Object.keys(PAPERS).map(name => element('option', name)));
+  if (paper in PAPERS) field('paper').value = paper;
   field('metronome').checked = metronome || location.hash === '#metronome';
   render();
 </script>
