@@ -29,13 +29,27 @@ ROUND_BASES = [4, 5, 6, 8, 10, 12, 16, 20, 32]
 # The tempo file from the README: a realistic metronome scale, full of gaps
 MECHANICAL = ["40:60 [2]", "60:72 [3]", "72:120 [4]", "120:144 [6]", "144:208 [8]"]
 
-# Ilford's ISO range (R, ISO 6846) for Multigrade IV RC Deluxe at each filter, from the table in
+# Ilford's ISO range (R, ISO 6846) for each paper at each filter, from the table in
 # "MULTIGRADE RC PAPERS Technical Information" (Oct 2020). The page's row tones must have these.
-ISO_RANGE = {"00": 1.80, "0": 1.60, "1": 1.30, "2": 1.10, "3": 0.90, "4": 0.60, "5": 0.40}
+ISO_RANGE = {
+    "Multigrade RC Deluxe":
+        {"00": 1.60, "0": 1.30, "1": 1.10, "2": 0.90, "3": 0.70, "4": 0.60, "5": 0.50},
+    "Multigrade IV RC Deluxe":
+        {"00": 1.80, "0": 1.60, "1": 1.30, "2": 1.10, "3": 0.90, "4": 0.60, "5": 0.40},
+}
 
-# Its ISO speed (P) at each filter, from the next table in that sheet. Two filters are compared
+# Their ISO speed (P) at each filter, from the next table in that sheet. Two filters are compared
 # by these: the speed is measured where the print is 0.6 above paper white.
-ISO_SPEED = {"00": 200, "0": 200, "1": 200, "2": 200, "3": 200, "4": 100, "5": 100}
+ISO_SPEED = {
+    "Multigrade RC Deluxe":
+        {"00": 240, "0": 240, "1": 240, "2": 240, "3": 240, "4": 220, "5": 220},
+    "Multigrade IV RC Deluxe":
+        {"00": 200, "0": 200, "1": 200, "2": 200, "3": 200, "4": 100, "5": 100},
+}
+
+# Paper white, and the span maximum black lies in, as the sheet's plots draw them
+WHITE = {"Multigrade RC Deluxe": 0.05, "Multigrade IV RC Deluxe": 0.03}
+BLACK = {"Multigrade RC Deluxe": (2.05, 2.10), "Multigrade IV RC Deluxe": (2.00, 2.05)}
 
 # The README's worked examples: settings, then the tempo and counts it prints
 README = [
@@ -129,8 +143,8 @@ def density(grey):
     return -np.log10(((grey + 0.055) / 1.055) ** 2.4)
 
 
-def tone_failures(filter_name, tones):
-    """The page's row tones at one filter, given as (thirds of a stop, grey), against Ilford.
+def tone_failures(paper, filter_name, tones):
+    """The page's row tones on one paper at one filter, as (thirds of a stop, grey), against Ilford.
 
     ISO 6846 measures a paper's contrast as its log exposure range R: from the exposure that
     gives 0.04 above the paper's minimum density to the one that gives 90% of its maximum
@@ -142,21 +156,22 @@ def tone_failures(filter_name, tones):
     low, high = lightest + 0.04, lightest + 0.9 * (darkest - lightest)
     rising = np.array(densities) + np.arange(len(densities)) * 1e-9
     stops = (np.interp(high, rising, thirds) - np.interp(low, rising, thirds)) / 3
-    iso_range, published = stops * np.log10(2), ISO_RANGE[filter_name]
+    iso_range, published = stops * np.log10(2), ISO_RANGE[paper][filter_name]
+    blackest, deepest = BLACK[paper]
     base = densities[thirds.index(0)]
     checks = [
         ("the base row is 18% middle grey", abs(10 ** -base - 0.18) < 0.0005),
         ("more exposure never prints lighter",
          all(a <= b + 1e-12 for a, b in zip(densities, densities[1:]))),
         ("far under is paper white, far over is the paper's maximum black",
-         abs(lightest - 0.03) < 1e-9 and 2.0 < darkest < 2.05),
+         abs(lightest - WHITE[paper]) < 1e-9 and blackest < darkest < deepest),
         (f"the ISO range is Ilford's {published:.2f}, got {iso_range:.2f}",
          abs(iso_range - published) <= 0.02),
     ]
-    return [f"filter {filter_name}: {name}" for name, holds in checks if not holds]
+    return [f"{paper}, filter {filter_name}: {name}" for name, holds in checks if not holds]
 
 
-def zone_failures(zones):
+def zone_failures(paper, zones):
     """The zones the page cuts each strip into.
 
     Zone V is 18% grey by definition, Zone 0 the paper's full black and Zone X its white. One
@@ -164,13 +179,14 @@ def zone_failures(zones):
     exposure the page finds for each border must really give that density on the curve.
     """
     printed = zones["printed"]
+    blackest, deepest = BLACK[paper]
     halfway = [(a + b) / 2 for a, b in zip(printed, printed[1:])]
     numbers = [0.0] + [float(zone) for zone in range(11)] + [10.0]
     checks = [
         ("there are eleven, Zone 0 to Zone X", len(printed) == 11),
         ("Zone V is 18% middle grey", abs(10 ** -printed[5] - 0.18) < 0.0005),
         ("Zone 0 is full black and Zone X paper white",
-         2.0 < printed[0] < 2.05 and abs(printed[10] - 0.03) < 1e-9),
+         blackest < printed[0] < deepest and abs(printed[10] - WHITE[paper]) < 1e-9),
         ("every zone prints lighter than the one below it",
          all(a > b for a, b in zip(printed, printed[1:]))),
         ("a density gets the number of its zone, 0 beyond black and 10 beyond white",
@@ -183,10 +199,10 @@ def zone_failures(zones):
             (f"filter {filter_name}: borders come at ever less exposure towards Zone X",
              all(a > b for (a, _), (b, _) in zip(found, found[1:]))),
         ]
-    return [f"zones: {name}" for name, holds in checks if not holds]
+    return [f"{paper}, zones: {name}" for name, holds in checks if not holds]
 
 
-def strip_failures(strips, printed):
+def strip_failures(paper, strips, printed):
     """A row is drawn as zones between edges, and probed as a density at one place.
 
     Both must tell the same story: the zone a place lies in is the zone nearest to the density
@@ -197,7 +213,8 @@ def strip_failures(strips, printed):
     nearest = lambda reached: min(range(11), key=lambda zone: abs(printed[zone] - reached))
     failures = []
     for strip in strips:
-        name = f"filter {strip['other']} against {strip['filter']}, {strip['exposed']:+.3f} stops"
+        name = (f"{paper}, filter {strip['other']} against {strip['filter']}, "
+                f"{strip['exposed']:+.3f} stops")
         even = [100 * zone / 11 for zone in range(12)]
         is_reference = strip["other"] == strip["filter"] and not strip["exposed"]
         if is_reference and any(abs(a - b) > 1e-9 for a, b in zip(strip["edges"], even)):
@@ -212,7 +229,7 @@ def strip_failures(strips, printed):
     return failures
 
 
-def speed_failures(speeds):
+def speed_failures(paper, speeds):
     """Two filters are lined up by their ISO speeds.
 
     The speed says how much light the tone 0.6 above paper white takes. So where the reference
@@ -221,11 +238,15 @@ def speed_failures(speeds):
     """
     failures = []
     for pair in speeds:
-        slower = np.log2(ISO_SPEED[pair["filter"]] / ISO_SPEED[pair["other"]])
+        slower = np.log2(ISO_SPEED[paper][pair["filter"]] / ISO_SPEED[paper][pair["other"]])
+        if not any(np.isclose(exposed, slower) for exposed, _ in pair["probed"]):
+            failures.append(f"{paper}, speeds: filter {pair['other']} against {pair['filter']} is "
+                            f"not tried {slower:+.3f} stops apart, as Ilford's speeds put them")
         for exposed, reached in pair["probed"]:
-            if (exposed == slower) != (abs(reached - 0.63) < 1e-9):
-                failures.append(f"speeds: filter {pair['other']} against {pair['filter']}, given "
-                                f"{exposed:+d} stops, prints the tone speed is measured at as "
+            if np.isclose(exposed, slower) != (abs(reached - WHITE[paper] - 0.6) < 1e-9):
+                failures.append(f"{paper}, speeds: filter {pair['other']} against "
+                                f"{pair['filter']}, given "
+                                f"{exposed:+.3f} stops, prints the tone speed is measured at as "
                                 f"{reached:.3f}")
     return failures
 
@@ -283,13 +304,16 @@ def main():
                             f"  settings {settings}\n  README   {tempo} {printed}\n"
                             f"  got      {ours['tempo']} {ours['printed']}")
 
-    if sorted(answer["tones"]) != sorted(ISO_RANGE):
-        failures.append("the page does not offer exactly Ilford's seven filters")
-    for filter_name, tones in answer["tones"].items():
-        failures += tone_failures(filter_name, tones)
-    failures += zone_failures(answer["zones"])
-    failures += strip_failures(answer["strips"], answer["zones"]["printed"])
-    failures += speed_failures(answer["speeds"])
+    if sorted(answer["papers"]) != sorted(ISO_RANGE):
+        failures.append("the page does not offer exactly the papers the suite knows")
+    for paper, told in answer["papers"].items():
+        if sorted(told["tones"]) != sorted(ISO_RANGE[paper]):
+            failures.append(f"{paper}: not exactly Ilford's seven filters")
+        for filter_name, tones in told["tones"].items():
+            failures += tone_failures(paper, filter_name, tones)
+        failures += zone_failures(paper, told["zones"])
+        failures += strip_failures(paper, told["strips"], told["zones"]["printed"])
+        failures += speed_failures(paper, told["speeds"])
 
     if answer["added"] != ["5.0", "+1.3", "0.1", "+12.0"]:
         failures.append(f"timer: what is added is written as {answer['added']}")

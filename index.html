@@ -486,34 +486,65 @@
 <script>
   const TIE = 1e-12;
 
-  // Print density per third of a stop for Ilford Multigrade IV RC Deluxe at each filter. The
-  // curve shapes are read off the plots in Ilford's data sheet; the exposure scale is set so
-  // every ISO range matches the sheet's table. Each list starts with the third of a stop its
-  // first density belongs to, counted from the base, where the density is 18% middle grey.
-  const PAPER = {
-    '00': [-8, .03, .07, .15, .25, .35, .43, .52, .63, .745, .85, .96, 1.07, 1.18, 1.27, 1.37, 1.48,
-      1.58, 1.67, 1.75, 1.82, 1.89, 1.94, 1.97, 2, 2.02],
-    '0': [-8, .03, .07, .12, .22, .32, .43, .52, .63, .745, .86, .98, 1.09, 1.2, 1.32, 1.47, 1.6,
-      1.72, 1.83, 1.93, 1.99, 2.02],
-    '1': [-7, .03, .08, .17, .28, .39, .5, .6, .745, .9, 1.05, 1.18, 1.33, 1.54, 1.73, 1.86, 1.95,
-      2, 2.02],
-    '2': [-7, .03, .05, .11, .21, .31, .43, .57, .745, .93, 1.11, 1.32, 1.58, 1.8, 1.91, 2.01,
-      2.02],
-    '3': [-7, .03, .05, .07, .15, .25, .39, .53, .745, .99, 1.27, 1.64, 1.85, 1.96, 2.02],
-    '4': [-4, .03, .1, .25, .45, .745, 1.14, 1.68, 1.95, 2.03],
-    '5': [-2, .03, .25, .745, 1.38, 1.8, 1.97, 2.03],
+  // Print density per third of a stop, for each paper at each filter. The curve shapes are read
+  // off the plots in Ilford's data sheet; the exposure scale is set so every ISO range matches
+  // the sheet's table. Each list starts with the third of a stop its first density belongs to,
+  // counted from the base, where the density is 18% middle grey.
+  const PAPERS = {
+    'Multigrade RC Deluxe': {
+      '00': [-8, .05, .07, .1, .17, .28, .4, .52, .63, .745, .87, .98, 1.1, 1.22, 1.34, 1.47, 1.6,
+        1.72, 1.82, 1.91, 1.97, 2.02, 2.08],
+      '0': [-7, .05, .08, .13, .22, .33, .48, .62, .745, .88, 1.03, 1.18, 1.35, 1.53, 1.71, 1.86,
+        1.97, 2.03, 2.08],
+      '1': [-7, .05, .06, .12, .21, .32, .45, .6, .745, .91, 1.1, 1.33, 1.59, 1.81, 1.96, 2.03,
+        2.08],
+      '2': [-6, .05, .07, .14, .25, .39, .56, .745, .97, 1.26, 1.59, 1.86, 1.98, 2.03, 2.08],
+      '3': [-5, .05, .08, .15, .29, .49, .745, 1.12, 1.55, 1.86, 2, 2.04, 2.08],
+      '4': [-4, .05, .09, .19, .42, .745, 1.19, 1.59, 1.87, 2, 2.07],
+      '5': [-3, .05, .11, .33, .745, 1.27, 1.75, 1.95, 2.02, 2.07],
+    },
+    'Multigrade IV RC Deluxe': {
+      '00': [-8, .03, .07, .15, .25, .35, .43, .52, .63, .745, .85, .96, 1.07, 1.18, 1.27, 1.37,
+        1.48, 1.58, 1.67, 1.75, 1.82, 1.89, 1.94, 1.97, 2, 2.02],
+      '0': [-8, .03, .07, .12, .22, .32, .43, .52, .63, .745, .86, .98, 1.09, 1.2, 1.32, 1.47, 1.6,
+        1.72, 1.83, 1.93, 1.99, 2.02],
+      '1': [-7, .03, .08, .17, .28, .39, .5, .6, .745, .9, 1.05, 1.18, 1.33, 1.54, 1.73, 1.86,
+        1.95, 2, 2.02],
+      '2': [-7, .03, .05, .11, .21, .31, .43, .57, .745, .93, 1.11, 1.32, 1.58, 1.8, 1.91, 2.01,
+        2.02],
+      '3': [-7, .03, .05, .07, .15, .25, .39, .53, .745, .99, 1.27, 1.64, 1.85, 1.96, 2.02],
+      '4': [-4, .03, .1, .25, .45, .745, 1.14, 1.68, 1.95, 2.03],
+      '5': [-2, .03, .25, .745, 1.38, 1.8, 1.97, 2.03],
+    },
   };
   const FILTERS = ['00', '0', '1', '2', '3', '4', '5'];
 
-  // The ISO paper speed that data sheet gives it at each filter: half the speed, a stop more light
-  const SPEED = { '00': 200, '0': 200, '1': 200, '2': 200, '3': 200, '4': 100, '5': 100 };
+  // The ISO paper speed that sheet gives them at each filter: half the speed, a stop more light
+  const SPEEDS = {
+    'Multigrade RC Deluxe':
+      { '00': 240, '0': 240, '1': 240, '2': 240, '3': 240, '4': 220, '5': 220 },
+    'Multigrade IV RC Deluxe':
+      { '00': 200, '0': 200, '1': 200, '2': 200, '3': 200, '4': 100, '5': 100 },
+  };
 
   // The print's zones, and the density of each. Only Zone V is a fixed tone, 18% grey. The others
-  // are taken to be what a normally developed negative prints as at filter 2: Adams's targets of
-  // 0.1 density at Zone I and 1.3 at Zone VIII make a zone 1.2 / 7 of density, which is that
-  // divided by log 2 in stops of exposure on the paper.
+  // are taken to be what a normally developed negative prints as at filter 2 on Multigrade IV:
+  // Adams's targets of 0.1 density at Zone I and 1.3 at Zone VIII make a zone 1.2 / 7 of density,
+  // which is that divided by log 2 in stops of exposure on the paper.
   const NUMERALS = ['0', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-  const PRINTED = NUMERALS.map((_, zone) => density((5 - zone) * 1.2 / 7 / Math.log10(2), '2'));
+  const TONES = NUMERALS.map((_, zone) =>
+    density((5 - zone) * 1.2 / 7 / Math.log10(2), '2', 'Multigrade IV RC Deluxe'));
+
+  // On every paper the zones are those same tones, stretched just enough either side of Zone V
+  // for Zone 0 to be the paper's own black and Zone X its own white, as it prints at filter 2
+  const PRINTED = Object.fromEntries(Object.keys(PAPERS).map(paper => {
+    const [, ...curve] = PAPERS[paper]['2'];
+    const [black, five, white] = [TONES[0], TONES[5], TONES[TONES.length - 1]];
+    const [darker, lighter] = [curve[curve.length - 1] - black, curve[0] - white];
+    return [paper, TONES.map(tone => tone > five
+      ? tone + darker * (tone - five) / (black - five)
+      : tone + lighter * (five - tone) / (five - white))];
+  }));
 
   function clamp(value, low, high) {
     return Math.min(high, Math.max(low, value));
@@ -592,8 +623,8 @@
     return { passed };
   }
 
-  function density(stops, filter) {
-    const [first, ...curve] = PAPER[filter];
+  function density(stops, filter, paper) {
+    const [first, ...curve] = PAPERS[paper][filter];
     const place = clamp(stops * 3 - first, 0, curve.length - 1);
     const below = Math.floor(place);
     const above = Math.min(curve.length - 1, below + 1);
@@ -606,14 +637,14 @@
   }
 
   // The exposures, in stops from middle grey, between which the paper goes from white to black
-  function scale(filter) {
-    const [first, ...curve] = PAPER[filter];
+  function scale(filter, paper) {
+    const [first, ...curve] = PAPERS[paper][filter];
     return [first / 3, (first + curve.length - 1) / 3];
   }
 
   // The exposure, in stops from middle grey, that gives a print density at a filter
-  function exposure(wanted, filter) {
-    const [first, ...curve] = PAPER[filter];
+  function exposure(wanted, filter, paper) {
+    const [first, ...curve] = PAPERS[paper][filter];
     const printed = clamp(wanted, curve[0], curve[curve.length - 1]);
     const above = Math.max(1, curve.findIndex(step => step >= printed));
     const below = above - 1;
@@ -623,22 +654,24 @@
   // The light that middle grey takes at a filter, in stops on a scale the filters share. ISO
   // speed is measured where the print is 0.6 above paper white: that is the tone which filters
   // of one speed print alike under the same light.
-  function middle(filter) {
-    const [, white] = PAPER[filter];
-    return -Math.log2(SPEED[filter]) - exposure(white + .6, filter);
+  function middle(filter, paper) {
+    const [, white] = PAPERS[paper][filter];
+    return -Math.log2(SPEEDS[paper][filter]) - exposure(white + .6, filter, paper);
   }
 
   // The exposures at which one zone gives way to the next, from Zone 0 up: halfway in density
-  function borders(filter) {
-    return PRINTED.slice(1).map((zone, below) => exposure((zone + PRINTED[below]) / 2, filter));
+  function borders(filter, paper) {
+    const zones = PRINTED[paper];
+    return zones.slice(1).map((zone, below) => exposure((zone + zones[below]) / 2, filter, paper));
   }
 
   // The zone a print density is, as a number: 5 on Zone V, 5.5 halfway in density to Zone VI
-  function zoneOf(printed) {
-    const found = PRINTED.findIndex(zone => zone <= printed);
-    const above = found < 0 ? PRINTED.length - 1 : Math.max(1, found);
+  function zoneOf(printed, paper) {
+    const zones = PRINTED[paper];
+    const found = zones.findIndex(zone => zone <= printed);
+    const above = found < 0 ? zones.length - 1 : Math.max(1, found);
     const below = above - 1;
-    return below + clamp((PRINTED[below] - printed) / (PRINTED[below] - PRINTED[above]), 0, 1);
+    return below + clamp((zones[below] - printed) / (zones[below] - zones[above]), 0, 1);
   }
 
   // A place along the strips is one part of the picture, and it sits where the zone it prints as
@@ -646,23 +679,24 @@
   // stops more shows what each of its tones becomes. The row can be shown at `other`, another
   // filter than the reference row's, under the same light. These are the places, in % along
   // the strip, where that row's zones begin and end.
-  function edges(exposed, filter, other) {
-    const [light, dark] = scale(filter);
-    const lead = middle(filter) - middle(other);
+  function edges(exposed, filter, other, paper) {
+    const [light, dark] = scale(filter, paper);
+    const lead = middle(filter, paper) - middle(other, paper);
     const place = stops => stops > dark ? 0 : stops < light ? 100
-      : (zoneOf(density(stops, filter)) + .5) / NUMERALS.length * 100;
-    return [0, ...borders(other).map(stops => place(stops - exposed - lead)), 100];
+      : (zoneOf(density(stops, filter, paper), paper) + .5) / NUMERALS.length * 100;
+    return [0, ...borders(other, paper).map(stops => place(stops - exposed - lead)), 100];
   }
 
   // The print density that row has at one place, given as a share of the way along the strip
-  function probed(share, exposed, filter, other) {
-    const [, dark] = scale(filter);
-    const lead = middle(filter) - middle(other);
+  function probed(share, exposed, filter, other, paper) {
+    const [, dark] = scale(filter, paper);
+    const lead = middle(filter, paper) - middle(other, paper);
+    const zones = PRINTED[paper];
     const zone = clamp(share * NUMERALS.length - .5, 0, NUMERALS.length - 1);
     const below = Math.min(NUMERALS.length - 2, Math.floor(zone));
-    const printed = PRINTED[below] + (PRINTED[below + 1] - PRINTED[below]) * (zone - below);
-    const stops = zone > 0 ? exposure(printed, filter) : dark;
-    return density(stops + exposed + lead, other);
+    const printed = zones[below] + (zones[below + 1] - zones[below]) * (zone - below);
+    const stops = zone > 0 ? exposure(printed, filter, paper) : dark;
+    return density(stops + exposed + lead, other, paper);
   }
 
   function formatCount(count, every) {
@@ -742,10 +776,10 @@
 
   // A strip: a row's zones at one filter, a numeral on each, and an empty label over them all
   // for the slide to write in
-  function zoneStrip(exposed, filter, other) {
-    const ends = edges(exposed, filter, other);
+  function zoneStrip(exposed, filter, other, paper) {
+    const ends = edges(exposed, filter, other, paper);
     const widths = NUMERALS.map((_, zone) => `minmax(0, ${ends[zone + 1] - ends[zone]}fr)`);
-    const greys = PRINTED.map((printed, zone) =>
+    const greys = PRINTED[paper].map((printed, zone) =>
       `${grey(printed)} ${ends[zone]}% ${ends[zone + 1]}%`);
     const numerals = NUMERALS.map(numeral => element('small', numeral));
     const strip = element('div', ...numerals, element('b'));
@@ -758,8 +792,8 @@
 
   // The strips under a row's numbers: one at the filter printed with, which is the first, and
   // under it one at the filter it is compared with
-  function zonesRow(exposed, filters) {
-    const strips = filters.map(other => zoneStrip(exposed, filters[0], other));
+  function zonesRow(exposed, filters, paper) {
+    const strips = filters.map(other => zoneStrip(exposed, filters[0], other, paper));
     const tr = element('tr', element('td', ...strips));
     tr.className = 'zones';
     tr.setAttribute('aria-hidden', 'true');
@@ -767,7 +801,7 @@
   }
 
   // Every row is exposed so many stops more than `anchor`, the reference row, errors included
-  function tableRow(row, { stepsize, filters }, every, anchor) {
+  function tableRow(row, { stepsize, filters, paper }, every, anchor) {
     const { step, seconds, error } = row;
     const texts = 'add' in row
       ? [formatAdd(row.add, seconds), formatStops(step, stepsize), seconds.toFixed(1)]
@@ -775,7 +809,7 @@
         formatError(error * stepsize)];
     const tr = element('tr', ...texts.map(text => element('td', text)));
     const exposed = (step - anchor.step) / stepsize + error - anchor.error;
-    const zones = zonesRow(exposed, filters);
+    const zones = zonesRow(exposed, filters, paper);
     tr.classList.toggle('base', !step);
     tr.classList.toggle('reference', step === anchor.step);
     tr.dataset.step = step;
@@ -819,14 +853,15 @@
     const share = clamp((clientX - left - strips[0].clientLeft) / strips[0].clientWidth, 0, 1);
     const active = rowOf(touched.target);
     const held = active.nextSibling.querySelector('div');
+    const paper = 'Multigrade IV RC Deluxe';
     probing = true;
     document.querySelector('tbody').classList.add('probing');
     box(active);
     for (const strip of strips) {
       const exposed = strip.dataset.exposed - held.dataset.exposed;
-      const printed = probed(share, exposed, held.dataset.filter, strip.dataset.filter);
+      const printed = probed(share, exposed, held.dataset.filter, strip.dataset.filter, paper);
       strip.style.setProperty('--strip', `linear-gradient(${grey(printed)}, ${grey(printed)})`);
-      strip.lastChild.textContent = NUMERALS[Math.round(zoneOf(printed))];
+      strip.lastChild.textContent = NUMERALS[Math.round(zoneOf(printed, paper))];
       strip.lastChild.style.color = 10 ** -printed > .18 ? '#000' : '#FFF';
     }
   }
@@ -853,6 +888,7 @@
       cumulative: field('cumulative').checked,
       divisions: Number(field('divisions').value),
       filters,
+      paper: 'Multigrade IV RC Deluxe',
     };
   }
 
