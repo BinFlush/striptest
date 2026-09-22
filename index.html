@@ -199,7 +199,7 @@
     margin-top: 1.25rem;
   }
 
-  #skipped, .timer #notice, .sound #notice {
+  #skipped, .sound #notice {
     font-size: .875rem;
   }
 
@@ -335,8 +335,9 @@
     margin-top: 2rem;
   }
 
-  /* The darkroom view. Everything it draws is red on black, down to the focus ring and the
-     scrollbar: green and blue light are what photographic paper is most sensitive to. */
+  /* The darkroom view. Everything it draws is red on black, down to the focus ring: green and
+     blue light are what photographic paper is most sensitive to. The scrollbar is taken away
+     altogether rather than painted, there being no way to paint it in three engines. */
   html.darkroom {
     --glow: #A00000;
     --dim: #5A0000;
@@ -408,6 +409,10 @@
   }
 
   #plan {
+    /* What a run is measured to be behind by, which holds the bars back to match what is heard.
+       It must have a value even with nothing running: an undefined one would throw away the
+       whole `animation` shorthand that reads it. */
+    --late: 0s;
     display: grid;
     grid-template-columns: auto auto 1fr;
     gap: .625rem .75rem;
@@ -430,11 +435,7 @@
   /* Going by ear there is nothing to do at a patch but wait for it, so the wait itself is drawn:
      a bar as long as that wait is, against the longest wait in the strip, the count-in among
      them. All to one scale, so the plan is a picture of how long the strip takes before it is
-     begun. `--late` is what the page sets a run's buffer to, below. */
-  #plan {
-    --late: 0s;
-  }
-
+     begun. */
   #plan div {
     align-self: center;
     width: max(1rem, var(--share) * 100%);
@@ -497,7 +498,8 @@
     touch-action: none;
   }
 
-  /* Holding the button fills it, over the time the hold takes: the page sets that below */
+  /* Holding fills the button over the time the hold takes, which the page sets below. Only the
+     black screen has a hold, and there the button is the whole screen and paints itself #200 */
   #run.holding::before {
     content: "";
     position: absolute;
@@ -505,7 +507,6 @@
     inset: 0;
     transform-origin: left;
     animation: hold var(--held) linear;
-    background: var(--dim);
   }
 
   @keyframes hold {
@@ -666,8 +667,8 @@
       had by then.</li>
     <li>If you would rather expose every patch on its own, give each what its row says under
       Seconds.</li>
-    <li>No timer? Choose "a metronome" above and the table turns into beats to count, or "this
-      page's sound" and the page sounds every moment you have to act on.</li>
+    <li>No timer? Choose "Your own metronome" above and the table turns into beats to count, or
+      "Sound cues" and the page sounds every moment you have to act on.</li>
   </ul>
   <ul class="metronome">
     <li>Set any metronome, a physical one or an app, to the tempo shown. If it can accent beats,
@@ -682,29 +683,28 @@
       tempo appears, and the choice is remembered on this device.</li>
     <li>There is purposely no metronome built in: this way of timing exists for the accuracy a
       dedicated metronome gives, and finding the tempo is the whole trick. If you would rather
-      the page did the timing, that is what "this page's sound" above is for, and if what you
+      the page did the timing, that is what "Sound cues" above is for, and if what you
       want is a proper f-stop timer, something like
       <a href="https://gotimer.org/photography/enlarger-timer" target="_blank">GoTimer's enlarger
       timer</a> is a better fit.</li>
   </ul>
   <ul class="sound">
     <li>The page times the run itself. Open Darkroom view below the table, then Start. The
-      count-in before the lamp goes on is set under "Count-in and placing the base", and is
+      count-in before the lamp goes on is set under "Configuration", and is
       remembered: make it as long as you need to get a hand to the switch.</li>
-    <li>Under the count-in a drone sounds an octave below the one that follows it, so the two
-      can never be confused; on the lamp it steps up, and holds for as long as the exposure runs.
-      Over it a second tone climbs, and arrives an octave higher exactly on each mark, where a
-      short accent lands: one for each patch to cover, and the last is the lamp off. Silence
-      means it is done.</li>
+    <li>The count-in counts three beats in, one a second, the last of them a second before the
+      lamp. On the lamp a drone comes in and holds for as long as the exposure runs. Over it a
+      tone climbs, and arrives an octave higher exactly on each mark, where a short beat lands,
+      louder and an octave above the ones that counted you in: one for each patch to cover, and
+      the last is the lamp off. Silence means it is done.</li>
     <li>There are two ways to start it. Start keeps the red type on screen as the run goes.
       Start dark gives the screen up altogether: there is nothing to read once you are going by
       ear. It stays black after the run ends, too, rather than lighting the room while the paper
       is still out.</li>
     <li>On that black screen the whole of it is the one control. A tap starts a run, and stops
       one that is going; a hold gives the screen back and ends the run with it.</li>
-    <li>Started the lit way, a run can only be stopped by holding the button until the sound
-      ends. A quick touch does nothing, so that a hand brushing the phone cannot spoil a
-      strip.</li>
+    <li>Started the lit way, a press on the button stops the run at once: there is a screen to
+      see it on, and the hold belongs to the dark.</li>
     <li>On an iPhone this may pause music playing from another app. Bluetooth speakers and
       headphones delay every sound by the same amount, which does no harm when you go by ear.</li>
   </ul>
@@ -723,8 +723,8 @@
       row gets a second strip under its first: the same seconds through that filter. Follow a tone
       from the boxed row's upper strip straight down as before, and the row whose lower strip has it
       right gives the seconds for that filter. This goes by Ilford's speeds for the paper: filters 4
-      and 5 need a stop more light than 00 to 3 on Multigrade IV, and an eighth of a stop more on
-      Multigrade RC Deluxe. Your enlarger may differ.</li>
+      and 5 need a stop more light than 00 to 3 on Multigrade IV and Art 300, and an eighth of a
+      stop more on FB Classic and Multigrade RC Deluxe. Your enlarger may differ.</li>
     <li>Darkroom view turns the page into large red type on black, to read at the enlarger. It
       shows only what your hands need, the plan or the Start button, and nothing that can be set.
       Escape, or Close, brings the page back.</li>
@@ -824,11 +824,14 @@
       '5': [-2, .03, .25, .745, 1.38, 1.8, 1.97, 2.03],
     },
   };
+  // Written out rather than taken from a paper: `Object.keys` would put '00' last, because a
+  // key that looks like an integer sorts before one that does not
   const FILTERS = ['00', '0', '1', '2', '3', '4', '5'];
 
-  // The filters a paper is offered: the ones its own data sheet draws a curve for. Foma publishes
-  // none for 00, and a filter nobody has measured is not one the page can show. They are always a
-  // run of the list above, never a gap in the middle, so a slider over it needs only two ends.
+  // The filters a paper is offered: the ones its own data sheet draws a curve for. Not every
+  // maker draws all seven — some publish no curve for 00 — and a filter nobody has measured is
+  // not one the page can show. They are always a run of the list above, never a gap in the
+  // middle, so a slider over them needs only two ends.
   function offered(paper) {
     const has = FILTERS.map(filter => filter in PAPERS[paper]);
     return [has.indexOf(true), has.lastIndexOf(true)];
@@ -937,8 +940,8 @@
         return { step, beats, seconds: beats * 60 / tempo, error: error(beats) };
       });
       const loss = rows.reduce((sum, row) => sum + row.error ** 2, 0);
-      // A tempo that divides a losing one has only some of its beats, so it cannot win either
       if (loss <= winner.loss + TIE) winner = { loss, tempo, rows };
+      // A tempo that divides a losing one has only some of its beats, so it cannot win either
       else divisors(tempo).forEach(divisor => excluded.add(divisor));
     }
 
@@ -950,8 +953,8 @@
     return { tempo: winner.tempo, every, rows };
   }
 
-  // The strip timed with a timer instead: every patch gets its seconds to a tenth, never less
-  // than one, and `add` is what the strip is given once the patch before has been covered
+  // The strip timed with a timer instead: every patch gets its seconds rounded to a tenth and
+  // never below one tenth, and `add` is what the strip is given once the patch before is covered
   function timed({ base, stepsize, numsteps, baseplace }) {
     const steps = Array.from({ length: numsteps }, (_, i) => i - baseplace);
     const rows = steps.map(step => {
@@ -1545,8 +1548,8 @@
     render();
   });
 
-  // A screen that slept, or an app that was away, has let go of the wake lock
-  // A run that the page was taken away from is a spoiled strip, and has to say so
+  // A run the page was taken away from is a spoiled strip and has to say so; and a screen that
+  // slept, or an app that was away, has let go of the wake lock
   addEventListener('visibilitychange', () => {
     if (document.hidden) return hush('Interrupted');
     if (darkroom) stayAwake();
