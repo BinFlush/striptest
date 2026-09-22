@@ -487,6 +487,7 @@
       right gives the seconds for that filter. This goes by Ilford's speeds for the paper: filters 4
       and 5 need a stop more light than 00 to 3 on Multigrade IV, and an eighth of a stop more on
       Multigrade RC Deluxe. Your enlarger may differ.</li>
+    <li>Open the page once while online, and after that it works in airplane mode.</li>
     <li>To keep it to hand, add it to the home screen: on iPhone from Share → Add to Home
       Screen, on Android from the browser menu → Install app, or Add to home screen.</li>
     <li>Everything is calculated in your browser. Nothing is sent anywhere.</li>
@@ -1006,4 +1007,5 @@
   if (paper in PAPERS) field('paper').value = paper;
   field('metronome').checked = metronome || location.hash === '#metronome';
   render();
+  navigator.serviceWorker?.register('sw.js').catch(() => {});
 </script>
