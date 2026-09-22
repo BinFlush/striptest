@@ -101,7 +101,6 @@ def reference(settings):
     direct = int(striptest.find_winner(allowed, steps, settings["base"], loss)["tempo"])
 
     beats = [int(n) for n in winner["lst"][:, 0]]
-    seconds = np.array(beats) * 60 / winner["tempo"]
     divisions = settings["divisions"] or None
     every, _ = striptest.finalize_timing(winner, settings["cumulative"], divisions)
     return dict(
@@ -420,7 +419,14 @@ def main():
         if ours["direct"] not in (None, ours.get("tempo")):
             failures.append(f"passing over skipped tempi ends at {ours['tempo']}, but solving "
                             f"without them gives {ours['direct']}\n  settings {settings}")
-        ours = {key: ours.get(key) for key in theirs}
+        # The keys are compared before the values. Reading only the keys the page happens to
+        # send would let it stop reporting one — the tempo itself — and be agreed with.
+        wanted = {"tempo", "every", "beats", "counts", "passed"} if "tempo" in ours else {"passed"}
+        if set(theirs) != wanted:
+            failures.append(f"the page reports {sorted(theirs)} where the suite compares "
+                            f"{sorted(wanted)}\n  settings {settings}")
+        ours = {key: ours.get(key) for key in wanted}
+        theirs = {key: theirs.get(key) for key in wanted}
         if ours != theirs:
             failures.append(f"index.html disagrees with striptest.py\n  settings {settings}\n"
                             f"  python   {ours}\n  page     {theirs}")
