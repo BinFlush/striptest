@@ -34,6 +34,8 @@ MECHANICAL = ["40:60 [2]", "60:72 [3]", "72:120 [4]", "120:144 [6]", "144:208 [8
 ISO_RANGE = {
     "Multigrade RC Deluxe":
         {"00": 1.60, "0": 1.30, "1": 1.10, "2": 0.90, "3": 0.70, "4": 0.60, "5": 0.50},
+    "Multigrade Art 300":
+        {"00": 1.70, "0": 1.60, "1": 1.30, "2": 1.10, "3": 0.90, "4": 0.70, "5": 0.50},
     "Multigrade FB Classic":
         {"00": 1.70, "0": 1.40, "1": 1.10, "2": 0.95, "3": 0.80, "4": 0.60, "5": 0.50},
     "Multigrade IV RC Deluxe":
@@ -45,6 +47,8 @@ ISO_RANGE = {
 ISO_SPEED = {
     "Multigrade RC Deluxe":
         {"00": 240, "0": 240, "1": 240, "2": 240, "3": 240, "4": 220, "5": 220},
+    "Multigrade Art 300":
+        {"00": 100, "0": 100, "1": 100, "2": 100, "3": 100, "4": 50, "5": 50},
     "Multigrade FB Classic":
         {"00": 230, "0": 230, "1": 230, "2": 230, "3": 230, "4": 210, "5": 210},
     "Multigrade IV RC Deluxe":
@@ -52,9 +56,11 @@ ISO_SPEED = {
 }
 
 # Paper white, and the span maximum black lies in, as the sheet's plots draw them
-WHITE = {"Multigrade RC Deluxe": 0.05, "Multigrade FB Classic": 0.02, "Multigrade IV RC Deluxe": 0.03}
-BLACK = {"Multigrade RC Deluxe": (2.05, 2.10), "Multigrade FB Classic": (2.05, 2.10),
-         "Multigrade IV RC Deluxe": (2.00, 2.05)}
+WHITE = {"Multigrade RC Deluxe": 0.05, "Multigrade Art 300": 0.0,
+         "Multigrade FB Classic": 0.02, "Multigrade IV RC Deluxe": 0.03}
+# Art 300 is cotton rag and matte, and cannot make the black a glossy paper can
+BLACK = {"Multigrade RC Deluxe": (2.05, 2.10), "Multigrade Art 300": (1.35, 1.45),
+         "Multigrade FB Classic": (2.05, 2.10), "Multigrade IV RC Deluxe": (2.00, 2.05)}
 
 # The README's worked examples: settings, then the tempo and counts it prints
 README = [

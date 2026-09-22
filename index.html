@@ -776,6 +776,23 @@
       '4': [-4, .05, .09, .19, .42, .745, 1.19, 1.59, 1.87, 2, 2.07],
       '5': [-3, .05, .11, .33, .745, 1.27, 1.75, 1.95, 2.02, 2.07],
     },
+    // ILFORD MULTIGRADE ART 300 Technical Information, page 2. Cotton rag and matte: its
+    // maximum black is 1.4, which the sheet marks on the plot and which the curves read
+    // back to within .003 — and which is why its zones are shallower than a glossy paper's.
+    'Multigrade Art 300': {
+      '00': [-10, .0, .02, .04, .1, .18, .27, .36, .46, .55, .65, .745, .84, .92, .97, 1.01,
+        1.05, 1.08, 1.12, 1.18, 1.27, 1.36, 1.4],
+      '0': [-11, .0, .02, .03, .09, .15, .24, .33, .41, .5, .58, .66, .745, .83, .91, .97, 1.03,
+        1.09, 1.16, 1.25, 1.33, 1.4],
+      '1': [-11, .0, .01, .02, .05, .09, .15, .25, .35, .45, .54, .64, .745, .85, .95, 1.07,
+        1.2, 1.31, 1.4],
+      '2': [-10, .0, .01, .03, .06, .12, .19, .29, .4, .51, .62, .745, .88, 1.05, 1.22, 1.33,
+        1.4],
+      '3': [-9, .0, .01, .02, .04, .1, .18, .28, .41, .57, .745, .96, 1.16, 1.28, 1.36, 1.4],
+      '4': [-12, .0, .01, .01, .01, .01, .02, .03, .04, .07, .14, .29, .49, .745, 1.05, 1.28,
+        1.4],
+      '5': [-6, .0, .01, .02, .05, .13, .41, .745, 1.11, 1.33, 1.4],
+    },
     // MULTIGRADE FB CLASSIC Technical Information, Ilford, Oct 2013, page 2. Its plots are drawn
     // as lines rather than as a picture, so these came off the sheet's own coordinates; paper
     // white is taken as .02, which is what its second plot draws (the first draws the toe along
@@ -821,6 +838,8 @@
   const SPEEDS = {
     'Multigrade RC Deluxe':
       { '00': 240, '0': 240, '1': 240, '2': 240, '3': 240, '4': 220, '5': 220 },
+    'Multigrade Art 300':
+      { '00': 100, '0': 100, '1': 100, '2': 100, '3': 100, '4': 50, '5': 50 },
     'Multigrade FB Classic':
       { '00': 230, '0': 230, '1': 230, '2': 230, '3': 230, '4': 210, '5': 210 },
     'Multigrade IV RC Deluxe':
