@@ -633,10 +633,11 @@
     <li>The page times the run itself. Open Darkroom view below the table, then Start. The
       count-in before the lamp goes on is set under "Count-in and placing the base", and is
       remembered: make it as long as you need to get a hand to the switch.</li>
-    <li>The count-in climbs in a tone of its own, with nothing under it. On the lamp a steady
-      drone comes in and holds for as long as the exposure runs. Over it a second tone climbs,
-      and arrives an octave higher exactly on each mark, where a short accent lands: one for each
-      patch to cover, and the last is the lamp off. Silence means it is done.</li>
+    <li>Under the count-in a drone sounds an octave below the one that follows it, so the two
+      can never be confused; on the lamp it steps up, and holds for as long as the exposure runs.
+      Over it a second tone climbs, and arrives an octave higher exactly on each mark, where a
+      short accent lands: one for each patch to cover, and the last is the lamp off. Silence
+      means it is done.</li>
     <li>There are two ways to start it. Start keeps the red type on screen as the run goes.
       Start dark gives the screen up altogether: there is nothing to read once you are going by
       ear, and then the whole of the screen is the one control. It stays black after the run
@@ -771,8 +772,6 @@
   const RAMP = .012;
   const TICK = .12;
   const TAIL = .5;
-  const COUNT_TONE = 'triangle';
-  const CLIMB_TONE = 'sine';
   const OVERTONE = .3;
   const DRONE = .05;
   const GLIDE = .09;
@@ -1060,7 +1059,8 @@
       if (audio && audio.state !== 'running') hush('Interrupted');
     };
     const from = audio.currentTime + LEAD;
-    const last = from + marks[marks.length - 1];
+    const over = marks[marks.length - 1];
+    const last = from + over;
 
     // A voice that sounds from `opens` to `closes` and nowhere else
     function sound(tone, loud, opens, closes) {
@@ -1078,23 +1078,20 @@
       return voice;
     }
 
-    // The drone says the lamp is on, so it keeps out of the count-in altogether. Its own octave
-    // is in the tone, for the climb to land in.
-    const drone = sound(audio.createPeriodicWave(new Float32Array(3),
-      Float32Array.of(0, 1, OVERTONE)), DRONE, marks[0], marks[marks.length - 1]);
-    drone.frequency.value = FUNDAMENTAL;
+    // The drone says where the run is: an octave down under the count-in, and at the
+    // fundamental for as long as the lamp is on. Its own octave is in the tone, so the two share
+    // partials and the step up on the lamp is a change of pitch rather than of colour.
+    const wave = audio.createPeriodicWave(new Float32Array(3), Float32Array.of(0, 1, OVERTONE));
+    sound(wave, DRONE, 0, marks[0]).frequency.value = FUNDAMENTAL / 2;
+    sound(wave, DRONE, marks[0], over).frequency.value = FUNDAMENTAL;
 
-    // The climbing voice: an octave into every mark, dropping back to climb again. The count-in
-    // has a tone of its own, so that it can never be taken for a gap between patches.
-    for (const [tone, gaps] of [[COUNT_TONE, [0]], [CLIMB_TONE, range(1, marks.length - 1)]]) {
-      const opens = gaps[0] ? marks[gaps[0] - 1] : 0;
-      const glide = sound(tone, GLIDE, opens, marks[gaps[gaps.length - 1]]);
-      for (const i of gaps) {
-        const [[begins, low], ...rest] = climb(i ? marks[i - 1] : 0, marks[i]);
-        glide.frequency.setValueAtTime(low, from + begins);
-        for (const [at, hertz] of rest) glide.frequency.linearRampToValueAtTime(hertz, from + at);
-      }
-    }
+    // The climbing voice: an octave into every mark, dropping back to climb again
+    const glide = sound('sine', GLIDE, 0, over);
+    marks.forEach((mark, i) => {
+      const [[begins, low], ...rest] = climb(i ? marks[i - 1] : 0, mark);
+      glide.frequency.setValueAtTime(low, from + begins);
+      for (const [at, hertz] of rest) glide.frequency.linearRampToValueAtTime(hertz, from + at);
+    });
 
     // An accent on every mark. Each one ends a moment after its own mark, which is how the view
     // follows the run; the last of them ends it, and carries silence behind it first, because
