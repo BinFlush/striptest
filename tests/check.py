@@ -376,7 +376,14 @@ def main():
         failures.append("the page does not offer exactly the papers the suite knows")
     for paper, told in answer["papers"].items():
         if sorted(told["tones"]) != sorted(ISO_RANGE[paper]):
-            failures.append(f"{paper}: not exactly Ilford's seven filters")
+            failures.append(f"{paper}: not exactly the filters its own sheet publishes")
+        # A paper is offered a run of the filter list, never a gap in the middle of it: the
+        # slider on the page is one range, so a missing filter can only be at an end
+        canonical = ["00", "0", "1", "2", "3", "4", "5"]
+        offered = [f for f in canonical if f in told["tones"]]
+        if offered != canonical[canonical.index(offered[0]):canonical.index(offered[-1]) + 1]:
+            failures.append(f"{paper}: the filters it offers have a gap in the middle, "
+                            f"which the page's slider cannot show: {offered}")
         for filter_name, tones in told["tones"].items():
             failures += tone_failures(paper, filter_name, tones)
         failures += zone_failures(paper, told["zones"])

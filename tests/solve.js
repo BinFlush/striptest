@@ -40,11 +40,13 @@ const climbs = [[0, COUNT_IN], [4, 4.39], [10, 20], [0, 0.1], [3, 3.002]]
 const sound = { FUNDAMENTAL, BEND, CLIMBS, COUNT_IN };
 
 // Everything about the tones is worked out for every paper the page offers
-const filters = ['00', '0', '1', '2', '3', '4', '5'];
+const ALL = ['00', '0', '1', '2', '3', '4', '5'];
 const thirds = Array.from({ length: 61 }, (_, i) => i - 30);
 const shares = Array.from({ length: 201 }, (_, i) => i / 200);
-const pairs = filters.flatMap(filter => filters.map(other => [filter, other]));
 const papers = Object.fromEntries(Object.keys(PAPERS).map(paper => {
+  // Only the filters this paper's own sheet draws: not every maker publishes all seven
+  const filters = ALL.filter(filter => filter in PAPERS[paper]);
+  const pairs = filters.flatMap(filter => filters.map(other => [filter, other]));
   // The grey on the screen for every third of a stop, ten stops either side of the base
   const tones = Object.fromEntries(filters.map(filter =>
     [filter, thirds.map(third => [third, shade(density(third / 3, filter, paper))])]));
@@ -87,6 +89,6 @@ const papers = Object.fromEntries(Object.keys(PAPERS).map(paper => {
         .map(exposed => [exposed, probed(measured, exposed, filter, other, paper)]),
     };
   });
-  return [paper, { tones, zones, strips, speeds }];
+  return [paper, { filters, tones, zones, strips, speeds }];
 }));
 console.log(JSON.stringify({ results, timers, added, runs, waits, climbs, sound, papers }));

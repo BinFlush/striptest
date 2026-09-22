@@ -809,6 +809,14 @@
   };
   const FILTERS = ['00', '0', '1', '2', '3', '4', '5'];
 
+  // The filters a paper is offered: the ones its own data sheet draws a curve for. Foma publishes
+  // none for 00, and a filter nobody has measured is not one the page can show. They are always a
+  // run of the list above, never a gap in the middle, so a slider over it needs only two ends.
+  function offered(paper) {
+    const has = FILTERS.map(filter => filter in PAPERS[paper]);
+    return [has.indexOf(true), has.lastIndexOf(true)];
+  }
+
   // The ISO paper speed that sheet gives them at each filter: half the speed, a stop more light
   const SPEEDS = {
     'Multigrade RC Deluxe':
@@ -1432,6 +1440,13 @@
   function render() {
     const method = form.timing.value;
     const timer = method === 'timer';
+    // Before anything is read from them: the sliders reach only as far as this paper was measured
+    const [least, most] = offered(field('paper').value);
+    for (const slider of ['filter', 'other']) {
+      field(slider).min = least;
+      field(slider).max = most;
+      field(slider).value = clamp(number(slider), least, most);
+    }
     const chosen = settings();
     const result = chosen?.tempi.length ? solveSkipping(chosen, skipped) : { passed: [] };
     const grade = FILTERS[number('filter')];
