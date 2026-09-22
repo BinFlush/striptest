@@ -94,6 +94,12 @@
     border-color: var(--accent);
   }
 
+  /* Said out loud because Chrome otherwise keeps a light-scheme grey on a dark field */
+  ::placeholder {
+    color: var(--muted);
+    opacity: 1;
+  }
+
   input:focus-visible, select:focus-visible, summary:focus-visible, button:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
@@ -383,6 +389,10 @@
     inset: 0;
     padding: 0;
     border: 0;
+    /* The button is the whole screen here, so a focus ring would be drawn round the edge of it
+       — off the edge of the viewport, leaving only its lit corners. Nothing may be lit: the
+       hold's own fill is the one thing this screen is allowed to draw. */
+    outline: none;
     color: transparent;
   }
 
