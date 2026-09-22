@@ -418,15 +418,14 @@
     touch-action: none;
   }
 
-  /* Holding the button fills it, and the fill reaching the far side is what stops the run: how
-     long this takes is how long the hold has to be, and it is the only place that is written */
+  /* Holding the button fills it, over the time the hold takes: the page sets that below */
   #run.holding::before {
     content: "";
     position: absolute;
     z-index: -1;
     inset: 0;
     transform-origin: left;
-    animation: hold .7s linear;
+    animation: hold var(--held) linear;
     background: var(--dim);
   }
 
@@ -949,10 +948,12 @@
   const number = id => field(id).valueAsNumber;
   const SHOWN = 5;
   const { skipped, timing, paper } = recall();
+  const HELD = 700;
   let darkroom = document.documentElement.classList.contains('darkroom');
   let awake = null;
   let audio = null;
   let planned = [];
+  let holding = 0;
   let reference = 0;
   let touched = null;
   let probing = false;
@@ -1088,9 +1089,23 @@
     tell(mark ? `Patch ${mark}` : 'Lamp on');
   }
 
-  // A run starts on a press and stops only on a press held long enough to fill the button, so
-  // that a hand brushing the phone in the dark cannot spoil a strip. Nothing here waits for the
-  // tap to be reported afterwards: a phone need not report one at all after a long press.
+  // A run starts on a press. It stops only on a press held long enough to fill the button, so
+  // that a hand brushing the phone in the dark cannot spoil a strip. The press itself starts the
+  // clock, and nothing else is waited for: a phone that takes a long press for a gesture of its
+  // own may report no tap, no release, or a cancelled pointer, and the hold survives all three.
+  function hold() {
+    field('run').classList.add('holding');
+    holding = setTimeout(() => {
+      release();
+      hush('Stopped');
+    }, HELD);
+  }
+
+  function release() {
+    clearTimeout(holding);
+    field('run').classList.remove('holding');
+  }
+
   function run() {
     if (audio) return hush('Stopped');
     play(planned);
@@ -1291,10 +1306,7 @@
     fit();
   }
 
-  field('run').addEventListener('animationend', () => {
-    field('run').classList.remove('holding');
-    hush('Stopped');
-  });
+  field('run').style.setProperty('--held', `${HELD}ms`);
 
   // Nothing in the view may open one of the browser's own menus: they are not red
   field('darkroom').addEventListener('contextmenu', event => event.preventDefault());
@@ -1324,7 +1336,7 @@
   // over the rows does not make them flicker; a scroll ends in `pointercancel` and sets nothing.
   addEventListener('pointerdown', event => {
     if (event.target instanceof Element && event.target.id === 'run') {
-      if (audio) field('run').classList.add('holding');
+      if (audio) hold();
       else run();
     }
     if (!(event.target instanceof Element) || !event.target.closest('tbody')) return;
@@ -1346,9 +1358,11 @@
     });
   }
 
+  // Only a finger lifting ends a hold early
+  addEventListener('pointerup', release);
+
   for (const over of ['pointerup', 'pointercancel']) {
     addEventListener(over, ({ type }) => {
-      field('run').classList.remove('holding');
       if (!touched) return;
       if (type === 'pointerup') reference = Number(rowOf(touched.target).dataset.step);
       touched = null;
