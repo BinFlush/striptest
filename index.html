@@ -1108,7 +1108,9 @@
   function recall() {
     try {
       const { skipped, timing, paper, countin } = JSON.parse(localStorage.getItem('striptest'));
-      return { skipped: new Set(skipped), timing, paper, countin };
+      // Only numbers can ever match a tempo, and anything else would be counted by the button
+      // that offers to forget them while never being one of them
+      return { skipped: new Set([...skipped].filter(Number.isFinite)), timing, paper, countin };
     } catch {
       return { skipped: new Set() };
     }
@@ -1132,7 +1134,11 @@
   // gives neither still shows the view.
   async function stayAwake() {
     try {
-      awake = await navigator.wakeLock.request('screen');
+      const held = await navigator.wakeLock.request('screen');
+      // The view may have been closed while this was being asked for, and then nobody is left
+      // to let go of it: the screen would stay awake with nothing on it to say why
+      if (darkroom) awake = held;
+      else held.release().catch(() => {});
     } catch {}
   }
 
@@ -1265,10 +1271,11 @@
     const context = audio;
     audio = null;
     // A run that has been going knows what a run cannot know as it starts: how far behind the
-    // speaker really is, this one included. The next run draws and lights by it, and by the
-    // buffer alone again if the answer is nonsense — anything past the lead the sound is given
-    // is not a delay we can hold a view back by.
-    behind = clamp(context.outputLatency || 0, 0, LEAD) || behind;
+    // speaker really is, this one included. The next run draws and lights by it — unless the
+    // answer is nonsense, and anything past the lead the sound is given is nonsense, in which
+    // case the run after this one goes on the buffer alone, as the first one did.
+    const measured = context.outputLatency;
+    behind = measured > 0 && measured <= LEAD ? measured : behind;
     context.close();
     document.documentElement.classList.remove('running');
     field('run').textContent = 'Start';
