@@ -8,10 +8,12 @@ const vm = require('vm');
 const page = fs.readFileSync(`${__dirname}/../index.html`, 'utf8');
 const algorithm = page.match(/<script id="algorithm">([\s\S]*?)<\/script>/)[1];
 const context = vm.createContext({});
-const used = `{ solveSkipping, timed, worst, formatAdd,
+const used = `{ solveSkipping, timed, worst, formatAdd, schedule, climb,
+  FUNDAMENTAL, BEND, CLIMBS, COUNT_IN,
   density, shade, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED }`;
 vm.runInContext(`${algorithm}\nthis.page = ${used};`, context);
-const { solveSkipping, timed, worst, formatAdd } = context.page;
+const { solveSkipping, timed, worst, formatAdd, schedule, climb } = context.page;
+const { FUNDAMENTAL, BEND, CLIMBS, COUNT_IN } = context.page;
 const { density, shade, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED } = context.page;
 
 const asked = JSON.parse(fs.readFileSync(0, 'utf8'));
@@ -26,6 +28,13 @@ const results = asked.map(({ skipped, ...settings }) => {
 const timers = asked.map(settings => timed(settings));
 const added = [[5, 5], [6.3 - 5, 6.3], [0.1, 0.1], [12, 22]]
   .map(([add, seconds]) => formatAdd(add, seconds));
+
+// The run the page would sound for those same strips: when every mark falls, and the glide
+// through gaps of very different lengths
+const runs = asked.map(settings => schedule(timed(settings)));
+const climbs = [[0, COUNT_IN], [4, 4.39], [10, 20], [0, 0.1], [3, 3.002]]
+  .map(([from, mark]) => ({ from, mark, points: climb(from, mark) }));
+const sound = { FUNDAMENTAL, BEND, CLIMBS, COUNT_IN };
 
 // Everything about the tones is worked out for every paper the page offers
 const filters = ['00', '0', '1', '2', '3', '4', '5'];
@@ -77,4 +86,4 @@ const papers = Object.fromEntries(Object.keys(PAPERS).map(paper => {
   });
   return [paper, { tones, zones, strips, speeds }];
 }));
-console.log(JSON.stringify({ results, timers, added, papers }));
+console.log(JSON.stringify({ results, timers, added, runs, climbs, sound, papers }));

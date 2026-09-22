@@ -1,7 +1,7 @@
 {
   "name": "Striptest",
   "short_name": "Striptest",
-  "description": "Plans darkroom f-stop test strips, for a timer or a metronome.",
+  "description": "Darkroom f-stop test strips, for a timer, a metronome or sound.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#000000">
-<meta name="description" content="Plans darkroom f-stop test strips, for a timer or a metronome.">
+<meta name="description" content="Darkroom f-stop test strips, for a timer, a metronome or sound.">
 <title>Striptest: f-stop test strip planner</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg">
@@ -132,7 +132,9 @@
     font-size: .8125rem;
   }
 
-  .timer .metronome, .metronome .timer {
+  body:not(.timer) .timer,
+  body:not(.metronome) .metronome,
+  body:not(.sound) .sound {
     display: none;
   }
 
@@ -188,7 +190,7 @@
     margin-top: 1.25rem;
   }
 
-  #skipped, .timer #notice {
+  #skipped, .timer #notice, .sound #notice {
     font-size: .875rem;
   }
 
@@ -348,6 +350,7 @@
     background: #000;
     color: inherit;
     -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
   }
@@ -403,6 +406,12 @@
 
   #darkroom button:focus-visible {
     outline-color: var(--glow);
+  }
+
+  /* Named twice over, to outrank the rule above: Start is what a hand finds in the dark */
+  #darkroom #run {
+    padding: 2rem 1rem;
+    font-size: 2rem;
   }
 
   ul {
@@ -463,12 +472,16 @@
   <fieldset>
     <legend>Timed with</legend>
     <label class="wide">
-      <input id="timer" type="radio" name="timing" checked>
+      <input id="timer" type="radio" name="timing" value="timer" checked>
       a timer
     </label>
     <label class="wide">
-      <input id="metronome" type="radio" name="timing">
+      <input id="metronome" type="radio" name="timing" value="metronome">
       a metronome
+    </label>
+    <label class="wide">
+      <input id="sound" type="radio" name="timing" value="sound">
+      this page's sound
     </label>
   </fieldset>
 
@@ -534,6 +547,7 @@
   <thead>
     <tr class="timer"><th>Add</th><th>Stops</th><th>Seconds</th></tr>
     <tr class="metronome"><th>Count</th><th>Stops</th><th>Seconds</th><th>Step<br>error</th></tr>
+    <tr class="sound"><th>Seconds</th><th>Stops</th></tr>
   </thead>
   <tbody></tbody>
 </table>
@@ -548,8 +562,8 @@
       had by then.</li>
     <li>If you would rather expose every patch on its own, give each what its row says under
       Seconds.</li>
-    <li>No timer? Choose "a metronome" above, and the table turns into beats to count: the page
-      finds the tempo whose beats land closest to these times.</li>
+    <li>No timer? Choose "a metronome" above and the table turns into beats to count, or "this
+      page's sound" and the page sounds every moment you have to act on.</li>
   </ul>
   <ul class="metronome">
     <li>Set any metronome, a physical one or an app, to the tempo shown. If it can accent beats,
@@ -562,11 +576,23 @@
       easier to count when you want to stop exposing between each patch.</li>
     <li>If your metronome lacks the tempo shown, press "My metronome can't do …". The next best
       tempo appears, and the choice is remembered on this device.</li>
-    <li>There is purposely no built-in metronome. If you want that, it's better to simply find an
-      f-stop timer, something like
+    <li>There is purposely no metronome built in: this way of timing exists for the accuracy a
+      dedicated metronome gives, and finding the tempo is the whole trick. If you would rather
+      the page did the timing, that is what "this page's sound" above is for, and if what you
+      want is a proper f-stop timer, something like
       <a href="https://gotimer.org/photography/enlarger-timer" target="_blank">GoTimer's enlarger
-      timer</a>. This website is specifically for using a dedicated metronome, and the accuracy it
-      provides.</li>
+      timer</a> is a better fit.</li>
+  </ul>
+  <ul class="sound">
+    <li>The page times the run itself. Open Darkroom view below the table, then Start. A count-in
+      of about four seconds comes first, so you can get a hand to the switch.</li>
+    <li>A steady tone means the run is on. Under it a second tone climbs, and arrives an octave
+      higher exactly on each mark, where a short accent lands: the first mark is the lamp on, then
+      one for each patch to cover, and the last is the lamp off. Silence means it is done.</li>
+    <li>To stop early, press and hold Start. A single touch does nothing, so that a hand brushing
+      the phone in the dark cannot spoil a strip.</li>
+    <li>On an iPhone this may pause music playing from another app. Bluetooth speakers and
+      headphones delay every sound by the same amount, which does no harm when you go by ear.</li>
   </ul>
   <ul>
     <li>To see how far apart the patches will be, look at the strip under each row. It shows roughly
@@ -586,7 +612,8 @@
       and 5 need a stop more light than 00 to 3 on Multigrade IV, and an eighth of a stop more on
       Multigrade RC Deluxe. Your enlarger may differ.</li>
     <li>Darkroom view turns the page into large red type on black, to read at the enlarger. It
-      shows only the plan: no strips, nothing to set. Escape, or Close, brings the page back.</li>
+      shows only what your hands need, the plan or the Start button, and nothing that can be set.
+      Escape, or Close, brings the page back.</li>
     <li>Red only is safer than white, not safe. The screen is still a light source, and
       Multigrade paper is most sensitive to the green and blue in it. Turn the phone's brightness
       right down and keep it away from the paper.</li>
@@ -609,6 +636,7 @@
 <div id="darkroom">
   <p id="tell"></p>
   <div id="plan"></div>
+  <button id="run" class="sound" type="button">Start</button>
   <button id="leave" type="button">Close</button>
 </div>
 
@@ -674,6 +702,38 @@
       ? tone + darker * (tone - five) / (black - five)
       : tone + lighter * (five - tone) / (five - white))];
   }));
+
+  // The sound that guides a run. A drone says the run is on, a second voice climbs an octave
+  // into every mark, and an accent lands on the mark itself. BEND below 1 makes the climb speed
+  // up as the mark nears, so the arrival is as sharp in a ten second gap as in a one second one.
+  const FUNDAMENTAL = 440;
+  const BEND = .5;
+  const CLIMBS = 96;
+  const COUNT_IN = 4;
+  const LEAD = .15;
+  const RAMP = .012;
+  const TICK = .12;
+  const OVERTONE = .3;
+  const DRONE = .05;
+  const GLIDE = .09;
+  const ACCENT = .22;
+
+  // The moments of a run, in seconds from the moment it starts: the lamp goes on when the
+  // count-in ends, a patch is covered at each row's seconds after that, and the last of them is
+  // the lamp going off again.
+  function schedule(rows) {
+    return [0, ...rows.map(row => row.seconds)].map(seconds => seconds + COUNT_IN);
+  }
+
+  // The glide through one gap, as the frequencies it passes and when it passes them: evenly
+  // spread up the octave, so they crowd towards the mark, where the climb is steepest and has
+  // to land exactly on the octave.
+  function climb(from, mark) {
+    return range(0, CLIMBS).map(step => {
+      const up = step / CLIMBS;
+      return [mark - (mark - from) * (1 - up) ** (1 / BEND), FUNDAMENTAL * 2 ** up];
+    });
+  }
 
   function clamp(value, low, high) {
     return Math.min(high, Math.max(low, value));
@@ -865,17 +925,21 @@
   const field = id => document.getElementById(id);
   const number = id => field(id).valueAsNumber;
   const SHOWN = 5;
-  const { skipped, metronome, paper } = recall();
+  const { skipped, timing, paper } = recall();
+  const HELD = 600;
   let darkroom = document.documentElement.classList.contains('darkroom');
   let awake = null;
+  let audio = null;
+  let planned = [];
+  let pressed = 0;
   let reference = 0;
   let touched = null;
   let probing = false;
 
   function recall() {
     try {
-      const { skipped, metronome, paper } = JSON.parse(localStorage.getItem('striptest'));
-      return { skipped: new Set(skipped), metronome, paper };
+      const { skipped, timing, paper } = JSON.parse(localStorage.getItem('striptest'));
+      return { skipped: new Set(skipped), timing, paper };
     } catch {
       return { skipped: new Set() };
     }
@@ -885,7 +949,7 @@
     try {
       const kept = {
         skipped: [...skipped],
-        metronome: field('metronome').checked,
+        timing: form.timing.value,
         paper: field('paper').value,
         darkroom,
       };
@@ -910,11 +974,103 @@
   }
 
   function leaveDarkroom() {
+    hush('');
     darkroom = false;
     document.documentElement.classList.remove('darkroom');
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     awake?.release().catch(() => {});
     awake = null;
+  }
+
+  function tell(what) {
+    field('tell').textContent = what;
+  }
+
+  // Everything a run sounds is scheduled on the audio clock the moment it starts, so nothing
+  // after that depends on a timer firing or on the page staying awake. Silence is the end of it.
+  function play(rows) {
+    if (navigator.audioSession) navigator.audioSession.type = 'playback';
+    audio = new AudioContext();
+    audio.resume();
+    audio.onstatechange = () => {
+      if (audio && audio.state !== 'running') hush('Interrupted');
+    };
+    const marks = schedule(rows);
+    const from = audio.currentTime + LEAD;
+    const last = from + marks[marks.length - 1];
+
+    // The drone says the run is on. Its own octave is in the tone, for the glide to land in.
+    const drone = audio.createOscillator();
+    const droning = audio.createGain();
+    drone.setPeriodicWave(audio.createPeriodicWave(new Float32Array(3),
+      Float32Array.of(0, 1, OVERTONE)));
+    drone.frequency.value = FUNDAMENTAL;
+    drone.connect(droning).connect(audio.destination);
+
+    // The glide climbs an octave into every mark and drops back to climb again
+    const glide = audio.createOscillator();
+    const gliding = audio.createGain();
+    glide.connect(gliding).connect(audio.destination);
+    marks.forEach((mark, i) => {
+      const [[begins, low], ...rest] = climb(i ? marks[i - 1] : 0, mark);
+      glide.frequency.setValueAtTime(low, from + begins);
+      for (const [at, hertz] of rest) glide.frequency.linearRampToValueAtTime(hertz, from + at);
+    });
+
+    for (const [voice, level, loud] of [[drone, droning, DRONE], [glide, gliding, GLIDE]]) {
+      level.gain.setValueAtTime(0, from);
+      level.gain.linearRampToValueAtTime(loud, from + RAMP);
+      level.gain.setValueAtTime(loud, last);
+      level.gain.linearRampToValueAtTime(0, last + RAMP);
+      voice.start(from);
+      voice.stop(last + RAMP);
+    }
+
+    // An accent on every mark. Each one ends a moment after its own mark, which is how the
+    // view follows the run, and the last of them ends it.
+    marks.forEach((mark, i) => {
+      const accent = audio.createOscillator();
+      const sounding = audio.createGain();
+      accent.type = 'triangle';
+      accent.frequency.value = 2 * FUNDAMENTAL;
+      accent.connect(sounding).connect(audio.destination);
+      sounding.gain.setValueAtTime(0, from + mark);
+      sounding.gain.linearRampToValueAtTime(ACCENT, from + mark + RAMP);
+      sounding.gain.linearRampToValueAtTime(0, from + mark + TICK);
+      accent.start(from + mark);
+      accent.stop(from + mark + TICK);
+      accent.onended = () => reached(i, marks.length);
+    });
+
+    field('run').textContent = 'Hold to stop';
+    field('leave').hidden = true;
+    tell('Count-in');
+  }
+
+  function hush(why) {
+    if (!audio) return;
+    // Let go of it before closing it: closing is what tells the page it was interrupted
+    const context = audio;
+    audio = null;
+    context.close();
+    field('run').textContent = 'Start';
+    field('leave').hidden = false;
+    tell(why);
+  }
+
+  function reached(mark, marks) {
+    if (!audio) return;
+    if (mark === marks - 1) return hush('Lamp off');
+    tell(mark ? `Patch ${mark}` : 'Lamp on');
+  }
+
+  // A run starts on a tap and stops only on a press and hold, so that a hand brushing the phone
+  // in the dark cannot spoil a strip. A keyboard, which has no press to measure, stops it at once.
+  function run(now) {
+    const held = now - pressed;
+    pressed = 0;
+    if (!audio) return play(planned);
+    if (held >= HELD) hush('Stopped');
   }
 
   function element(name, ...content) {
@@ -961,12 +1117,13 @@
   }
 
   // Every row is exposed so many stops more than `anchor`, the reference row, errors included
-  function tableRow(row, { stepsize, filters, paper }, every, anchor) {
+  function tableRow(row, { stepsize, filters, paper, timing }, every, anchor) {
     const { step, seconds, error } = row;
-    const texts = 'add' in row
-      ? [formatAdd(row.add, seconds), formatStops(step, stepsize), seconds.toFixed(1)]
-      : [formatCount(row.count, every), formatStops(step, stepsize), seconds.toFixed(2),
-        formatError(error * stepsize)];
+    const texts = timing === 'metronome'
+      ? [formatCount(row.count, every), formatStops(step, stepsize), seconds.toFixed(2),
+        formatError(error * stepsize)]
+      : timing === 'sound' ? [seconds.toFixed(1), formatStops(step, stepsize)]
+      : [formatAdd(row.add, seconds), formatStops(step, stepsize), seconds.toFixed(1)];
     const tr = element('tr', ...texts.map(text => element('td', text)));
     const exposed = (step - anchor.step) / stepsize + error - anchor.error;
     const zones = zonesRow(exposed, filters, paper);
@@ -1049,6 +1206,7 @@
       divisions: Number(field('divisions').value),
       filters,
       paper: field('paper').value,
+      timing: form.timing.value,
     };
   }
 
@@ -1060,7 +1218,8 @@
   }
 
   function render() {
-    const timer = field('timer').checked;
+    const method = form.timing.value;
+    const timer = method === 'timer';
     const chosen = settings();
     const result = chosen?.tempi.length ? solveSkipping(chosen, skipped) : { passed: [] };
     const grade = FILTERS[number('filter')];
@@ -1068,36 +1227,40 @@
     const skipping = result.passed.slice(0, SHOWN).map(chip);
     if (skipping.length) skipping.unshift('Skipping ');
     if (result.passed.length > SHOWN) skipping.push(` and ${result.passed.length - SHOWN} more`);
-    const found = (timer ? chosen && timed(chosen) : result.rows) ?? [];
+    const found = (method === 'metronome' ? result.rows : chosen && timed(chosen)) ?? [];
     // The reference is the row nearest to the step that was chosen: the strip may have lost it
     const anchor = found.reduce((near, row) =>
       Math.abs(row.step - reference) < Math.abs(near.step - reference) ? row : near, found[0]);
     const rows = found.flatMap(row => tableRow(row, chosen, result.every, anchor));
-    const notice = !result.tempo ? ''
+    planned = found;
+    const notice = method === 'sound'
+      ? found.length && `The darkroom view runs it, after a ${COUNT_IN} second count-in.`
+      : !result.tempo ? ''
       : timer ? offer(result)
       : `and count every ${nthBeat(result.every)}, from zero.`;
     // The same plan for the darkroom view: a patch number, what to do, and the total behind it
-    const lines = found.flatMap((row, i) => [
+    const lines = method === 'sound' ? [] : found.flatMap((row, i) => [
       element('span', String(i + 1)),
       element('span', timer ? formatAdd(row.add, row.seconds)
         : formatCount(row.count, result.every)),
       element('span', timer ? row.seconds.toFixed(1) : ''),
     ]);
-    const fold = timer ? 'Placing the base' : 'Metronome and counting';
-    document.body.className = timer ? 'timer' : 'metronome';
+    const fold = method === 'metronome' ? 'Metronome and counting' : 'Placing the base';
+    document.body.className = method;
     form.querySelector('summary').textContent = fold;
     field('grade').textContent = grade;
     field('filter').setAttribute('aria-valuetext', grade);
     field('othergrade').textContent = other;
     field('other').setAttribute('aria-valuetext', other);
     field('tempo').textContent = result.tempo ?? '?';
-    field('notice').textContent = notice;
+    field('notice').textContent = notice || '';
     field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
     field('skip').value = result.tempo ?? '';
     field('skip').hidden = !result.tempo;
     field('skipped').replaceChildren(...skipping);
-    field('tell').textContent = timer || !result.tempo ? ''
-      : `${result.tempo} bpm, every ${nthBeat(result.every)}`;
+    tell(method === 'sound' ? found.length && 'Ready' || ''
+      : timer || !result.tempo ? ''
+      : `${result.tempo} bpm, every ${nthBeat(result.every)}`);
     field('plan').replaceChildren(...lines);
     field('forget').textContent = `Forget all skipped tempos (${skipped.size})`;
     field('forget').hidden = !skipped.size;
@@ -1107,12 +1270,17 @@
 
   addEventListener('input', render);
   addEventListener('keydown', event => {
-    if (event.key === 'Escape' && darkroom) field('leave').click();
+    if (event.key !== 'Escape' || !darkroom) return;
+    leaveDarkroom();
+    remember();
+    render();
   });
 
   // A screen that slept, or an app that was away, has let go of the wake lock
+  // A run that the page was taken away from is a spoiled strip, and has to say so
   addEventListener('visibilitychange', () => {
-    if (darkroom && !document.hidden) stayAwake();
+    if (document.hidden) return hush('Interrupted');
+    if (darkroom) stayAwake();
   });
 
   field('compare').addEventListener('toggle', render);
@@ -1124,6 +1292,7 @@
   // begins once the pointer moves more sideways than up or down, so that scrolling the page
   // over the rows does not make them flicker; a scroll ends in `pointercancel` and sets nothing.
   addEventListener('pointerdown', event => {
+    if (event.target instanceof Element && event.target.id === 'run') pressed = event.timeStamp;
     if (!(event.target instanceof Element) || !event.target.closest('tbody')) return;
     if (event.isPrimary && !event.button) touched = event;
   });
@@ -1154,8 +1323,9 @@
     });
   }
 
-  addEventListener('click', ({ target }) => {
+  addEventListener('click', ({ target, timeStamp }) => {
     if (!(target instanceof HTMLButtonElement)) return;
+    if (target.matches('#run')) return run(timeStamp);
     if (target.matches('#skip')) skipped.add(Number(target.value));
     if (target.matches('#skipped button')) skipped.delete(Number(target.value));
     if (target.matches('#forget')) skipped.clear();
@@ -1167,7 +1337,9 @@
 
   field('paper').append(...Object.keys(PAPERS).map(name => element('option', name)));
   if (paper in PAPERS) field('paper').value = paper;
-  field('metronome').checked = metronome || location.hash === '#metronome';
+  // A link can name the way of timing, and otherwise it is the one last chosen here
+  const wanted = location.hash.slice(1) || timing;
+  if (['timer', 'metronome', 'sound'].includes(wanted)) form.timing.value = wanted;
   render();
   navigator.serviceWorker?.register('sw.js').catch(() => {});
 </script>

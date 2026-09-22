@@ -275,6 +275,60 @@ def timer_failures(settings, rows):
     return [f"timer: {name}\n  settings {settings}" for name, holds in checks if not holds]
 
 
+def sound_failures(settings, rows, marks, sound):
+    """A run's marks, in seconds from the moment it starts.
+
+    The count-in comes first, then the lamp goes on, then a mark at each patch's seconds, the
+    last of which is the lamp going off again.
+    """
+    count_in = sound["COUNT_IN"]
+    want = [count_in] + [count_in + row["seconds"] for row in rows]
+    checks = [
+        ("one mark for the lamp, then one for every patch", len(marks) == len(rows) + 1),
+        ("the lamp goes on when the count-in ends", abs(marks[0] - count_in) < 1e-9),
+        ("every mark falls at its patch's seconds after the lamp",
+         len(marks) == len(want) and all(abs(a - b) < 1e-9 for a, b in zip(marks, want))),
+        ("the marks never run backwards", all(a <= b for a, b in zip(marks, marks[1:]))),
+    ]
+    return [f"sound: {name}\n  settings {settings}" for name, holds in checks if not holds]
+
+
+def climb_failures(climbs, sound):
+    """The glide through one gap, as the frequencies the page hands to the browser.
+
+    It leaves the fundamental where the gap begins and lands exactly an octave above it on the
+    mark, by the curve the sound is defined by: with a share t of the gap still to run it stands
+    1 - t ** BEND of the way up the octave. The browser draws straight lines between the points,
+    so they have to lie close enough together for that to be the same curve, and closest of all
+    at the mark, where it is steepest.
+    """
+    f0, bend, steps = sound["FUNDAMENTAL"], sound["BEND"], sound["CLIMBS"]
+    failures = []
+    for gap in climbs:
+        span = gap["mark"] - gap["from"]
+        times = [time for time, _ in gap["points"]]
+        hertz = [rate for _, rate in gap["points"]]
+        left = [max(0.0, (gap["mark"] - time) / span) for time in times]
+        curve = [f0 * 2.0 ** (1 - share ** bend) for share in left]
+        checks = [
+            (f"it is {steps + 1} points", len(gap["points"]) == steps + 1),
+            ("it leaves the fundamental where the gap begins",
+             abs(times[0] - gap["from"]) < 1e-9 and hertz[0] == f0),
+            ("it lands an octave up, on the mark",
+             abs(times[-1] - gap["mark"]) < 1e-9 and hertz[-1] == 2 * f0),
+            ("it never turns back in time", all(a <= b for a, b in zip(times, times[1:]))),
+            ("it climbs the whole way", all(a < b for a, b in zip(hertz, hertz[1:]))),
+            ("every point is on the curve",
+             all(abs(a - b) < 1e-6 for a, b in zip(hertz, curve))),
+            ("no two points are more than a step of the octave apart",
+             max(b / a for a, b in zip(hertz, hertz[1:])) <= 2.0 ** (1 / steps) + 1e-12),
+            ("the points crowd into the mark", times[-1] - times[-2] < span / 200),
+        ]
+        failures += [f"glide from {gap['from']} to {gap['mark']}: {name}"
+                     for name, holds in checks if not holds]
+    return failures
+
+
 def page(all_settings):
     """What index.html computes for the same settings."""
     command = ["node", str(ROOT / "tests" / "solve.js")]
@@ -319,6 +373,9 @@ def main():
         failures.append(f"timer: what is added is written as {answer['added']}")
     for settings, rows in zip(all_settings, answer["timers"]):
         failures += timer_failures(settings, rows)
+    for settings, rows, marks in zip(all_settings, answer["timers"], answer["runs"]):
+        failures += sound_failures(settings, rows, marks, answer["sound"])
+    failures += climb_failures(answer["climbs"], answer["sound"])
 
     for settings, ours, theirs in zip(all_settings, expected, answer["results"]):
         if ours["direct"] not in (None, ours.get("tempo")):
