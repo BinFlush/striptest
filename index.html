@@ -359,15 +359,16 @@
     display: none;
   }
 
-  /* Gone in by the second way, the screen is left black for as long as a run sounds: there is
-     nothing to read once you are going by ear, and a screen is only a light source. All of it
-     stops the run when held, and reddens as dimly as it can while the hold lasts, so that there
-     is something to see without there being much to see. */
-  html.blackout.running #darkroom > :not(#run) {
+  /* Started dark, the screen stays black until it is held away, and not merely until the run
+     ends: a strip finishing is the worst moment to light the room, with the paper still out.
+     There is nothing to read once you are going by ear, and a screen is only a light source.
+     All of it is the one control, and it reddens as dimly as it can while a hold lasts, so that
+     there is something to see without there being much to see. */
+  html.blackout #darkroom > :not(#run) {
     visibility: hidden;
   }
 
-  html.blackout.running #darkroom #run {
+  html.blackout #darkroom #run {
     position: fixed;
     inset: 0;
     padding: 0;
@@ -375,7 +376,7 @@
     color: transparent;
   }
 
-  html.blackout.running #run.holding::before {
+  html.blackout #run.holding::before {
     background: #200;
   }
 
@@ -632,15 +633,17 @@
     <li>The page times the run itself. Open Darkroom view below the table, then Start. The
       count-in before the lamp goes on is set under "Count-in and placing the base", and is
       remembered: make it as long as you need to get a hand to the switch.</li>
-    <li>A steady tone means the run is on. Under it a second tone climbs, and arrives an octave
-      higher exactly on each mark, where a short accent lands: the first mark is the lamp on, then
-      one for each patch to cover, and the last is the lamp off. Silence means it is done.</li>
+    <li>The count-in climbs in a tone of its own, with nothing under it. On the lamp a steady
+      drone comes in and holds for as long as the exposure runs. Over it a second tone climbs,
+      and arrives an octave higher exactly on each mark, where a short accent lands: one for each
+      patch to cover, and the last is the lamp off. Silence means it is done.</li>
     <li>There are two ways to start it. Start keeps the red type on screen as the run goes.
-      Start dark gives the screen up altogether for as long as the run sounds: there is nothing
-      to read once you are going by ear, and then the whole of the screen is the stop.</li>
+      Start dark gives the screen up altogether: there is nothing to read once you are going by
+      ear, and then the whole of the screen is the one control. It stays black after the run
+      ends, too, rather than lighting the room while the paper is still out.</li>
     <li>To stop early, hold the button, or anywhere on a black screen, until the sound ends. A
       quick touch does nothing, so that a hand brushing the phone in the dark cannot spoil a
-      strip.</li>
+      strip. On a black screen a further hold is what brings the red back.</li>
     <li>On an iPhone this may pause music playing from another app. Bluetooth speakers and
       headphones delay every sound by the same amount, which does no harm when you go by ear.</li>
   </ul>
@@ -768,6 +771,8 @@
   const RAMP = .012;
   const TICK = .12;
   const TAIL = .5;
+  const COUNT_TONE = 'triangle';
+  const CLIMB_TONE = 'sine';
   const OVERTONE = .3;
   const DRONE = .05;
   const GLIDE = .09;
@@ -1057,31 +1062,38 @@
     const from = audio.currentTime + LEAD;
     const last = from + marks[marks.length - 1];
 
-    // The drone says the run is on. Its own octave is in the tone, for the glide to land in.
-    const drone = audio.createOscillator();
-    const droning = audio.createGain();
-    drone.setPeriodicWave(audio.createPeriodicWave(new Float32Array(3),
-      Float32Array.of(0, 1, OVERTONE)));
+    // A voice that sounds from `opens` to `closes` and nowhere else
+    function sound(tone, loud, opens, closes) {
+      const voice = audio.createOscillator();
+      const level = audio.createGain();
+      if (typeof tone === 'string') voice.type = tone;
+      else voice.setPeriodicWave(tone);
+      voice.connect(level).connect(audio.destination);
+      level.gain.setValueAtTime(0, from + opens);
+      level.gain.linearRampToValueAtTime(loud, from + opens + RAMP);
+      level.gain.setValueAtTime(loud, from + closes);
+      level.gain.linearRampToValueAtTime(0, from + closes + RAMP);
+      voice.start(from + opens);
+      voice.stop(from + closes + RAMP);
+      return voice;
+    }
+
+    // The drone says the lamp is on, so it keeps out of the count-in altogether. Its own octave
+    // is in the tone, for the climb to land in.
+    const drone = sound(audio.createPeriodicWave(new Float32Array(3),
+      Float32Array.of(0, 1, OVERTONE)), DRONE, marks[0], marks[marks.length - 1]);
     drone.frequency.value = FUNDAMENTAL;
-    drone.connect(droning).connect(audio.destination);
 
-    // The glide climbs an octave into every mark and drops back to climb again
-    const glide = audio.createOscillator();
-    const gliding = audio.createGain();
-    glide.connect(gliding).connect(audio.destination);
-    marks.forEach((mark, i) => {
-      const [[begins, low], ...rest] = climb(i ? marks[i - 1] : 0, mark);
-      glide.frequency.setValueAtTime(low, from + begins);
-      for (const [at, hertz] of rest) glide.frequency.linearRampToValueAtTime(hertz, from + at);
-    });
-
-    for (const [voice, level, loud] of [[drone, droning, DRONE], [glide, gliding, GLIDE]]) {
-      level.gain.setValueAtTime(0, from);
-      level.gain.linearRampToValueAtTime(loud, from + RAMP);
-      level.gain.setValueAtTime(loud, last);
-      level.gain.linearRampToValueAtTime(0, last + RAMP);
-      voice.start(from);
-      voice.stop(last + RAMP);
+    // The climbing voice: an octave into every mark, dropping back to climb again. The count-in
+    // has a tone of its own, so that it can never be taken for a gap between patches.
+    for (const [tone, gaps] of [[COUNT_TONE, [0]], [CLIMB_TONE, range(1, marks.length - 1)]]) {
+      const opens = gaps[0] ? marks[gaps[0] - 1] : 0;
+      const glide = sound(tone, GLIDE, opens, marks[gaps[gaps.length - 1]]);
+      for (const i of gaps) {
+        const [[begins, low], ...rest] = climb(i ? marks[i - 1] : 0, marks[i]);
+        glide.frequency.setValueAtTime(low, from + begins);
+        for (const [at, hertz] of rest) glide.frequency.linearRampToValueAtTime(hertz, from + at);
+      }
     }
 
     // An accent on every mark. Each one ends a moment after its own mark, which is how the view
@@ -1115,7 +1127,7 @@
     const context = audio;
     audio = null;
     context.close();
-    document.documentElement.classList.remove('running', 'blackout');
+    document.documentElement.classList.remove('running');
     field('run').textContent = 'Start';
     field('dark').hidden = false;
     field('leave').hidden = false;
@@ -1136,7 +1148,7 @@
     field('run').classList.add('holding');
     holding = setTimeout(() => {
       release();
-      hush('Stopped');
+      ends();
     }, HELD);
   }
 
@@ -1145,11 +1157,16 @@
     field('run').classList.remove('holding');
   }
 
-  function run(black) {
+  function run() {
+    if (planned.length) play(planned);
+  }
+
+  // In the dark the whole screen is the only control. A tap starts a run; a hold ends whatever
+  // is going on, the run first and then the dark itself, so that finishing a strip never lights
+  // the room on its own.
+  function ends() {
     if (audio) return hush('Stopped');
-    if (!planned.length) return;
-    document.documentElement.classList.toggle('blackout', black);
-    play(planned);
+    document.documentElement.classList.remove('blackout');
   }
 
   function element(name, ...content) {
@@ -1381,8 +1398,10 @@
   // over the rows does not make them flicker; a scroll ends in `pointercancel` and sets nothing.
   addEventListener('pointerdown', event => {
     const pressed = event.target instanceof Element ? event.target.id : '';
-    if (pressed === 'run' && audio) hold();
-    if ((pressed === 'run' || pressed === 'dark') && !audio) run(pressed === 'dark');
+    const black = document.documentElement.classList.contains('blackout');
+    if (pressed === 'dark') document.documentElement.classList.add('blackout');
+    if (pressed === 'run' && (audio || black)) hold();
+    else if (pressed === 'run' || pressed === 'dark') run();
     if (!(event.target instanceof Element) || !event.target.closest('tbody')) return;
     if (event.isPrimary && !event.button) touched = event;
   });
@@ -1419,8 +1438,11 @@
   addEventListener('click', event => {
     const { target } = event;
     if (!(target instanceof HTMLButtonElement)) return;
-    if (target.matches('#run')) return void (event.detail || run(false));
-    if (target.matches('#dark')) return void (event.detail || run(true));
+    if (target.matches('#run')) return void (event.detail || (audio ? ends() : run()));
+    if (target.matches('#dark')) {
+      document.documentElement.classList.add('blackout');
+      return void (event.detail || run());
+    }
     if (target.matches('#skip')) skipped.add(Number(target.value));
     if (target.matches('#skipped button')) skipped.delete(Number(target.value));
     if (target.matches('#forget')) skipped.clear();
