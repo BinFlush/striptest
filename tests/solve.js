@@ -31,7 +31,10 @@ const added = [[5, 5], [6.3 - 5, 6.3], [0.1, 0.1], [12, 22]]
 
 // The run the page would sound for those same strips: when every mark falls, and the glide
 // through gaps of very different lengths
-const runs = asked.map(settings => schedule(timed(settings)));
+const runs = asked.map(settings => schedule(timed(settings), COUNT_IN));
+const waits = [0, 1.5, 12].map(countIn => ({ countIn, marks: schedule(timed(asked[0] ?? {
+  base: 10, stepsize: 3, numsteps: 7, baseplace: 3,
+}), countIn) }));
 const climbs = [[0, COUNT_IN], [4, 4.39], [10, 20], [0, 0.1], [3, 3.002]]
   .map(([from, mark]) => ({ from, mark, points: climb(from, mark) }));
 const sound = { FUNDAMENTAL, BEND, CLIMBS, COUNT_IN };
@@ -86,4 +89,4 @@ const papers = Object.fromEntries(Object.keys(PAPERS).map(paper => {
   });
   return [paper, { tones, zones, strips, speeds }];
 }));
-console.log(JSON.stringify({ results, timers, added, runs, climbs, sound, papers }));
+console.log(JSON.stringify({ results, timers, added, runs, waits, climbs, sound, papers }));

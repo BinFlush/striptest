@@ -293,6 +293,16 @@ def sound_failures(settings, rows, marks, sound):
     return [f"sound: {name}\n  settings {settings}" for name, holds in checks if not holds]
 
 
+def wait_failures(wait, rows):
+    """A count-in of any length holds the run back by exactly that, and changes nothing else."""
+    seconds = [row["seconds"] for row in rows]
+    want = [wait["countIn"]] + [wait["countIn"] + second for second in seconds]
+    holds = (len(wait["marks"]) == len(want)
+             and all(abs(a - b) < 1e-9 for a, b in zip(wait["marks"], want)))
+    return [] if holds else [f"sound: a count-in of {wait['countIn']} s does not hold the run "
+                             f"back by exactly that: {wait['marks'][:3]}"]
+
+
 def climb_failures(climbs, sound):
     """The glide through one gap, as the frequencies the page hands to the browser.
 
@@ -375,6 +385,8 @@ def main():
         failures += timer_failures(settings, rows)
     for settings, rows, marks in zip(all_settings, answer["timers"], answer["runs"]):
         failures += sound_failures(settings, rows, marks, answer["sound"])
+    for wait in answer["waits"]:
+        failures += wait_failures(wait, answer["timers"][0])
     failures += climb_failures(answer["climbs"], answer["sound"])
 
     for settings, ours, theirs in zip(all_settings, expected, answer["results"]):

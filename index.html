@@ -359,6 +359,25 @@
     display: none;
   }
 
+  /* While a run sounds, the screen is left black: the sound is the whole of it, and a screen is
+     only a light source. All of it stops the run when held, and reddens as dimly as it can while
+     the hold lasts, so that there is something to see without there being much to see. */
+  html.running #darkroom > :not(#run) {
+    visibility: hidden;
+  }
+
+  html.running #darkroom #run {
+    position: fixed;
+    inset: 0;
+    padding: 0;
+    border: 0;
+    color: transparent;
+  }
+
+  html.running #run.holding::before {
+    background: #200;
+  }
+
   #darkroom {
     display: none;
   }
@@ -524,6 +543,10 @@
           <option value="4">4th beat</option>
         </select>
       </label>
+      <label class="sound">Count-in, seconds
+        <input id="countin" type="number" value="4" min="0" max="60" step="any"
+          inputmode="decimal">
+      </label>
       <label>Base is step
         <input id="baseplace" type="number" min="-50" max="50" placeholder="middle">
       </label>
@@ -605,13 +628,16 @@
       timer</a> is a better fit.</li>
   </ul>
   <ul class="sound">
-    <li>The page times the run itself. Open Darkroom view below the table, then Start. A count-in
-      of about four seconds comes first, so you can get a hand to the switch.</li>
+    <li>The page times the run itself. Open Darkroom view below the table, then Start. The
+      count-in before the lamp goes on is set under "Count-in and placing the base", and is
+      remembered: make it as long as you need to get a hand to the switch.</li>
     <li>A steady tone means the run is on. Under it a second tone climbs, and arrives an octave
       higher exactly on each mark, where a short accent lands: the first mark is the lamp on, then
       one for each patch to cover, and the last is the lamp off. Silence means it is done.</li>
-    <li>To stop early, hold the button down until it fills. A quick touch does nothing, so that a
-      hand brushing the phone in the dark cannot spoil a strip.</li>
+    <li>Once it starts, the screen goes completely black and stays black: there is nothing to
+      read, and a screen is only a light source. The whole of it is the stop: hold anywhere until
+      the sound ends. A quick touch does nothing, so that a hand brushing the phone in the dark
+      cannot spoil a strip.</li>
     <li>On an iPhone this may pause music playing from another app. Bluetooth speakers and
       headphones delay every sound by the same amount, which does no harm when you go by ear.</li>
   </ul>
@@ -726,9 +752,11 @@
 
   // The sound that guides a run. A drone says the run is on, a second voice climbs an octave
   // into every mark, and an accent lands on the mark itself. BEND below 1 makes the climb speed
-  // up as the mark nears, so the arrival is as sharp in a ten second gap as in a one second one.
+  // up as the mark nears, so the arrival is as sharp in a long gap as in a short one: the last
+  // quarter second of it covers 1200 * (.25 / gap) ** BEND cents, which at .35 is a little over
+  // two semitones even on a twenty second gap, where half of that is too gradual to act on.
   const FUNDAMENTAL = 440;
-  const BEND = .5;
+  const BEND = .35;
   const CLIMBS = 96;
   const COUNT_IN = 4;
   const LEAD = .5;
@@ -743,8 +771,8 @@
   // The moments of a run, in seconds from the moment it starts: the lamp goes on when the
   // count-in ends, a patch is covered at each row's seconds after that, and the last of them is
   // the lamp going off again.
-  function schedule(rows) {
-    return [0, ...rows.map(row => row.seconds)].map(seconds => seconds + COUNT_IN);
+  function schedule(rows, countIn) {
+    return [0, ...rows.map(row => row.seconds)].map(seconds => seconds + countIn);
   }
 
   // The glide through one gap, as the frequencies it passes and when it passes them: evenly
@@ -947,7 +975,7 @@
   const field = id => document.getElementById(id);
   const number = id => field(id).valueAsNumber;
   const SHOWN = 5;
-  const { skipped, timing, paper } = recall();
+  const { skipped, timing, paper, countin } = recall();
   const HELD = 700;
   let darkroom = document.documentElement.classList.contains('darkroom');
   let awake = null;
@@ -960,8 +988,8 @@
 
   function recall() {
     try {
-      const { skipped, timing, paper } = JSON.parse(localStorage.getItem('striptest'));
-      return { skipped: new Set(skipped), timing, paper };
+      const { skipped, timing, paper, countin } = JSON.parse(localStorage.getItem('striptest'));
+      return { skipped: new Set(skipped), timing, paper, countin };
     } catch {
       return { skipped: new Set() };
     }
@@ -973,6 +1001,7 @@
         skipped: [...skipped],
         timing: form.timing.value,
         paper: field('paper').value,
+        countin: field('countin').value,
         darkroom,
       };
       localStorage.setItem('striptest', JSON.stringify(kept));
@@ -1010,7 +1039,7 @@
 
   // Everything a run sounds is scheduled on the audio clock the moment it starts, so nothing
   // after that depends on a timer firing or on the page staying awake. Silence is the end of it.
-  function play(rows) {
+  function play(marks) {
     if (navigator.audioSession) navigator.audioSession.type = 'playback';
     // Ask for a quarter of a second of buffer, which is where Chrome tops out. Nothing here is
     // played in response to a touch, so latency costs nothing, and a small buffer is what makes
@@ -1020,7 +1049,6 @@
     audio.onstatechange = () => {
       if (audio && audio.state !== 'running') hush('Interrupted');
     };
-    const marks = schedule(rows);
     const from = audio.currentTime + LEAD;
     const last = from + marks[marks.length - 1];
 
@@ -1067,6 +1095,7 @@
       accent.onended = () => reached(i, marks.length);
     });
 
+    document.documentElement.classList.add('running');
     field('run').textContent = 'Hold to stop';
     field('leave').hidden = true;
     tell('Count-in');
@@ -1078,6 +1107,7 @@
     const context = audio;
     audio = null;
     context.close();
+    document.documentElement.classList.remove('running');
     field('run').textContent = 'Start';
     field('leave').hidden = false;
     tell(why);
@@ -1108,7 +1138,7 @@
 
   function run() {
     if (audio) return hush('Stopped');
-    play(planned);
+    if (planned.length) play(planned);
   }
 
   function element(name, ...content) {
@@ -1232,6 +1262,7 @@
     field('tmax').setCustomValidity(complete && !tempi.length ? 'No tempo in this range' : '');
     const numsteps = number('numsteps');
     const place = number('baseplace');
+    const wait = number('countin');
     const filters = [FILTERS[number('filter')]];
     if (field('compare').open) filters.push(FILTERS[number('other')]);
     return {
@@ -1245,6 +1276,7 @@
       filters,
       paper: field('paper').value,
       timing: form.timing.value,
+      countIn: Number.isNaN(wait) ? COUNT_IN : clamp(wait, 0, 60),
     };
   }
 
@@ -1270,9 +1302,9 @@
     const anchor = found.reduce((near, row) =>
       Math.abs(row.step - reference) < Math.abs(near.step - reference) ? row : near, found[0]);
     const rows = found.flatMap(row => tableRow(row, chosen, result.every, anchor));
-    planned = found;
+    planned = chosen ? schedule(found, chosen.countIn) : [];
     const notice = method === 'sound'
-      ? found.length && `The darkroom view runs it, after a ${COUNT_IN} second count-in.`
+      ? found.length && `The darkroom view runs it, after ${chosen.countIn} seconds of count-in.`
       : !result.tempo ? ''
       : timer ? offer(result)
       : `and count every ${nthBeat(result.every)}, from zero.`;
@@ -1283,7 +1315,9 @@
         : formatCount(row.count, result.every)),
       element('span', timer ? row.seconds.toFixed(1) : ''),
     ]);
-    const fold = method === 'metronome' ? 'Metronome and counting' : 'Placing the base';
+    const fold = method === 'metronome' ? 'Metronome and counting'
+      : method === 'sound' ? 'Count-in and placing the base'
+      : 'Placing the base';
     document.body.className = method;
     form.querySelector('summary').textContent = fold;
     field('grade').textContent = grade;
@@ -1327,7 +1361,7 @@
   });
 
   field('compare').addEventListener('toggle', render);
-  document.querySelector('fieldset').addEventListener('change', remember);
+  form.addEventListener('change', remember);
   field('paper').addEventListener('change', remember);
   new ResizeObserver(fit).observe(document.querySelector('table'));
 
@@ -1390,6 +1424,7 @@
   // A link can name the way of timing, and otherwise it is the one last chosen here
   const wanted = location.hash.slice(1) || timing;
   if (['timer', 'metronome', 'sound'].includes(wanted)) form.timing.value = wanted;
+  if (countin !== undefined) field('countin').value = countin;
   render();
   navigator.serviceWorker?.register('sw.js').catch(() => {});
 </script>
