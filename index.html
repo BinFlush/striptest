@@ -419,33 +419,25 @@
   }
 
   /* Going by ear there is nothing to do at a patch but wait for it, so the wait itself is drawn:
-     a bar as long as that wait is, against the longest wait in the strip. Every bar is given the
-     same speed across the screen, so the strip is one picture of its own timing, and what is
-     filling says where the run is. The shortest waits are kept wide enough to see. */
+     a bar as long as that wait is, against the longest wait in the strip, the count-in among
+     them. All to one scale, so the plan is a picture of how long the strip takes before it is
+     begun. Nothing about them moves: they take their colour from the line they are on. */
   #plan div {
     align-self: center;
     width: max(1rem, var(--share) * 100%);
     height: .625rem;
     border-radius: 2px;
-    background: var(--dim);
+    background: currentColor;
   }
 
-  /* Set going all at once, each held back by everything before it, so that a run needs nothing
-     kept in step with it: what the page sounds and what it draws come off the same plan. */
-  html.running #plan div::before {
-    content: "";
-    display: block;
-    height: 100%;
-    transform-origin: left;
-    animation: fill var(--over) linear var(--after) both;
-    border-radius: inherit;
-    background: var(--glow);
+  /* A run lights the line it is on and dims the others, which is both how the view says where it
+     has got to and the least light it can give while saying it */
+  html.running #plan :not(.now) {
+    color: var(--dim);
   }
 
-  @keyframes fill {
-    from {
-      transform: scaleX(0);
-    }
+  html.running #plan .now {
+    color: var(--glow);
   }
 
   #darkroom button {
@@ -1080,6 +1072,13 @@
     field('tell').textContent = what;
   }
 
+  // Which line of the plan the run is waiting on, counted as the marks are: the count-in is the
+  // first. Called with nothing, no line is lit. The lines are three cells each.
+  function lit(line) {
+    [...field('plan').children]
+      .forEach((cell, i) => cell.classList.toggle('now', Math.floor(i / 3) === line));
+  }
+
   // Everything a run sounds is scheduled on the audio clock the moment it starts, so nothing
   // after that depends on a timer firing or on the page staying awake. Silence is the end of it.
   function play(marks) {
@@ -1150,6 +1149,7 @@
     field('dark').hidden = true;
     field('leave').hidden = true;
     tell('Count-in');
+    lit(0);
   }
 
   function hush(why) {
@@ -1163,12 +1163,14 @@
     field('dark').hidden = false;
     field('leave').hidden = false;
     tell(why);
+    lit();
   }
 
   function reached(mark, marks) {
     if (!audio) return;
     if (mark === marks - 1) return hush('Lamp off');
     tell(mark ? `Patch ${mark}` : 'Lamp on');
+    lit(mark + 1);
   }
 
   // A run starts on a press. It stops only on a press held long enough to fill the button, so
@@ -1212,14 +1214,11 @@
     return `hsl(0 0% ${(shade(printed) * 100).toFixed(1)}%)`;
   }
 
-  // One patch's wait, drawn: as wide a share of the room as it is long a share of the longest
-  // wait, and filling over exactly that wait, once the run has reached it. LEAD is what the
-  // sound waits for before it begins.
-  function bar(over, after, longest) {
+  // One wait in the run, drawn to scale: as wide a share of the room as it is long a share of
+  // the longest wait there is
+  function bar(over, longest) {
     const made = element('div');
     made.style.setProperty('--share', over / longest);
-    made.style.setProperty('--over', `${over}s`);
-    made.style.setProperty('--after', `${LEAD + after}s`);
     return made;
   }
 
@@ -1375,8 +1374,9 @@
       Math.abs(row.step - reference) < Math.abs(near.step - reference) ? row : near, found[0]);
     const rows = found.flatMap(row => tableRow(row, chosen, result.every, anchor));
     planned = chosen ? schedule(found, chosen.countIn) : [];
-    // What each patch waits, and the longest of those waits, which the bars are drawn against
-    const waits = planned.slice(1).map((mark, i) => mark - planned[i]);
+    // What is waited before each mark — the count-in before the first — and the longest of those
+    // waits, which is the one the bars are drawn against
+    const waits = planned.map((mark, i) => mark - (planned[i - 1] ?? 0));
     const longest = Math.max(...waits);
     const notice = method === 'sound'
       ? found.length && `The darkroom view runs it, after ${chosen.countIn} seconds of count-in.`
@@ -1384,14 +1384,17 @@
       : timer ? offer(result)
       : `and count every ${nthBeat(result.every)}, from zero.`;
     // The same plan for the darkroom view: a patch number, what to do, and the total behind it.
-    // By ear there is nothing to do but wait, so the seconds are what is read, and the wait drawn
-    const lines = found.flatMap((row, i) => [
+    // By ear it is a line for every wait the run holds, the count-in first and nameless, each
+    // with the seconds its patch ends at and the wait itself drawn
+    const lines = method === 'sound' ? waits.flatMap((wait, i) => [
+      element('span', i ? String(i) : ''),
+      element('span', i ? found[i - 1].seconds.toFixed(1) : ''),
+      bar(wait, longest),
+    ]) : found.flatMap((row, i) => [
       element('span', String(i + 1)),
-      element('span', method === 'sound' ? row.seconds.toFixed(1)
-        : timer ? formatAdd(row.add, row.seconds)
+      element('span', timer ? formatAdd(row.add, row.seconds)
         : formatCount(row.count, result.every)),
-      method === 'sound' ? bar(waits[i], planned[i], longest)
-        : element('span', timer ? row.seconds.toFixed(1) : ''),
+      element('span', timer ? row.seconds.toFixed(1) : ''),
     ]);
     const fold = method === 'metronome' ? 'Metronome and counting'
       : method === 'sound' ? 'Count-in and placing the base'
