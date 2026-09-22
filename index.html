@@ -826,8 +826,9 @@
   const FUNDAMENTAL = 440;
   const BEND = .35;
   const CLIMBS = 96;
-  // Three seconds is both what a count-in is given and the least it can be given: it counts
-  // down in whole seconds, and three of them before the mark is the start everyone knows
+  // Three beats count a run in, one a second, which is the start everyone knows. So three is
+  // also the count-in a run is given, and the least it can be given: a longer one waits, and
+  // still counts three.
   const COUNT_IN = 3;
   const LEAD = .5;
   const BUFFER = .25;
@@ -1164,9 +1165,11 @@
     const wave = audio.createPeriodicWave(new Float32Array(3), Float32Array.of(0, 1, OVERTONE));
     sound(wave, DRONE, marks[0], over).frequency.value = FUNDAMENTAL;
 
-    // The count-in counts: a soft note on every second of it, an octave under the one the lamp
-    // gets, so that three of them and then the mark itself is the start anyone already knows
-    for (let count = marks[0] - 1; count >= 0; count--) beat(count, FUNDAMENTAL, COUNTED, TICK);
+    // The count-in counts three in: a soft note on each of its last three seconds, an octave
+    // under the one the lamp gets, and then the lamp's own note is the go
+    for (let count = COUNT_IN; count > 0; count--) {
+      beat(marks[0] - count, FUNDAMENTAL, COUNTED, TICK);
+    }
 
     // The climbing voice: an octave into every mark, dropping back to climb again
     const glide = sound('sine', GLIDE, 0, over);
