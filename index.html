@@ -412,8 +412,40 @@
     font-size: 1rem;
   }
 
-  #plan :nth-child(3n) {
+  /* Both columns of totals are set the same way: the dim one behind what a timer or a metronome
+     is told to do, and the one read by ear, which is in the middle so the bar has the room */
+  #plan :nth-child(3n), body.sound #plan :nth-child(3n+2) {
     text-align: right;
+  }
+
+  /* Going by ear there is nothing to do at a patch but wait for it, so the wait itself is drawn:
+     a bar as long as that wait is, against the longest wait in the strip. Every bar is given the
+     same speed across the screen, so the strip is one picture of its own timing, and what is
+     filling says where the run is. The shortest waits are kept wide enough to see. */
+  #plan div {
+    align-self: center;
+    width: max(1rem, var(--share) * 100%);
+    height: .625rem;
+    border-radius: 2px;
+    background: var(--dim);
+  }
+
+  /* Set going all at once, each held back by everything before it, so that a run needs nothing
+     kept in step with it: what the page sounds and what it draws come off the same plan. */
+  html.running #plan div::before {
+    content: "";
+    display: block;
+    height: 100%;
+    transform-origin: left;
+    animation: fill var(--over) linear var(--after) both;
+    border-radius: inherit;
+    background: var(--glow);
+  }
+
+  @keyframes fill {
+    from {
+      transform: scaleX(0);
+    }
   }
 
   #darkroom button {
@@ -1180,6 +1212,17 @@
     return `hsl(0 0% ${(shade(printed) * 100).toFixed(1)}%)`;
   }
 
+  // One patch's wait, drawn: as wide a share of the room as it is long a share of the longest
+  // wait, and filling over exactly that wait, once the run has reached it. LEAD is what the
+  // sound waits for before it begins.
+  function bar(over, after, longest) {
+    const made = element('div');
+    made.style.setProperty('--share', over / longest);
+    made.style.setProperty('--over', `${over}s`);
+    made.style.setProperty('--after', `${LEAD + after}s`);
+    return made;
+  }
+
   function chip(tempo) {
     const button = element('button', `${tempo} ×`);
     button.value = tempo;
@@ -1332,17 +1375,23 @@
       Math.abs(row.step - reference) < Math.abs(near.step - reference) ? row : near, found[0]);
     const rows = found.flatMap(row => tableRow(row, chosen, result.every, anchor));
     planned = chosen ? schedule(found, chosen.countIn) : [];
+    // What each patch waits, and the longest of those waits, which the bars are drawn against
+    const waits = planned.slice(1).map((mark, i) => mark - planned[i]);
+    const longest = Math.max(...waits);
     const notice = method === 'sound'
       ? found.length && `The darkroom view runs it, after ${chosen.countIn} seconds of count-in.`
       : !result.tempo ? ''
       : timer ? offer(result)
       : `and count every ${nthBeat(result.every)}, from zero.`;
-    // The same plan for the darkroom view: a patch number, what to do, and the total behind it
-    const lines = method === 'sound' ? [] : found.flatMap((row, i) => [
+    // The same plan for the darkroom view: a patch number, what to do, and the total behind it.
+    // By ear there is nothing to do but wait, so the seconds are what is read, and the wait drawn
+    const lines = found.flatMap((row, i) => [
       element('span', String(i + 1)),
-      element('span', timer ? formatAdd(row.add, row.seconds)
+      element('span', method === 'sound' ? row.seconds.toFixed(1)
+        : timer ? formatAdd(row.add, row.seconds)
         : formatCount(row.count, result.every)),
-      element('span', timer ? row.seconds.toFixed(1) : ''),
+      method === 'sound' ? bar(waits[i], planned[i], longest)
+        : element('span', timer ? row.seconds.toFixed(1) : ''),
     ]);
     const fold = method === 'metronome' ? 'Metronome and counting'
       : method === 'sound' ? 'Count-in and placing the base'
