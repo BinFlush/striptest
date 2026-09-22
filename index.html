@@ -710,7 +710,7 @@
   const BEND = .5;
   const CLIMBS = 96;
   const COUNT_IN = 4;
-  const LEAD = .15;
+  const LEAD = .5;
   const RAMP = .012;
   const TICK = .12;
   const OVERTONE = .3;
@@ -990,7 +990,9 @@
   // after that depends on a timer firing or on the page staying awake. Silence is the end of it.
   function play(rows) {
     if (navigator.audioSession) navigator.audioSession.type = 'playback';
-    audio = new AudioContext();
+    // Ask for the largest buffer on offer. Nothing here is played in response to a touch, so
+    // latency costs nothing, and a small buffer is what makes web audio break up.
+    audio = new AudioContext({ latencyHint: 'playback' });
     audio.resume();
     audio.onstatechange = () => {
       if (audio && audio.state !== 'running') hush('Interrupted');
