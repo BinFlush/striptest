@@ -138,6 +138,11 @@
     display: none;
   }
 
+  /* The fold holds only what belongs to one way of timing, and a timer needs nothing */
+  body.timer form details {
+    display: none;
+  }
+
   summary {
     width: max-content;
     padding: .25rem 0;
@@ -421,13 +426,17 @@
   /* Going by ear there is nothing to do at a patch but wait for it, so the wait itself is drawn:
      a bar as long as that wait is, against the longest wait in the strip, the count-in among
      them. All to one scale, so the plan is a picture of how long the strip takes before it is
-     begun. Nothing about them moves: they take their colour from the line they are on. */
+     begun. `--late` is what the page sets a run's buffer to, below. */
+  #plan {
+    --late: 0s;
+  }
+
   #plan div {
     align-self: center;
     width: max(1rem, var(--share) * 100%);
     height: .625rem;
     border-radius: 2px;
-    background: currentColor;
+    background: var(--dim);
   }
 
   /* A run lights the line it is on and dims the others, which is both how the view says where it
@@ -438,6 +447,27 @@
 
   html.running #plan .now {
     color: var(--glow);
+  }
+
+  /* Every bar is set filling at once, each held back by everything before it and by the buffer
+     the sound waits in, so that a bar meets its end as its mark is heard. The fill takes the
+     line's own colour, so only the wait being held is bright: the rest fill dimly, out of the
+     way of it. Nothing here is asked to keep in step — the lit line is what a throttled clock
+     cannot get wrong, and this is the picture of the second it is in. */
+  html.running #plan div::before {
+    content: "";
+    display: block;
+    height: 100%;
+    transform-origin: left;
+    animation: fill var(--over) linear calc(var(--after) + var(--late)) both;
+    border-radius: inherit;
+    background: currentColor;
+  }
+
+  @keyframes fill {
+    from {
+      transform: scaleX(0);
+    }
   }
 
   #darkroom button {
@@ -535,6 +565,9 @@
   <label>Steps
     <input id="numsteps" type="number" value="7" min="1" max="24" required inputmode="numeric">
   </label>
+  <label>Base is step
+    <input id="baseplace" type="number" min="-50" max="50" placeholder="middle">
+  </label>
   <fieldset>
     <legend>Timed with</legend>
     <label class="wide">
@@ -552,7 +585,7 @@
   </fieldset>
 
   <details>
-    <summary>Metronome and counting</summary>
+    <summary>Configuration</summary>
     <div>
       <label class="metronome">Slowest, bpm
         <input id="tmin" type="number" value="40" min="1" max="600" required inputmode="numeric">
@@ -570,11 +603,8 @@
         </select>
       </label>
       <label class="sound">Count-in, seconds
-        <input id="countin" type="number" value="4" min="0" max="60" step="any"
+        <input id="countin" type="number" value="3" min="3" max="60" step="any"
           inputmode="decimal">
-      </label>
-      <label>Base is step
-        <input id="baseplace" type="number" min="-50" max="50" placeholder="middle">
       </label>
       <label class="wide metronome">
         <input id="cumulative" type="checkbox">
@@ -792,7 +822,9 @@
   const FUNDAMENTAL = 440;
   const BEND = .35;
   const CLIMBS = 96;
-  const COUNT_IN = 4;
+  // Three seconds is both what a count-in is given and the least it can be given: it counts
+  // down in whole seconds, and three of them before the mark is the start everyone knows
+  const COUNT_IN = 3;
   const LEAD = .5;
   const BUFFER = .25;
   const RAMP = .012;
@@ -802,6 +834,7 @@
   const DRONE = .05;
   const GLIDE = .09;
   const ACCENT = .22;
+  const COUNTED = .12;
 
   // The moments of a run, in seconds from the moment it starts: the lamp goes on when the
   // count-in ends, a patch is covered at each row's seconds after that, and the last of them is
@@ -1111,12 +1144,30 @@
       return voice;
     }
 
-    // The drone says where the run is: an octave down under the count-in, and at the
-    // fundamental for as long as the lamp is on. Its own octave is in the tone, so the two share
-    // partials and the step up on the lamp is a change of pitch rather than of colour.
+    // A note struck at `at` and gone a tick later, still sounding to `over` so that what it
+    // ends can be timed by it
+    function beat(at, hertz, loud, over) {
+      const note = audio.createOscillator();
+      const sounding = audio.createGain();
+      note.type = 'triangle';
+      note.frequency.value = hertz;
+      note.connect(sounding).connect(audio.destination);
+      sounding.gain.setValueAtTime(0, from + at);
+      sounding.gain.linearRampToValueAtTime(loud, from + at + RAMP);
+      sounding.gain.linearRampToValueAtTime(0, from + at + TICK);
+      note.start(from + at);
+      note.stop(from + at + over);
+      return note;
+    }
+
+    // The drone says the lamp is on, and holds for as long as the exposure runs. Its own octave
+    // is in the tone, so it shares partials with the accents above it.
     const wave = audio.createPeriodicWave(new Float32Array(3), Float32Array.of(0, 1, OVERTONE));
-    sound(wave, DRONE, 0, marks[0]).frequency.value = FUNDAMENTAL / 2;
     sound(wave, DRONE, marks[0], over).frequency.value = FUNDAMENTAL;
+
+    // The count-in counts: a soft note on every second of it, an octave under the one the lamp
+    // gets, so that three of them and then the mark itself is the start anyone already knows
+    for (let count = marks[0] - 1; count >= 0; count--) beat(count, FUNDAMENTAL, COUNTED, TICK);
 
     // The climbing voice: an octave into every mark, dropping back to climb again
     const glide = sound('sine', GLIDE, 0, over);
@@ -1136,21 +1187,14 @@
     const heard = Math.max(TICK, audio.baseLatency);
     marks.forEach((mark, i) => {
       const tail = i === marks.length - 1 ? TAIL : 0;
-      const accent = audio.createOscillator();
-      const sounding = audio.createGain();
-      accent.type = 'triangle';
-      accent.frequency.value = 2 * FUNDAMENTAL;
-      accent.connect(sounding).connect(audio.destination);
-      sounding.gain.setValueAtTime(0, from + mark);
-      sounding.gain.linearRampToValueAtTime(ACCENT, from + mark + RAMP);
-      sounding.gain.linearRampToValueAtTime(0, from + mark + TICK);
-      accent.start(from + mark);
-      accent.stop(from + mark + heard + tail);
+      const accent = beat(mark, 2 * FUNDAMENTAL, ACCENT, heard + tail);
       accent.onended = () => reached(i, marks.length);
     });
 
+    // The bars are held back by the same buffer, so that one fills as its mark is heard
+    field('plan').style.setProperty('--late', `${audio.baseLatency}s`);
     document.documentElement.classList.add('running');
-    field('run').textContent = 'Hold to stop';
+    field('run').textContent = 'Stop';
     field('dark').hidden = true;
     field('leave').hidden = true;
     tell('Count-in');
@@ -1178,13 +1222,11 @@
     lit(mark + 1);
   }
 
-  // A run starts on a press. It stops only on a press held long enough to fill the button, so
-  // that a hand brushing the phone in the dark cannot spoil a strip. The press itself starts the
-  // clock, and nothing else is waited for: a phone that takes a long press for a gesture of its
-  // own may report no tap, no release, or a cancelled pointer, and the hold survives all three.
-  // In the dark the whole screen is the only control: a tap starts a run and stops one that is
-  // going, and a hold always gives the screen back, stopping the run with it. In the lit view a
-  // hold is instead what stops a run, so that a hand brushing the phone cannot spoil a strip.
+  // A press starts a run and a press stops one: the press itself, not the tap it may or may not
+  // become, because a phone that takes a long press for a gesture of its own may report no tap
+  // and no release at all. In the dark the whole screen is the only control, and there a hold
+  // is what gives the screen back, stopping the run with it — the one gesture that survives a
+  // cancelled pointer and a missing release, which is why it is timed from the press.
   function hold() {
     field('run').classList.add('holding');
     holding = setTimeout(() => {
@@ -1220,10 +1262,12 @@
   }
 
   // One wait in the run, drawn to scale: as wide a share of the room as it is long a share of
-  // the longest wait there is
-  function bar(over, longest) {
+  // the longest wait there is, and filling over exactly that wait once the run reaches it
+  function bar(over, after, longest) {
     const made = element('div');
     made.style.setProperty('--share', over / longest);
+    made.style.setProperty('--over', `${over}s`);
+    made.style.setProperty('--after', `${LEAD + after}s`);
     return made;
   }
 
@@ -1352,7 +1396,7 @@
       filters,
       paper: field('paper').value,
       timing: form.timing.value,
-      countIn: Number.isNaN(wait) ? COUNT_IN : clamp(wait, 0, 60),
+      countIn: Number.isNaN(wait) ? COUNT_IN : clamp(wait, COUNT_IN, 60),
     };
   }
 
@@ -1394,18 +1438,14 @@
     const lines = method === 'sound' ? waits.flatMap((wait, i) => [
       element('span', i ? String(i) : ''),
       element('span', i ? found[i - 1].seconds.toFixed(1) : ''),
-      bar(wait, longest),
+      bar(wait, planned[i] - wait, longest),
     ]) : found.flatMap((row, i) => [
       element('span', String(i + 1)),
       element('span', timer ? formatAdd(row.add, row.seconds)
         : formatCount(row.count, result.every)),
       element('span', timer ? row.seconds.toFixed(1) : ''),
     ]);
-    const fold = method === 'metronome' ? 'Metronome and counting'
-      : method === 'sound' ? 'Count-in and placing the base'
-      : 'Placing the base';
     document.body.className = method;
-    form.querySelector('summary').textContent = fold;
     field('grade').textContent = grade;
     field('filter').setAttribute('aria-valuetext', grade);
     field('othergrade').textContent = other;
@@ -1458,7 +1498,7 @@
     const pressed = event.target instanceof Element ? event.target.id : '';
     const black = document.documentElement.classList.contains('blackout');
     if (pressed === 'dark') document.documentElement.classList.add('blackout');
-    if (pressed === 'run' && (audio || black)) hold();
+    if (pressed === 'run' && black) hold();
     else if (pressed === 'run' || pressed === 'dark') toggle();
     if (!(event.target instanceof Element) || !event.target.closest('tbody')) return;
     if (event.isPrimary && !event.button) touched = event;
