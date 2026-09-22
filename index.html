@@ -565,7 +565,8 @@
 
 <form>
   <label>Base, seconds
-    <input id="base" type="number" value="10" min="0.1" step="any" required inputmode="decimal">
+    <input id="base" type="number" value="10" min="0.1" max="86400" step="any" required
+      inputmode="decimal">
   </label>
   <label>Step, stops
     <select id="stepsize">
@@ -638,7 +639,7 @@
   <p class="metronome">Set your metronome to</p>
   <output id="tempo" class="metronome"></output>
   <p id="notice"></p>
-  <button id="skip" class="metronome" hidden></button>
+  <button id="skip" class="metronome" type="button" hidden></button>
   <p id="skipped" class="metronome"></p>
 </section>
 
@@ -1357,6 +1358,7 @@
 
   function chip(tempo) {
     const button = element('button', `${tempo} ×`);
+    button.type = 'button';
     button.value = tempo;
     button.setAttribute('aria-label', `Bring back ${tempo}`);
     return button;
@@ -1643,8 +1645,9 @@
   field('paper').append(...Object.keys(PAPERS).map(name => element('option', name)));
   if (paper in PAPERS) field('paper').value = paper;
   // A link can name the way of timing, and otherwise it is the one last chosen here
-  const wanted = location.hash.slice(1) || timing;
-  if (['timer', 'metronome', 'sound'].includes(wanted)) form.timing.value = wanted;
+  const asked = location.hash.slice(1);
+  const wanted = [...form.timing].some(radio => radio.value === asked) ? asked : timing;
+  if (wanted) form.timing.value = wanted;
   if (countin !== undefined) field('countin').value = countin;
   render();
   navigator.serviceWorker?.register('sw.js').catch(() => {});
