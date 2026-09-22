@@ -317,12 +317,16 @@
     }
   }
 
-  #enter {
+  #enter, #black {
     width: 100%;
+    margin-top: .5rem;
+  }
+
+  #enter {
     margin-top: 1.25rem;
   }
 
-  #enter + details {
+  #black + details {
     margin-top: 2rem;
   }
 
@@ -359,14 +363,15 @@
     display: none;
   }
 
-  /* While a run sounds, the screen is left black: the sound is the whole of it, and a screen is
-     only a light source. All of it stops the run when held, and reddens as dimly as it can while
-     the hold lasts, so that there is something to see without there being much to see. */
-  html.running #darkroom > :not(#run) {
+  /* Gone in by the second way, the screen is left black for as long as a run sounds: there is
+     nothing to read once you are going by ear, and a screen is only a light source. All of it
+     stops the run when held, and reddens as dimly as it can while the hold lasts, so that there
+     is something to see without there being much to see. */
+  html.blackout.running #darkroom > :not(#run) {
     visibility: hidden;
   }
 
-  html.running #darkroom #run {
+  html.blackout.running #darkroom #run {
     position: fixed;
     inset: 0;
     padding: 0;
@@ -374,7 +379,7 @@
     color: transparent;
   }
 
-  html.running #run.holding::before {
+  html.blackout.running #run.holding::before {
     background: #200;
   }
 
@@ -597,6 +602,7 @@
 </table>
 
 <button id="enter" type="button">Darkroom view</button>
+<button id="black" class="sound" type="button">Dark screen while it sounds</button>
 
 <details>
   <summary>How to use</summary>
@@ -628,16 +634,19 @@
       timer</a> is a better fit.</li>
   </ul>
   <ul class="sound">
-    <li>The page times the run itself. Open Darkroom view below the table, then Start. The
-      count-in before the lamp goes on is set under "Count-in and placing the base", and is
+    <li>The page times the run itself. Open one of the two views below the table, then Start.
+      The count-in before the lamp goes on is set under "Count-in and placing the base", and is
       remembered: make it as long as you need to get a hand to the switch.</li>
     <li>A steady tone means the run is on. Under it a second tone climbs, and arrives an octave
       higher exactly on each mark, where a short accent lands: the first mark is the lamp on, then
       one for each patch to cover, and the last is the lamp off. Silence means it is done.</li>
-    <li>Once it starts, the screen goes completely black and stays black: there is nothing to
-      read, and a screen is only a light source. The whole of it is the stop: hold anywhere until
-      the sound ends. A quick touch does nothing, so that a hand brushing the phone in the dark
-      cannot spoil a strip.</li>
+    <li>The two views differ only in what the screen does while a run sounds. Darkroom view
+      keeps its red type. "Dark screen while it sounds" leaves the screen completely black
+      instead, since there is nothing to read once you are going by ear, and then the whole of
+      the screen is the stop.</li>
+    <li>To stop early, hold the button, or anywhere on a black screen, until the sound ends. A
+      quick touch does nothing, so that a hand brushing the phone in the dark cannot spoil a
+      strip.</li>
     <li>On an iPhone this may pause music playing from another app. Bluetooth speakers and
       headphones delay every sound by the same amount, which does no harm when you go by ear.</li>
   </ul>
@@ -1017,9 +1026,10 @@
     } catch {}
   }
 
-  function enterDarkroom() {
+  function enterDarkroom(black) {
     darkroom = true;
     document.documentElement.classList.add('darkroom');
+    document.documentElement.classList.toggle('blackout', black);
     document.documentElement.requestFullscreen?.().catch(() => {});
     stayAwake();
   }
@@ -1027,7 +1037,7 @@
   function leaveDarkroom() {
     hush('');
     darkroom = false;
-    document.documentElement.classList.remove('darkroom');
+    document.documentElement.classList.remove('darkroom', 'blackout');
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     awake?.release().catch(() => {});
     awake = null;
@@ -1413,7 +1423,8 @@
     if (target.matches('#skip')) skipped.add(Number(target.value));
     if (target.matches('#skipped button')) skipped.delete(Number(target.value));
     if (target.matches('#forget')) skipped.clear();
-    if (target.matches('#enter')) enterDarkroom();
+    if (target.matches('#enter')) enterDarkroom(false);
+    if (target.matches('#black')) enterDarkroom(true);
     if (target.matches('#leave')) leaveDarkroom();
     remember();
     render();
