@@ -1167,10 +1167,14 @@
     // Ask for a quarter of a second of buffer, which is where Chrome tops out. Nothing here is
     // played in response to a touch, so latency costs nothing, and a small buffer is what makes
     // web audio break up. It has to stay well under LEAD, or the opening would be cut off.
-    audio = new AudioContext({ latencyHint: BUFFER });
-    audio.resume();
-    audio.onstatechange = () => {
-      if (audio && audio.state !== 'running') hush('Interrupted');
+    const made = new AudioContext({ latencyHint: BUFFER });
+    audio = made;
+    made.resume().catch(() => {});
+    // A context reports its own closing, which arrives after the page has let go of it — and by
+    // then the page may have started the next run. Only the context still being used may say a
+    // run was interrupted, or stopping one would silently interrupt the one after it.
+    made.onstatechange = () => {
+      if (audio === made && made.state !== 'running') hush('Interrupted');
     };
     const from = audio.currentTime + LEAD;
     const over = marks[marks.length - 1];
@@ -1284,6 +1288,10 @@
   // is what gives the screen back, stopping the run with it — the one gesture that survives a
   // cancelled pointer and a missing release, which is why it is timed from the press.
   function hold() {
+    // Whatever was already counting down stops here. A phone that cancels a pointer never
+    // reports it lifting, so a hold can still be armed when the next press arrives, and two
+    // timers would mean the screen comes back on its own long after the hand has gone.
+    clearTimeout(holding);
     field('run').classList.add('holding');
     holding = setTimeout(() => {
       holding = 0;
@@ -1550,13 +1558,15 @@
   // begins once the pointer moves more sideways than up or down, so that scrolling the page
   // over the rows does not make them flicker; a scroll ends in `pointercancel` and sets nothing.
   addEventListener('pointerdown', event => {
-    const pressed = event.target instanceof Element ? event.target.id : '';
+    const { target } = event;
+    if (!(target instanceof Element) || !event.isPrimary || event.button) return;
+    // Read before the press can black the screen out: pressing Start dark starts a run, it does
+    // not begin a hold, and it is only a press on a screen that was ALREADY black that holds
     const black = document.documentElement.classList.contains('blackout');
-    if (pressed === 'dark') document.documentElement.classList.add('blackout');
-    if (pressed === 'run' && black) hold();
-    else if (pressed === 'run' || pressed === 'dark') toggle();
-    if (!(event.target instanceof Element) || !event.target.closest('tbody')) return;
-    if (event.isPrimary && !event.button) touched = event;
+    if (target.id === 'dark') document.documentElement.classList.add('blackout');
+    if (target.id === 'run' && black) hold();
+    else if (target.id === 'run' || target.id === 'dark') toggle();
+    if (target.closest('tbody')) touched = event;
   });
 
   addEventListener('pointermove', event => {
