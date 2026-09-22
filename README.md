@@ -1,5 +1,5 @@
 # striptest
-A tool for planning f/stop teststrips in the darkroom, and for finding the optimal tempo settings for timing them with a physical metronome.
+A tool for planning f/stop teststrips in the darkroom, and for timing them: with an ordinary timer, with a physical metronome at the optimal tempo, or by the sound of the page itself.
 
 **Use it right here: https://binflush.github.io/striptest/**
 ## Overview
@@ -7,11 +7,11 @@ A tool for planning f/stop teststrips in the darkroom, and for finding the optim
 
 It started out as a Python script that I wrote for my own use, to be run on a laptop while planning a printing session. That works fine, but it is not very portable, and the computer I actually carry around is a phone. So the whole thing has been reimplemented as a website, which does the same calculation directly in your browser. There is nothing to install, it fits on a phone screen, and nothing you type is sent anywhere.
 
-The Python script is still here and still works. It is in fact the reference: the website is tested against it on thousands of random settings, so the two always agree on the tempo and the counts. The website has also grown a few things the script never had. It plans the teststrip no matter how it is going to be timed: with an ordinary timer it simply gives the seconds for every patch, and the metronome is what it suggests to those who don't have one. It also has an easy way to tell it which tempos your metronome lacks, and a simulated teststrip that shows roughly what the patches are going to do to the tones. All of it is described below.
+The Python script is still here and still works. It is in fact the reference: the website is tested against it on thousands of random settings, so the two always agree on the tempo and the counts. The website has also grown a few things the script never had. It plans the teststrip no matter how it is going to be timed: with an ordinary timer it simply gives the seconds for every patch, with a metronome it finds the tempo, and it can also do the timing itself, by sound, so that neither is needed. It has a darkroom view, which is red on black and large enough to read at the enlarger, an easy way to tell it which tempos your metronome lacks, and a simulated teststrip that shows roughly what the patches are going to do to the tones. Opened once while online it works in airplane mode after that, and it can be added to a phone's home screen like any other app. All of it is described below.
 
 ## Quickstart
 ### On the website
-Open https://binflush.github.io/striptest/, type in your base time, and pick the stepsize and the number of steps. The table then gives the seconds for every patch, to be used with a timer. Choose **a metronome** under **Timed with**, and you get a big red number instead, which is the tempo for your metronome, and a table that tells you what to count to. That is all there is to it. The section **The website** further down goes through the rest.
+Open https://binflush.github.io/striptest/, type in your base time, and pick the stepsize and the number of steps. The table then gives the seconds for every patch, to be used with a timer. Choose **a metronome** under **Timed with**, and you get a big red number instead, which is the tempo for your metronome, and a table that tells you what to count to. Choose **this page's sound** and it will simply sound every moment you have to act on. That is all there is to it. The section **The website** further down goes through the rest.
 
 ### With the Python script
 Ensure you have python and numpy installed, download the file `striptest.py`, open a terminal, navigate to where the file is located and run
@@ -72,7 +72,7 @@ Let's say we have a fresh negative in the enlarger, and our best guess is that i
 Until we say otherwise, the website takes the teststrip to be **Timed with** a timer. The table has one row for each patch. **Seconds** is the exposure the patch should end up with, and **Add** is how to get there when the patches are covered one by one: the whole strip first gets 5.0 seconds, then we cover the first patch and give the rest 1.3 seconds more, cover the next one and give the rest another 1.6, and so on. If we would rather expose every patch on its own, each simply gets what it says under **Seconds**. The times are rounded to tenths of a second, which is about what a timer can be set to.
 
 ### Without a timer
-With a timer that is all there is to it. Without one these times are hopeless, since nobody can count to 1.3 seconds, and this is where the metronome comes in. The line under the settings has already been hinting at it. Under **Timed with** we choose **a metronome**, which the website remembers until we choose something else:
+With a timer that is all there is to it. Without one these times are hopeless, since nobody can count to 1.3 seconds, and something has to keep time for us. There are two answers under **Timed with**: a metronome, which is what the rest of this walkthrough uses, or the page's own sound, which is further down under **At the enlarger**. The line under the settings has already been hinting at the first. We choose **a metronome**, which the website remembers until we choose something else:
 
 <p align="center"><img src="figures/web-first-strip.png" width="300" align="top" alt="The top of the website, now timed with a metronome: tempo 181, counting every 3rd beat"> <img src="figures/web-first-strip-table.png" width="300" align="top" alt="The table underneath: the count for each patch, with a strip of tones under every row"></p>
 
@@ -128,6 +128,17 @@ So we go up to filter 3, and expect the right exposure to be somewhat above 16 s
 We set the metronome to 194 and count every beat. The whole strip first gets 58 beats. Then we cover the first patch and give the rest 7 more beats, starting from zero again, then 8, 9 and 10. This is exactly what `python striptest.py -b 16 -n 5 -s 6 -p -1 -c -d 1` tells us to do.
 
 If the metronome has another range than 40 to 208 bpm, this is also the place to say so, under **Slowest, bpm** and **Fastest, bpm**.
+
+### At the enlarger
+Everything so far happens with the lights on. When they go out, the phone is the wrong shape entirely: a white page is a fog risk, the browser's bars are in the way, and the screen turns itself off halfway through a strip. The button under the table, **Darkroom view**, deals with all three. It fills the screen with the plan in large red type on black, asks the phone to stay awake, and shows nothing that can be tapped by mistake. Close, or Escape, brings the page back.
+
+Red only is safer than white, but it is not safe, and the website says so too. The screen is still a light source, and Multigrade paper is most sensitive to exactly the green and blue that a red-only screen leaves out — which is the point, but a bright phone held over the paper will still fog it. Turn the brightness right down, keep the phone away from the easel, and test your own phone before trusting it: leave a scrap of paper face up beside it for five minutes and develop that. It is also worth turning on airplane mode or Do Not Disturb first, because a notification lights the whole screen at full brightness, and that is a fogged sheet.
+
+The third choice under **Timed with**, **this page's sound**, is for when there is neither a timer nor a metronome to hand. The table then simply gives the seconds each patch ends up with, and the darkroom view offers a Start button. Pressing it gives a count-in of about four seconds, and after that a steady tone says the exposure is running. Under it a second tone climbs, and lands an octave higher exactly on each moment you have to act on, where a short accent falls: the first is the lamp on, then one for each patch to cover, and the last is the lamp off. Then silence, which is how you know it is over. Because the pitch is always climbing towards the next one, a mark never arrives unannounced, and it arrives just as decisively whether the gap was one second or ten.
+
+Stopping a run early needs a press and hold on the button, not a tap. A single touch does nothing at all, so that a hand feeling around in the dark cannot quietly end an exposure. If the phone rings, or anything else takes the page away mid-run, the sound stops and the view says so: that strip is spoiled, and better to know it.
+
+One last thing worth doing before a printing session: add the page to the home screen, from Share → Add to Home Screen on an iPhone, or the browser menu on Android. It then opens without the browser's bars, which on an iPhone is the only way to be rid of them, and it works with no network at all once it has been opened online once.
 
 ## The Python script
 
@@ -290,7 +301,9 @@ If the python script was responsible for timing during exposure, that would be a
 
 Software of this sorts would also need some way to reliably turn off any lights (screen, backlight keyboard, power switch, etc...) during exposure, which is a nontrivial task. Arduino-kits or commercial f-stop timers are better suited for this.
 
-The same goes for the website. It can plan a teststrip for a timer, but it purposely has neither a timer nor a metronome built in. If a timer is what you are after, something like [GoTimer's enlarger timer](https://gotimer.org/photography/enlarger-timer) is a better fit.
+The website has since gone at it from the other side. It can time a run itself, by sound, but that is not a metronome: there is no click track, no tempo, and nothing to count. It just sounds the moments you have to act on, and the pitch climbing into each one is what makes them easy to hit. It is a different answer to the same problem, for when there is neither a timer nor a metronome to hand.
+
+The tempo search is still what this whole thing is about, and it is still the only way to get an arbitrary interval out of a real metronome, which remains my own way of working. And if what you want is a proper f-stop timer, something like [GoTimer's enlarger timer](https://gotimer.org/photography/enlarger-timer) is still a better fit than either.
 
 * **Is this precision necessary**
 
