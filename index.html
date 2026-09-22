@@ -1129,6 +1129,11 @@
     // An accent on every mark. Each one ends a moment after its own mark, which is how the view
     // follows the run; the last of them ends it, and carries silence behind it first, because
     // closing the run throws away whatever is still waiting in the buffer we asked for.
+    // That end is held back by the buffer as well, silently: a mark is rendered a buffer before
+    // it is heard, so the view would otherwise light a step that much too early. `baseLatency`
+    // is what the engine granted of what we asked for, and it is the only part known this early
+    // — `outputLatency`, which would also cover what the speaker itself adds, is still 0 here.
+    const heard = Math.max(TICK, audio.baseLatency);
     marks.forEach((mark, i) => {
       const tail = i === marks.length - 1 ? TAIL : 0;
       const accent = audio.createOscillator();
@@ -1140,7 +1145,7 @@
       sounding.gain.linearRampToValueAtTime(ACCENT, from + mark + RAMP);
       sounding.gain.linearRampToValueAtTime(0, from + mark + TICK);
       accent.start(from + mark);
-      accent.stop(from + mark + TICK + tail);
+      accent.stop(from + mark + heard + tail);
       accent.onended = () => reached(i, marks.length);
     });
 
