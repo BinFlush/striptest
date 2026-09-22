@@ -711,6 +711,7 @@
   const CLIMBS = 96;
   const COUNT_IN = 4;
   const LEAD = .5;
+  const BUFFER = .25;
   const RAMP = .012;
   const TICK = .12;
   const OVERTONE = .3;
@@ -990,9 +991,10 @@
   // after that depends on a timer firing or on the page staying awake. Silence is the end of it.
   function play(rows) {
     if (navigator.audioSession) navigator.audioSession.type = 'playback';
-    // Ask for the largest buffer on offer. Nothing here is played in response to a touch, so
-    // latency costs nothing, and a small buffer is what makes web audio break up.
-    audio = new AudioContext({ latencyHint: 'playback' });
+    // Ask for a quarter of a second of buffer, which is where Chrome tops out. Nothing here is
+    // played in response to a touch, so latency costs nothing, and a small buffer is what makes
+    // web audio break up. It has to stay well under LEAD, or the opening would be cut off.
+    audio = new AudioContext({ latencyHint: BUFFER });
     audio.resume();
     audio.onstatechange = () => {
       if (audio && audio.state !== 'running') hush('Interrupted');
