@@ -317,16 +317,12 @@
     }
   }
 
-  #enter, #black {
-    width: 100%;
-    margin-top: .5rem;
-  }
-
   #enter {
+    width: 100%;
     margin-top: 1.25rem;
   }
 
-  #black + details {
+  #enter + details {
     margin-top: 2rem;
   }
 
@@ -433,7 +429,7 @@
   }
 
   /* Named twice over, to outrank the rule above: Start is what a hand finds in the dark */
-  #darkroom #run {
+  #darkroom #run, #darkroom #dark {
     position: relative;
     z-index: 0;
     overflow: hidden;
@@ -602,7 +598,6 @@
 </table>
 
 <button id="enter" type="button">Darkroom view</button>
-<button id="black" class="sound" type="button">Dark screen while it sounds</button>
 
 <details>
   <summary>How to use</summary>
@@ -634,16 +629,15 @@
       timer</a> is a better fit.</li>
   </ul>
   <ul class="sound">
-    <li>The page times the run itself. Open one of the two views below the table, then Start.
-      The count-in before the lamp goes on is set under "Count-in and placing the base", and is
+    <li>The page times the run itself. Open Darkroom view below the table, then Start. The
+      count-in before the lamp goes on is set under "Count-in and placing the base", and is
       remembered: make it as long as you need to get a hand to the switch.</li>
     <li>A steady tone means the run is on. Under it a second tone climbs, and arrives an octave
       higher exactly on each mark, where a short accent lands: the first mark is the lamp on, then
       one for each patch to cover, and the last is the lamp off. Silence means it is done.</li>
-    <li>The two views differ only in what the screen does while a run sounds. Darkroom view
-      keeps its red type. "Dark screen while it sounds" leaves the screen completely black
-      instead, since there is nothing to read once you are going by ear, and then the whole of
-      the screen is the stop.</li>
+    <li>There are two ways to start it. Start keeps the red type on screen as the run goes.
+      Start dark gives the screen up altogether for as long as the run sounds: there is nothing
+      to read once you are going by ear, and then the whole of the screen is the stop.</li>
     <li>To stop early, hold the button, or anywhere on a black screen, until the sound ends. A
       quick touch does nothing, so that a hand brushing the phone in the dark cannot spoil a
       strip.</li>
@@ -693,6 +687,7 @@
   <p id="tell"></p>
   <div id="plan"></div>
   <button id="run" class="sound" type="button">Start</button>
+  <button id="dark" class="sound" type="button">Start dark</button>
   <button id="leave" type="button">Close</button>
 </div>
 
@@ -772,6 +767,7 @@
   const BUFFER = .25;
   const RAMP = .012;
   const TICK = .12;
+  const TAIL = .5;
   const OVERTONE = .3;
   const DRONE = .05;
   const GLIDE = .09;
@@ -1026,10 +1022,9 @@
     } catch {}
   }
 
-  function enterDarkroom(black) {
+  function enterDarkroom() {
     darkroom = true;
     document.documentElement.classList.add('darkroom');
-    document.documentElement.classList.toggle('blackout', black);
     document.documentElement.requestFullscreen?.().catch(() => {});
     stayAwake();
   }
@@ -1089,9 +1084,11 @@
       voice.stop(last + RAMP);
     }
 
-    // An accent on every mark. Each one ends a moment after its own mark, which is how the
-    // view follows the run, and the last of them ends it.
+    // An accent on every mark. Each one ends a moment after its own mark, which is how the view
+    // follows the run; the last of them ends it, and carries silence behind it first, because
+    // closing the run throws away whatever is still waiting in the buffer we asked for.
     marks.forEach((mark, i) => {
+      const tail = i === marks.length - 1 ? TAIL : 0;
       const accent = audio.createOscillator();
       const sounding = audio.createGain();
       accent.type = 'triangle';
@@ -1101,12 +1098,13 @@
       sounding.gain.linearRampToValueAtTime(ACCENT, from + mark + RAMP);
       sounding.gain.linearRampToValueAtTime(0, from + mark + TICK);
       accent.start(from + mark);
-      accent.stop(from + mark + TICK);
+      accent.stop(from + mark + TICK + tail);
       accent.onended = () => reached(i, marks.length);
     });
 
     document.documentElement.classList.add('running');
     field('run').textContent = 'Hold to stop';
+    field('dark').hidden = true;
     field('leave').hidden = true;
     tell('Count-in');
   }
@@ -1117,8 +1115,9 @@
     const context = audio;
     audio = null;
     context.close();
-    document.documentElement.classList.remove('running');
+    document.documentElement.classList.remove('running', 'blackout');
     field('run').textContent = 'Start';
+    field('dark').hidden = false;
     field('leave').hidden = false;
     tell(why);
   }
@@ -1146,9 +1145,11 @@
     field('run').classList.remove('holding');
   }
 
-  function run() {
+  function run(black) {
     if (audio) return hush('Stopped');
-    if (planned.length) play(planned);
+    if (!planned.length) return;
+    document.documentElement.classList.toggle('blackout', black);
+    play(planned);
   }
 
   function element(name, ...content) {
@@ -1379,10 +1380,9 @@
   // begins once the pointer moves more sideways than up or down, so that scrolling the page
   // over the rows does not make them flicker; a scroll ends in `pointercancel` and sets nothing.
   addEventListener('pointerdown', event => {
-    if (event.target instanceof Element && event.target.id === 'run') {
-      if (audio) hold();
-      else run();
-    }
+    const pressed = event.target instanceof Element ? event.target.id : '';
+    if (pressed === 'run' && audio) hold();
+    if ((pressed === 'run' || pressed === 'dark') && !audio) run(pressed === 'dark');
     if (!(event.target instanceof Element) || !event.target.closest('tbody')) return;
     if (event.isPrimary && !event.button) touched = event;
   });
@@ -1419,12 +1419,12 @@
   addEventListener('click', event => {
     const { target } = event;
     if (!(target instanceof HTMLButtonElement)) return;
-    if (target.matches('#run')) return void (event.detail || run());
+    if (target.matches('#run')) return void (event.detail || run(false));
+    if (target.matches('#dark')) return void (event.detail || run(true));
     if (target.matches('#skip')) skipped.add(Number(target.value));
     if (target.matches('#skipped button')) skipped.delete(Number(target.value));
     if (target.matches('#forget')) skipped.clear();
-    if (target.matches('#enter')) enterDarkroom(false);
-    if (target.matches('#black')) enterDarkroom(true);
+    if (target.matches('#enter')) enterDarkroom();
     if (target.matches('#leave')) leaveDarkroom();
     remember();
     render();
