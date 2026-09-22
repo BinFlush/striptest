@@ -1435,13 +1435,16 @@
     }
   }
 
-  // What is typed in, once the strip itself is filled in. There are tempi only when the rest is
-  // filled in too: a timer's table can do without them.
+  // What is typed in, once the strip itself is filled in. There are tempi only when the two
+  // tempo fields are filled in too: a timer's table can do without them. Each way of timing
+  // names the fields it needs rather than asking the whole form, because the form still holds
+  // the fields of the other two, hidden — and a count-in nobody can see must not be able to
+  // empty the metronome's table.
   function settings() {
     const strip = [field('base'), field('numsteps'), field('baseplace')];
     field('tmax').setCustomValidity('');
     if (!strip.every(input => input.validity.valid)) return null;
-    const complete = form.checkValidity();
+    const complete = [field('tmin'), field('tmax')].every(input => input.validity.valid);
     const tempi = complete ? range(number('tmin'), number('tmax')) : [];
     field('tmax').setCustomValidity(complete && !tempi.length ? 'No tempo in this range' : '');
     const numsteps = number('numsteps');
