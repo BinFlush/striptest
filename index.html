@@ -640,11 +640,13 @@
       means it is done.</li>
     <li>There are two ways to start it. Start keeps the red type on screen as the run goes.
       Start dark gives the screen up altogether: there is nothing to read once you are going by
-      ear, and then the whole of the screen is the one control. It stays black after the run
-      ends, too, rather than lighting the room while the paper is still out.</li>
-    <li>To stop early, hold the button, or anywhere on a black screen, until the sound ends. A
-      quick touch does nothing, so that a hand brushing the phone in the dark cannot spoil a
-      strip. On a black screen a further hold is what brings the red back.</li>
+      ear. It stays black after the run ends, too, rather than lighting the room while the paper
+      is still out.</li>
+    <li>On that black screen the whole of it is the one control. A tap starts a run, and stops
+      one that is going; a hold gives the screen back and ends the run with it.</li>
+    <li>Started the lit way, a run can only be stopped by holding the button until the sound
+      ends. A quick touch does nothing, so that a hand brushing the phone cannot spoil a
+      strip.</li>
     <li>On an iPhone this may pause music playing from another app. Bluetooth speakers and
       headphones delay every sound by the same amount, which does no harm when you go by ear.</li>
   </ul>
@@ -1141,29 +1143,31 @@
   // that a hand brushing the phone in the dark cannot spoil a strip. The press itself starts the
   // clock, and nothing else is waited for: a phone that takes a long press for a gesture of its
   // own may report no tap, no release, or a cancelled pointer, and the hold survives all three.
+  // In the dark the whole screen is the only control: a tap starts a run and stops one that is
+  // going, and a hold always gives the screen back, stopping the run with it. In the lit view a
+  // hold is instead what stops a run, so that a hand brushing the phone cannot spoil a strip.
   function hold() {
     field('run').classList.add('holding');
     holding = setTimeout(() => {
-      release();
-      ends();
+      holding = 0;
+      field('run').classList.remove('holding');
+      hush('Stopped');
+      document.documentElement.classList.remove('blackout');
     }, HELD);
   }
 
+  // Whether the press that is ending was short enough to be a tap
   function release() {
+    if (!holding) return false;
     clearTimeout(holding);
+    holding = 0;
     field('run').classList.remove('holding');
+    return true;
   }
 
-  function run() {
-    if (planned.length) play(planned);
-  }
-
-  // In the dark the whole screen is the only control. A tap starts a run; a hold ends whatever
-  // is going on, the run first and then the dark itself, so that finishing a strip never lights
-  // the room on its own.
-  function ends() {
+  function toggle() {
     if (audio) return hush('Stopped');
-    document.documentElement.classList.remove('blackout');
+    if (planned.length) play(planned);
   }
 
   function element(name, ...content) {
@@ -1398,7 +1402,7 @@
     const black = document.documentElement.classList.contains('blackout');
     if (pressed === 'dark') document.documentElement.classList.add('blackout');
     if (pressed === 'run' && (audio || black)) hold();
-    else if (pressed === 'run' || pressed === 'dark') run();
+    else if (pressed === 'run' || pressed === 'dark') toggle();
     if (!(event.target instanceof Element) || !event.target.closest('tbody')) return;
     if (event.isPrimary && !event.button) touched = event;
   });
@@ -1418,8 +1422,10 @@
     });
   }
 
-  // Only a finger lifting ends a hold early
-  addEventListener('pointerup', release);
+  // A finger lifting ends a hold early, and in the dark that press was a tap
+  addEventListener('pointerup', () => {
+    if (release() && document.documentElement.classList.contains('blackout')) toggle();
+  });
 
   for (const over of ['pointerup', 'pointercancel']) {
     addEventListener(over, ({ type }) => {
@@ -1435,10 +1441,10 @@
   addEventListener('click', event => {
     const { target } = event;
     if (!(target instanceof HTMLButtonElement)) return;
-    if (target.matches('#run')) return void (event.detail || (audio ? ends() : run()));
+    if (target.matches('#run')) return void (event.detail || toggle());
     if (target.matches('#dark')) {
       document.documentElement.classList.add('blackout');
-      return void (event.detail || run());
+      return void (event.detail || toggle());
     }
     if (target.matches('#skip')) skipped.add(Number(target.value));
     if (target.matches('#skipped button')) skipped.delete(Number(target.value));
