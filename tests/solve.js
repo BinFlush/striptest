@@ -8,11 +8,11 @@ const vm = require('vm');
 const page = fs.readFileSync(`${__dirname}/../index.html`, 'utf8');
 const algorithm = page.match(/<script id="algorithm">([\s\S]*?)<\/script>/)[1];
 const context = vm.createContext({});
-const used = `{ solveSkipping, timed, worst, formatAdd, schedule, climb,
+const used = `{ solveSkipping, timed, formatAdd, schedule, climb,
   FUNDAMENTAL, BEND, CLIMBS, COUNT_IN,
   density, shade, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED }`;
 vm.runInContext(`${algorithm}\nthis.page = ${used};`, context);
-const { solveSkipping, timed, worst, formatAdd, schedule, climb } = context.page;
+const { solveSkipping, timed, formatAdd, schedule, climb } = context.page;
 const { FUNDAMENTAL, BEND, CLIMBS, COUNT_IN } = context.page;
 const { density, shade, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED } = context.page;
 
@@ -21,7 +21,7 @@ const results = asked.map(({ skipped, ...settings }) => {
   const { tempo, every, rows, passed } = solveSkipping(settings, new Set(skipped));
   if (!rows) return { passed };
   const beats = rows.map(row => row.beats);
-  return { tempo, every, beats, counts: rows.map(row => row.count), passed, worst: worst(rows) };
+  return { tempo, every, beats, counts: rows.map(row => row.count), passed };
 });
 
 // The same strips timed with a timer, and how what is added for a patch is written

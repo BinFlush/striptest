@@ -101,7 +101,6 @@ def reference(settings):
         printed=[striptest.format_counts(n, every).strip() for n in winner["lst"][:, 0]],
         passed=passed,
         direct=direct,
-        worst=float(np.max(np.abs(seconds / (settings["base"] * 2.0 ** steps) - 1))),
     )
 
 
@@ -393,9 +392,6 @@ def main():
         if ours["direct"] not in (None, ours.get("tempo")):
             failures.append(f"passing over skipped tempi ends at {ours['tempo']}, but solving "
                             f"without them gives {ours['direct']}\n  settings {settings}")
-        if not np.isclose(theirs.pop("worst", 0), ours.get("worst", 0), rtol=1e-9, atol=1e-9):
-            failures.append(f"the patch furthest from its exact time is not {ours['worst']:.6f} "
-                            f"of it off\n  settings {settings}")
         ours = {key: ours.get(key) for key in theirs}
         if ours != theirs:
             failures.append(f"index.html disagrees with striptest.py\n  settings {settings}\n"

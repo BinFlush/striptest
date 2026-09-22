@@ -119,8 +119,8 @@
 
   fieldset {
     display: flex;
-    flex-wrap: wrap;
-    gap: .25rem 1.5rem;
+    flex-direction: column;
+    gap: .25rem;
     margin: 0;
     padding: 0;
     border: 0;
@@ -149,6 +149,10 @@
     color: var(--muted);
     font-size: .875rem;
     cursor: pointer;
+  }
+
+  .middle {
+    grid-column: 2;
   }
 
   .wide {
@@ -565,22 +569,22 @@
   <label>Steps
     <input id="numsteps" type="number" value="7" min="1" max="24" required inputmode="numeric">
   </label>
-  <label>Base is step
+  <label class="middle">Base is step
     <input id="baseplace" type="number" min="-50" max="50" placeholder="middle">
   </label>
   <fieldset>
     <legend>Timed with</legend>
     <label class="wide">
       <input id="timer" type="radio" name="timing" value="timer" checked>
-      a timer
+      Your own timer
     </label>
     <label class="wide">
       <input id="metronome" type="radio" name="timing" value="metronome">
-      a metronome
+      Your own metronome
     </label>
     <label class="wide">
       <input id="sound" type="radio" name="timing" value="sound">
-      this page's sound
+      Sound cues
     </label>
   </fieldset>
 
@@ -911,11 +915,6 @@
       ...row,
       add: i ? row.seconds - all[i - 1].seconds : row.seconds,
     }));
-  }
-
-  // How far a strip's patches land from their exact exposures at worst, as a share of the seconds
-  function worst(rows) {
-    return Math.max(...rows.map(row => Math.abs(2 ** row.error - 1)));
   }
 
   function solveSkipping(settings, skipped) {
@@ -1400,13 +1399,6 @@
     };
   }
 
-  // What a timer's table says about the other way of timing the strip
-  function offer({ tempo, rows }) {
-    const share = (worst(rows) * 100).toFixed(1);
-    return `No timer? A metronome at ${tempo} bpm gets every patch ` +
-      `within ${share}% of its exact time.`;
-  }
-
   function render() {
     const method = form.timing.value;
     const timer = method === 'timer';
@@ -1429,8 +1421,7 @@
     const longest = Math.max(...waits);
     const notice = method === 'sound'
       ? found.length && `The darkroom view runs it, after ${chosen.countIn} seconds of count-in.`
-      : !result.tempo ? ''
-      : timer ? offer(result)
+      : !result.tempo || timer ? ''
       : `and count every ${nthBeat(result.every)}, from zero.`;
     // The same plan for the darkroom view: a patch number, what to do, and the total behind it.
     // By ear it is a line for every wait the run holds, the count-in first and nameless, each
