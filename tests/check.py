@@ -42,8 +42,8 @@ ISO_RANGE = {
         {"00": 1.80, "0": 1.60, "1": 1.30, "2": 1.10, "3": 0.90, "4": 0.60, "5": 0.40},
 }
 
-# Their ISO speed (P) at each filter, from the next table in that sheet. Two filters are compared
-# by these: the speed is measured where the print is 0.6 above paper white.
+# Their ISO speed (P) at each filter, from the speed table in the same sheet. Two filters are
+# compared by these: the speed is measured where the print is 0.6 above paper white.
 ISO_SPEED = {
     "Multigrade RC Deluxe":
         {"00": 240, "0": 240, "1": 240, "2": 240, "3": 240, "4": 220, "5": 220},
@@ -273,7 +273,7 @@ def timer_failures(settings, rows):
                            for key in ("seconds", "error", "add"))
     checks = [
         ("one row for each step", [row["step"] for row in rows] == list(steps)),
-        ("seconds are whole tenths, and at least one",
+        ("seconds are whole tenths, and at least a tenth",
          np.allclose(seconds * 10, np.round(seconds * 10), atol=1e-6) and seconds.min() > 0.09),
         ("seconds are the f-stop times, to the nearest tenth",
          all(abs(got - want) <= 0.05 + 1e-9 for got, want in zip(seconds, exact) if want > 0.05)),
