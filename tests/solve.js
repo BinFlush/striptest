@@ -89,6 +89,9 @@ const papers = Object.fromEntries(Object.keys(PAPERS).map(paper => {
         .map(exposed => [exposed, probed(measured, exposed, filter, other, paper)]),
     };
   });
-  return [paper, { filters, tones, zones, strips, speeds }];
+  // The curves as the page writes them, so the suite can hold the data itself to what the
+  // model needs of it rather than only what a sample of it shows
+  const curves = Object.fromEntries(filters.map(filter => [filter, PAPERS[paper][filter]]));
+  return [paper, { filters, curves, tones, zones, strips, speeds }];
 }));
 console.log(JSON.stringify({ results, timers, added, runs, waits, climbs, sound, papers }));

@@ -390,6 +390,16 @@ def main():
         if offered != canonical[canonical.index(offered[0]):canonical.index(offered[-1]) + 1]:
             failures.append(f"{paper}: the filters it offers have a gap in the middle, "
                             f"which the page's slider cannot show: {offered}")
+        for filter_name, curve in told["curves"].items():
+            # The page inverts these curves — to place the zones, and to read the tone under a
+            # finger — so no density may be held over two steps: there would be no one exposure
+            # to invert it to, and the tone would jump the width of the flat spot. Rounding a
+            # slow toe to two decimals is enough to cause it.
+            steps = curve[1:]
+            if not all(a < b for a, b in zip(steps, steps[1:])):
+                held = [i for i, (a, b) in enumerate(zip(steps, steps[1:])) if a >= b]
+                failures.append(f"{paper}, filter {filter_name}: the curve holds one density "
+                                f"over more than one step, at {held}")
         for filter_name, tones in told["tones"].items():
             failures += tone_failures(paper, filter_name, tones)
         failures += zone_failures(paper, told["zones"])
