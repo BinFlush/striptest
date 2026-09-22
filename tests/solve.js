@@ -1,12 +1,12 @@
 // Runs the algorithm from index.html outside a browser: reads a JSON list of
 // settings on stdin, prints what the page would compute for each.
-// The page keeps its algorithm in the first <script> block, free of any DOM use.
+// The page keeps its algorithm in the script block named below, free of any DOM use.
 
 const fs = require('fs');
 const vm = require('vm');
 
 const page = fs.readFileSync(`${__dirname}/../index.html`, 'utf8');
-const algorithm = page.match(/<script>([\s\S]*?)<\/script>/)[1];
+const algorithm = page.match(/<script id="algorithm">([\s\S]*?)<\/script>/)[1];
 const context = vm.createContext({});
 const used = `{ solveSkipping, timed, worst, formatAdd,
   density, shade, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED }`;

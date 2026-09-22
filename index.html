@@ -315,8 +315,94 @@
     }
   }
 
-  table + details {
+  #enter {
+    width: 100%;
+    margin-top: 1.25rem;
+  }
+
+  #enter + details {
     margin-top: 2rem;
+  }
+
+  /* The darkroom view. Everything it draws is red on black, down to the focus ring and the
+     scrollbar: green and blue light are what photographic paper is most sensitive to. */
+  html.darkroom {
+    --glow: #A00000;
+    --dim: #5A0000;
+    overscroll-behavior: none;
+    scrollbar-width: none;
+    background: #000;
+    /* The root's own colour is what a border, an outline or a caret falls back to */
+    color: var(--glow);
+    color-scheme: dark;
+  }
+
+  html.darkroom::-webkit-scrollbar {
+    display: none;
+  }
+
+  html.darkroom body {
+    max-width: none;
+    margin: 0;
+    padding: 1.25rem;
+    background: #000;
+    color: inherit;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  html.darkroom body > :not(#darkroom) {
+    display: none;
+  }
+
+  #darkroom {
+    display: none;
+  }
+
+  html.darkroom #darkroom {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  #tell {
+    margin: 0;
+    font: 600 1.75rem/1.3 system-ui, sans-serif;
+  }
+
+  #tell:empty {
+    display: none;
+  }
+
+  #plan {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: .625rem .75rem;
+    align-items: baseline;
+    font: 600 2.25rem/1 var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  #plan :nth-child(3n+1), #plan :nth-child(3n) {
+    color: var(--dim);
+    font-size: 1rem;
+  }
+
+  #plan :nth-child(3n) {
+    text-align: right;
+  }
+
+  #darkroom button {
+    height: auto;
+    padding: 1rem;
+    border-color: var(--dim);
+    background: #000;
+    color: var(--glow);
+    font: 600 1.25rem/1 system-ui, sans-serif;
+  }
+
+  #darkroom button:focus-visible {
+    outline-color: var(--glow);
   }
 
   ul {
@@ -341,6 +427,16 @@
     color: inherit;
   }
 </style>
+
+<script>
+  // Whether to open straight into the darkroom view is decided before anything is painted, so
+  // that a reload at the enlarger cannot flash the page white
+  try {
+    if (JSON.parse(localStorage.getItem('striptest')).darkroom) {
+      document.documentElement.className = 'darkroom';
+    }
+  } catch {}
+</script>
 
 <nav>
   <a href="https://time.lutzen.co/">Time</a>
@@ -442,6 +538,8 @@
   <tbody></tbody>
 </table>
 
+<button id="enter" type="button">Darkroom view</button>
+
 <details>
   <summary>How to use</summary>
   <ul class="timer">
@@ -487,9 +585,19 @@
       right gives the seconds for that filter. This goes by Ilford's speeds for the paper: filters 4
       and 5 need a stop more light than 00 to 3 on Multigrade IV, and an eighth of a stop more on
       Multigrade RC Deluxe. Your enlarger may differ.</li>
+    <li>Darkroom view turns the page into large red type on black, to read at the enlarger. It
+      shows only the plan: no strips, nothing to set. Escape, or Close, brings the page back.</li>
+    <li>Red only is safer than white, not safe. The screen is still a light source, and
+      Multigrade paper is most sensitive to the green and blue in it. Turn the phone's brightness
+      right down and keep it away from the paper.</li>
+    <li>Test your own phone before you trust it: leave a scrap of paper face up beside the phone
+      showing the view for five minutes, then develop it.</li>
+    <li>Turn on airplane mode, or Do Not Disturb, before you start. A notification or a call
+      lights the whole screen.</li>
     <li>Open the page once while online, and after that it works in airplane mode.</li>
     <li>To keep it to hand, add it to the home screen: on iPhone from Share → Add to Home
-      Screen, on Android from the browser menu → Install app, or Add to home screen.</li>
+      Screen, on Android from the browser menu → Install app, or Add to home screen. On an
+      iPhone that is the only way to be rid of the browser's own bars in the darkroom view.</li>
     <li>Everything is calculated in your browser. Nothing is sent anywhere.</li>
   </ul>
 </details>
@@ -498,7 +606,13 @@
   <a href="https://github.com/BinFlush/striptest#readme" target="_blank">How it works and source</a>
 </footer>
 
-<script>
+<div id="darkroom">
+  <p id="tell"></p>
+  <div id="plan"></div>
+  <button id="leave" type="button">Close</button>
+</div>
+
+<script id="algorithm">
   const TIE = 1e-12;
 
   // Print density per third of a stop, for each paper at each filter. The curve shapes are read
@@ -752,6 +866,8 @@
   const number = id => field(id).valueAsNumber;
   const SHOWN = 5;
   const { skipped, metronome, paper } = recall();
+  let darkroom = document.documentElement.classList.contains('darkroom');
+  let awake = null;
   let reference = 0;
   let touched = null;
   let probing = false;
@@ -771,9 +887,34 @@
         skipped: [...skipped],
         metronome: field('metronome').checked,
         paper: field('paper').value,
+        darkroom,
       };
       localStorage.setItem('striptest', JSON.stringify(kept));
     } catch {}
+  }
+
+  // The darkroom view: the plan in large red type, for reading at the enlarger. Going in asks
+  // for the screen to stay on, and for the whole screen where that is offered; a phone that
+  // gives neither still shows the view.
+  async function stayAwake() {
+    try {
+      awake = await navigator.wakeLock.request('screen');
+    } catch {}
+  }
+
+  function enterDarkroom() {
+    darkroom = true;
+    document.documentElement.classList.add('darkroom');
+    document.documentElement.requestFullscreen?.().catch(() => {});
+    stayAwake();
+  }
+
+  function leaveDarkroom() {
+    darkroom = false;
+    document.documentElement.classList.remove('darkroom');
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    awake?.release().catch(() => {});
+    awake = null;
   }
 
   function element(name, ...content) {
@@ -935,6 +1076,13 @@
     const notice = !result.tempo ? ''
       : timer ? offer(result)
       : `and count every ${nthBeat(result.every)}, from zero.`;
+    // The same plan for the darkroom view: a patch number, what to do, and the total behind it
+    const lines = found.flatMap((row, i) => [
+      element('span', String(i + 1)),
+      element('span', timer ? formatAdd(row.add, row.seconds)
+        : formatCount(row.count, result.every)),
+      element('span', timer ? row.seconds.toFixed(1) : ''),
+    ]);
     const fold = timer ? 'Placing the base' : 'Metronome and counting';
     document.body.className = timer ? 'timer' : 'metronome';
     form.querySelector('summary').textContent = fold;
@@ -948,6 +1096,9 @@
     field('skip').value = result.tempo ?? '';
     field('skip').hidden = !result.tempo;
     field('skipped').replaceChildren(...skipping);
+    field('tell').textContent = timer || !result.tempo ? ''
+      : `${result.tempo} bpm, every ${nthBeat(result.every)}`;
+    field('plan').replaceChildren(...lines);
     field('forget').textContent = `Forget all skipped tempos (${skipped.size})`;
     field('forget').hidden = !skipped.size;
     document.querySelector('tbody').replaceChildren(...rows);
@@ -955,6 +1106,15 @@
   }
 
   addEventListener('input', render);
+  addEventListener('keydown', event => {
+    if (event.key === 'Escape' && darkroom) field('leave').click();
+  });
+
+  // A screen that slept, or an app that was away, has let go of the wake lock
+  addEventListener('visibilitychange', () => {
+    if (darkroom && !document.hidden) stayAwake();
+  });
+
   field('compare').addEventListener('toggle', render);
   document.querySelector('fieldset').addEventListener('change', remember);
   field('paper').addEventListener('change', remember);
@@ -999,6 +1159,8 @@
     if (target.matches('#skip')) skipped.add(Number(target.value));
     if (target.matches('#skipped button')) skipped.delete(Number(target.value));
     if (target.matches('#forget')) skipped.clear();
+    if (target.matches('#enter')) enterDarkroom();
+    if (target.matches('#leave')) leaveDarkroom();
     remember();
     render();
   });
