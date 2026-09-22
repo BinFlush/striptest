@@ -410,8 +410,30 @@
 
   /* Named twice over, to outrank the rule above: Start is what a hand finds in the dark */
   #darkroom #run {
+    position: relative;
+    z-index: 0;
+    overflow: hidden;
     padding: 2rem 1rem;
     font-size: 2rem;
+    touch-action: none;
+  }
+
+  /* Holding the button fills it, and the fill reaching the far side is what stops the run: how
+     long this takes is how long the hold has to be, and it is the only place that is written */
+  #run.holding::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    transform-origin: left;
+    animation: hold .7s linear;
+    background: var(--dim);
+  }
+
+  @keyframes hold {
+    from {
+      transform: scaleX(0);
+    }
   }
 
   ul {
@@ -589,8 +611,8 @@
     <li>A steady tone means the run is on. Under it a second tone climbs, and arrives an octave
       higher exactly on each mark, where a short accent lands: the first mark is the lamp on, then
       one for each patch to cover, and the last is the lamp off. Silence means it is done.</li>
-    <li>To stop early, press and hold Start. A single touch does nothing, so that a hand brushing
-      the phone in the dark cannot spoil a strip.</li>
+    <li>To stop early, hold the button down until it fills. A quick touch does nothing, so that a
+      hand brushing the phone in the dark cannot spoil a strip.</li>
     <li>On an iPhone this may pause music playing from another app. Bluetooth speakers and
       headphones delay every sound by the same amount, which does no harm when you go by ear.</li>
   </ul>
@@ -927,12 +949,10 @@
   const number = id => field(id).valueAsNumber;
   const SHOWN = 5;
   const { skipped, timing, paper } = recall();
-  const HELD = 600;
   let darkroom = document.documentElement.classList.contains('darkroom');
   let awake = null;
   let audio = null;
   let planned = [];
-  let pressed = 0;
   let reference = 0;
   let touched = null;
   let probing = false;
@@ -1068,13 +1088,12 @@
     tell(mark ? `Patch ${mark}` : 'Lamp on');
   }
 
-  // A run starts on a tap and stops only on a press and hold, so that a hand brushing the phone
-  // in the dark cannot spoil a strip. A keyboard, which has no press to measure, stops it at once.
-  function run(now) {
-    const held = now - pressed;
-    pressed = 0;
-    if (!audio) return play(planned);
-    if (held >= HELD) hush('Stopped');
+  // A run starts on a press and stops only on a press held long enough to fill the button, so
+  // that a hand brushing the phone in the dark cannot spoil a strip. Nothing here waits for the
+  // tap to be reported afterwards: a phone need not report one at all after a long press.
+  function run() {
+    if (audio) return hush('Stopped');
+    play(planned);
   }
 
   function element(name, ...content) {
@@ -1272,6 +1291,14 @@
     fit();
   }
 
+  field('run').addEventListener('animationend', () => {
+    field('run').classList.remove('holding');
+    hush('Stopped');
+  });
+
+  // Nothing in the view may open one of the browser's own menus: they are not red
+  field('darkroom').addEventListener('contextmenu', event => event.preventDefault());
+
   addEventListener('input', render);
   addEventListener('keydown', event => {
     if (event.key !== 'Escape' || !darkroom) return;
@@ -1296,7 +1323,10 @@
   // begins once the pointer moves more sideways than up or down, so that scrolling the page
   // over the rows does not make them flicker; a scroll ends in `pointercancel` and sets nothing.
   addEventListener('pointerdown', event => {
-    if (event.target instanceof Element && event.target.id === 'run') pressed = event.timeStamp;
+    if (event.target instanceof Element && event.target.id === 'run') {
+      if (audio) field('run').classList.add('holding');
+      else run();
+    }
     if (!(event.target instanceof Element) || !event.target.closest('tbody')) return;
     if (event.isPrimary && !event.button) touched = event;
   });
@@ -1318,6 +1348,7 @@
 
   for (const over of ['pointerup', 'pointercancel']) {
     addEventListener(over, ({ type }) => {
+      field('run').classList.remove('holding');
       if (!touched) return;
       if (type === 'pointerup') reference = Number(rowOf(touched.target).dataset.step);
       touched = null;
@@ -1327,9 +1358,10 @@
     });
   }
 
-  addEventListener('click', ({ target, timeStamp }) => {
+  addEventListener('click', event => {
+    const { target } = event;
     if (!(target instanceof HTMLButtonElement)) return;
-    if (target.matches('#run')) return run(timeStamp);
+    if (target.matches('#run')) return void (event.detail || run());
     if (target.matches('#skip')) skipped.add(Number(target.value));
     if (target.matches('#skipped button')) skipped.delete(Number(target.value));
     if (target.matches('#forget')) skipped.clear();
