@@ -672,54 +672,15 @@
 
 <details>
   <summary>How to use</summary>
-  <ul class="timer">
-    <li>Give the whole strip the first row's seconds. Then cover the first patch and give the rest
-      what the next row says under Add, cover the next patch, and so on. Seconds is what a patch has
-      had by then.</li>
-    <li>If you would rather expose every patch on its own, give each what its row says under
-      Seconds.</li>
-    <li>No timer? Choose "Your own metronome" above and the table turns into beats to count, or
-      "Sound cues" and the page sounds every moment you have to act on.</li>
-  </ul>
-  <ul class="metronome">
-    <li>Set any metronome, a physical one or an app, to the tempo shown. If it can accent beats,
-      let it accent the one you count.</li>
-    <li>Start the exposure on the count of zero. Keep counting, and cover the next patch of the
-      strip at each count in the table.</li>
-    <li>Step error is how far a row's real exposure lands from its target, as a share of one
-      step.</li>
-    <li>Ticking "Count each step from zero" restarts the count for every patch. This can be
-      easier to count when you want to stop exposing between each patch.</li>
-    <li>If your metronome lacks the tempo shown, press "My metronome can't do …". The next best
-      tempo appears, and the choice is remembered on this device.</li>
-    <li>There is purposely no metronome built in: this way of timing exists for the accuracy a
-      dedicated metronome gives, and finding the tempo is the whole trick. If you would rather
-      the page did the timing, that is what "Sound cues" above is for, and if what you
-      want is a proper f-stop timer, something like
-      <a href="https://gotimer.org/photography/enlarger-timer" target="_blank">GoTimer's enlarger
-      timer</a> is a better fit.</li>
-  </ul>
-  <ul class="sound">
-    <li>The page times the run itself. Open Darkroom view below the table, then Start. The
-      count-in before the lamp goes on is set under "Configuration", and is
-      remembered: make it as long as you need to get a hand to the switch.</li>
-    <li>The count-in counts three beats in, one a second, the last of them a second before the
-      lamp. On the lamp a drone comes in and holds for as long as the exposure runs. Over it a
-      tone climbs, and arrives an octave higher exactly on each mark, where a short beat lands,
-      louder and an octave above the ones that counted you in: one for each patch to cover, and
-      the last is the lamp off. Silence means it is done.</li>
-    <li>There are two ways to start it. Start keeps the red type on screen as the run goes.
-      Start dark gives the screen up altogether: there is nothing to read once you are going by
-      ear. It stays black after the run ends, too, rather than lighting the room while the paper
-      is still out.</li>
-    <li>On that black screen the whole of it is the one control. A tap starts a run, and stops
-      one that is going; a hold gives the screen back and ends the run with it.</li>
-    <li>Started the lit way, a press on the button stops the run at once: there is a screen to
-      see it on, and the hold belongs to the dark.</li>
-    <li>On an iPhone this may pause music playing from another app. Bluetooth speakers and
-      headphones delay every sound by the same amount, which does no harm when you go by ear.</li>
-  </ul>
   <ul>
+    <li>Type in the exposure you think the print needs, how big a step to take between patches,
+      and how many patches. The table then has a row for each one, and Seconds is what that patch
+      ends up with.</li>
+    <li>"Base is step" says where your guess sits in the strip. Left empty it lands in the
+      middle, so the patches bracket it; 1 puts it on the first patch, so the strip only goes up
+      from there.</li>
+    <li>Then say how you mean to time it, under "Timed with". The three ways are the three folds
+      at the end of this list, and the table changes to suit the one you pick.</li>
     <li>To see how far apart the patches will be, look at the strip under each row. It shows roughly
       what that patch prints as, in the zones of the Zone System: 0 is full black, V middle grey and
       X paper white, on the paper and at the filter set above the table. Your prints may
@@ -752,6 +713,65 @@
       iPhone that is the only way to be rid of the browser's own bars in the darkroom view.</li>
     <li>Everything is calculated in your browser. Nothing is sent anywhere.</li>
   </ul>
+
+  <details>
+    <summary>Your own timer</summary>
+    <ul>
+      <li>Give the whole strip the first row's seconds. Then cover the first patch and give the
+        rest what the next row says under Add, cover the next patch, and so on. Seconds is what a
+        patch has had by then.</li>
+      <li>If you would rather expose every patch on its own, give each what its row says under
+        Seconds.</li>
+      <li>The times are rounded to a tenth of a second, which is about what a timer can be set
+        to, and none of them is shorter than that.</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>Your own metronome</summary>
+    <ul>
+      <li>Set any metronome, a physical one or an app, to the tempo shown. If it can accent beats,
+        let it accent the one you count.</li>
+      <li>Start the exposure on the count of zero. Keep counting, and cover the next patch of the
+        strip at each count in the table.</li>
+      <li>Step error is how far a row's real exposure lands from its target, as a share of one
+        step.</li>
+      <li>Ticking "Count each step from zero" restarts the count for every patch. This can be
+        easier to count when you want to stop exposing between each patch.</li>
+      <li>If your metronome lacks the tempo shown, press "My metronome can't do …". The next best
+        tempo appears, and the choice is remembered on this device.</li>
+      <li>There is purposely no metronome built in: this way of timing exists for the accuracy a
+        dedicated metronome gives, and finding the tempo is the whole trick. If you would rather
+        the page did the timing, that is what "Sound cues" above is for, and if what you
+        want is a proper f-stop timer, something like
+        <a href="https://gotimer.org/photography/enlarger-timer" target="_blank">GoTimer's enlarger
+        timer</a> is a better fit.</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>Sound cues</summary>
+    <ul>
+      <li>The page times the run itself. Open Darkroom view below the table, then Start. The
+        count-in before the lamp goes on is set under "Configuration", and is
+        remembered: make it as long as you need to get a hand to the switch.</li>
+      <li>The count-in counts three beats in, one a second, the last of them a second before the
+        lamp. On the lamp a drone comes in and holds for as long as the exposure runs. Over it a
+        tone climbs, and arrives an octave higher exactly on each mark, where a short beat lands,
+        louder and an octave above the ones that counted you in: one for each patch to cover, and
+        the last is the lamp off. Silence means it is done.</li>
+      <li>There are two ways to start it. Start keeps the red type on screen as the run goes.
+        Start dark gives the screen up altogether: there is nothing to read once you are going by
+        ear. It stays black after the run ends, too, rather than lighting the room while the paper
+        is still out.</li>
+      <li>On that black screen the whole of it is the one control. A tap starts a run, and stops
+        one that is going; a hold gives the screen back and ends the run with it.</li>
+      <li>Started the lit way, a press on the button stops the run at once: there is a screen to
+        see it on, and the hold belongs to the dark.</li>
+      <li>On an iPhone this may pause music playing from another app. Bluetooth speakers and
+        headphones delay every sound by the same amount, which does no harm when you go by ear.</li>
+    </ul>
+  </details>
 </details>
 
 <footer>
