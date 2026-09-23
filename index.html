@@ -564,7 +564,7 @@
     <input id="numsteps" type="number" value="7" min="1" max="24" required inputmode="numeric">
   </label>
   <label class="middle">Base is step
-    <input id="baseplace" type="number" min="-50" max="50" placeholder="middle">
+    <input id="baseplace" type="number" min="-50" max="50" placeholder="4">
   </label>
   <label class="wide">
     <input id="metronome" type="checkbox">
@@ -1522,6 +1522,9 @@
     field('tempo').textContent = result.tempo ?? '?';
     field('notice').textContent = counting && result.tempo
       ? `and count every ${nthBeat(result.every)}, from zero.` : '';
+    // Which step the base lands on when nobody says: a hint rather than a value, so that an
+    // empty box still means the middle and a longer strip still moves it
+    field('baseplace').placeholder = Math.floor((number('numsteps') - 1) / 2) + 1 || '';
     field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
     field('skip').value = result.tempo ?? '';
     field('skip').hidden = !result.tempo;
