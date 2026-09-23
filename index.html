@@ -186,7 +186,7 @@
     margin-top: 1.25rem;
   }
 
-  #skipped, body:not(.metronome) #notice {
+  #skipped {
     font-size: .875rem;
   }
 
@@ -318,7 +318,7 @@
     margin-top: 1.25rem;
   }
 
-  #enter + details {
+  table + details {
     margin-top: 2rem;
   }
 
@@ -609,9 +609,10 @@
 <section>
   <p class="metronome">Set your metronome to</p>
   <output id="tempo" class="metronome"></output>
-  <p id="notice"></p>
+  <p id="notice" class="metronome"></p>
   <button id="skip" class="metronome" type="button" hidden></button>
   <p id="skipped" class="metronome"></p>
+  <button id="enter" type="button">Run in Darkroom Mode</button>
 </section>
 
 <label>Paper
@@ -637,8 +638,6 @@
   </thead>
   <tbody></tbody>
 </table>
-
-<button id="enter" type="button">Darkroom view</button>
 
 <details>
   <summary>How to use</summary>
@@ -674,9 +673,9 @@
       right gives the seconds for that filter. This goes by Ilford's speeds for the paper: filters 4
       and 5 need a stop more light than 00 to 3 on Multigrade IV and Art 300, and an eighth of a
       stop more on FB Classic and Multigrade RC Deluxe. Your enlarger may differ.</li>
-    <li>Darkroom view turns the page into large red type on black, to read at the enlarger. It
-      shows only what your hands need, the plan or the Start button, and nothing that can be set.
-      Escape, or Close, brings the page back.</li>
+    <li>"Run in Darkroom Mode" turns the page into large red type on black, to read at the
+      enlarger. It shows only what your hands need, the plan or the Start button, and nothing that
+      can be set. Escape, or Close, brings the page back.</li>
     <li>Red only is safer than white, not safe. The screen is still a light source, and
       Multigrade paper is most sensitive to the green and blue in it. Turn the phone's brightness
       right down and keep it away from the paper.</li>
@@ -694,9 +693,9 @@
   <details>
     <summary>In the darkroom</summary>
     <ul>
-      <li>The page times the run itself. Open Darkroom view below the table, then Start. The
-        count-in before the lamp goes on is set under "Configuration", and is
-        remembered: make it as long as you need to get a hand to the switch.</li>
+      <li>The page times the run itself. Press "Run in Darkroom Mode", then Start. The count-in
+        before the lamp goes on is set under "Configuration", and is remembered: make it as long
+        as you need to get a hand to the switch.</li>
       <li>The count-in counts three beats in, one a second, the last of them a second before the
         lamp. On the lamp a drone comes in and holds for as long as the exposure runs. Over it a
         tone climbs, and arrives an octave higher exactly on each mark, where a short beat lands,
@@ -1501,9 +1500,6 @@
     // waits, which is the one the bars are drawn against
     const waits = planned.map((mark, i) => mark - (planned[i - 1] ?? 0));
     const longest = Math.max(...waits);
-    const notice = counting
-      ? !result.tempo ? '' : `and count every ${nthBeat(result.every)}, from zero.`
-      : found.length && `The darkroom view runs it, after ${chosen.countIn} seconds of count-in.`;
     // The same plan for the darkroom view: a patch number, what to give it, and what it has had
     // by then. By ear there is a line for every wait the run holds — the count-in first, which
     // is nobody's patch — and the wait itself is drawn beside the numbers.
@@ -1524,7 +1520,8 @@
     field('othergrade').textContent = other;
     field('other').setAttribute('aria-valuetext', other);
     field('tempo').textContent = result.tempo ?? '?';
-    field('notice').textContent = notice || '';
+    field('notice').textContent = counting && result.tempo
+      ? `and count every ${nthBeat(result.every)}, from zero.` : '';
     field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
     field('skip').value = result.tempo ?? '';
     field('skip').hidden = !result.tempo;
