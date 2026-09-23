@@ -119,33 +119,14 @@
     accent-color: var(--accent);
   }
 
-  details, #forget, fieldset {
+  details, #forget {
     grid-column: 1 / -1;
   }
 
-  fieldset {
-    display: flex;
-    flex-direction: column;
-    gap: .25rem;
-    margin: 0;
-    padding: 0;
-    border: 0;
-  }
-
-  legend {
-    padding: 0 0 .25rem;
-    color: var(--muted);
-    font-size: .8125rem;
-  }
-
-  body:not(.timer) .timer,
+  /* Only the metronome is a way of working the page has to be told about; what it does otherwise
+     needs no name, and the two things that belong to it are the seconds and the run they time */
   body:not(.metronome) .metronome,
-  body:not(.sound) .sound {
-    display: none;
-  }
-
-  /* The fold holds only what belongs to one way of timing, and a timer needs nothing */
-  body.timer form details {
+  body.metronome .seconds {
     display: none;
   }
 
@@ -205,7 +186,7 @@
     margin-top: 1.25rem;
   }
 
-  #skipped, .sound #notice {
+  #skipped, body:not(.metronome) #notice {
     font-size: .875rem;
   }
 
@@ -424,21 +405,22 @@
        whole `animation` shorthand that reads it. */
     --late: 0s;
     display: grid;
-    grid-template-columns: auto auto 1fr;
+    grid-template-columns: auto auto auto 1fr;
     gap: .625rem .75rem;
     align-items: baseline;
     font: 600 2.25rem/1 var(--mono);
     font-variant-numeric: tabular-nums;
   }
 
-  #plan :nth-child(3n+1), #plan :nth-child(3n) {
+  /* A line is four cells: which patch it is, what to give it, what it has had by then, and the
+     wait itself. The middle one is what a hand acts on, so it is the one read across the room;
+     the other two are there to be checked rather than read. */
+  #plan :nth-child(4n+1), #plan :nth-child(4n+3) {
     color: var(--dim);
     font-size: 1rem;
   }
 
-  /* Both columns of totals are set the same way: the dim one behind what a timer or a metronome
-     is told to do, and the one read by ear, which is in the middle so the bar has the room */
-  #plan :nth-child(3n), body.sound #plan :nth-child(3n+2) {
+  #plan :nth-child(4n+3) {
     text-align: right;
   }
 
@@ -584,21 +566,10 @@
   <label class="middle">Base is step
     <input id="baseplace" type="number" min="-50" max="50" placeholder="middle">
   </label>
-  <fieldset>
-    <legend>Timed with</legend>
-    <label class="wide">
-      <input id="timer" type="radio" name="timing" value="timer" checked>
-      Your own timer
-    </label>
-    <label class="wide">
-      <input id="metronome" type="radio" name="timing" value="metronome">
-      Your own metronome
-    </label>
-    <label class="wide">
-      <input id="sound" type="radio" name="timing" value="sound">
-      Sound cues
-    </label>
-  </fieldset>
+  <label class="wide">
+    <input id="metronome" type="checkbox">
+    Use a metronome instead
+  </label>
 
   <details>
     <summary>Configuration</summary>
@@ -618,7 +589,7 @@
           <option value="4">4th beat</option>
         </select>
       </label>
-      <label class="sound">Count-in, seconds
+      <label class="seconds">Count-in, seconds
         <input id="countin" type="number" value="3" min="3" max="60" step="any"
           inputmode="decimal">
       </label>
@@ -661,9 +632,8 @@
 
 <table>
   <thead>
-    <tr class="timer"><th>Add</th><th>Stops</th><th>Seconds</th></tr>
     <tr class="metronome"><th>Count</th><th>Stops</th><th>Seconds</th><th>Step<br>error</th></tr>
-    <tr class="sound"><th>Seconds</th><th>Stops</th></tr>
+    <tr class="seconds"><th>Add</th><th>Stops</th><th>Seconds</th></tr>
   </thead>
   <tbody></tbody>
 </table>
@@ -679,8 +649,15 @@
     <li>"Base is step" says where your guess sits in the strip. Left empty it lands in the
       middle, so the patches bracket it; 1 puts it on the first patch, so the strip only goes up
       from there.</li>
-    <li>Then say how you mean to time it, under "Timed with". The three ways are the three folds
-      at the end of this list, and the table changes to suit the one you pick.</li>
+    <li>The table then says what to give each patch: Add is what to put on once the patch before
+      has been covered, and Seconds is what that patch has had by the time you cover it. Give the
+      whole strip the first row's seconds, cover the first patch, give the rest what the next row
+      says under Add, and so on. To expose every patch on its own instead, give each what its row
+      says under Seconds.</li>
+    <li>The page can keep that time for you, by sounding every moment you have to act on — that
+      is what it does unless you say otherwise. If you would rather count it on a metronome, tick
+      "Use a metronome instead" and the table turns into counts. Both ways have a fold at the end
+      of this list.</li>
     <li>To see how far apart the patches will be, look at the strip under each row. It shows roughly
       what that patch prints as, in the zones of the Zone System: 0 is full black, V middle grey and
       X paper white, on the paper and at the filter set above the table. Your prints may
@@ -715,42 +692,7 @@
   </ul>
 
   <details>
-    <summary>Your own timer</summary>
-    <ul>
-      <li>Give the whole strip the first row's seconds. Then cover the first patch and give the
-        rest what the next row says under Add, cover the next patch, and so on. Seconds is what a
-        patch has had by then.</li>
-      <li>If you would rather expose every patch on its own, give each what its row says under
-        Seconds.</li>
-      <li>The times are rounded to a tenth of a second, which is about what a timer can be set
-        to, and none of them is shorter than that.</li>
-    </ul>
-  </details>
-
-  <details>
-    <summary>Your own metronome</summary>
-    <ul>
-      <li>Set any metronome, a physical one or an app, to the tempo shown. If it can accent beats,
-        let it accent the one you count.</li>
-      <li>Start the exposure on the count of zero. Keep counting, and cover the next patch of the
-        strip at each count in the table.</li>
-      <li>Step error is how far a row's real exposure lands from its target, as a share of one
-        step.</li>
-      <li>Ticking "Count each step from zero" restarts the count for every patch. This can be
-        easier to count when you want to stop exposing between each patch.</li>
-      <li>If your metronome lacks the tempo shown, press "My metronome can't do …". The next best
-        tempo appears, and the choice is remembered on this device.</li>
-      <li>There is purposely no metronome built in: this way of timing exists for the accuracy a
-        dedicated metronome gives, and finding the tempo is the whole trick. If you would rather
-        the page did the timing, that is what "Sound cues" above is for, and if what you
-        want is a proper f-stop timer, something like
-        <a href="https://gotimer.org/photography/enlarger-timer" target="_blank">GoTimer's enlarger
-        timer</a> is a better fit.</li>
-    </ul>
-  </details>
-
-  <details>
-    <summary>Sound cues</summary>
+    <summary>In the darkroom</summary>
     <ul>
       <li>The page times the run itself. Open Darkroom view below the table, then Start. The
         count-in before the lamp goes on is set under "Configuration", and is
@@ -772,6 +714,28 @@
         headphones delay every sound by the same amount, which does no harm when you go by ear.</li>
     </ul>
   </details>
+
+  <details>
+    <summary>Your own metronome</summary>
+    <ul>
+      <li>Set any metronome, a physical one or an app, to the tempo shown. If it can accent beats,
+        let it accent the one you count.</li>
+      <li>Start the exposure on the count of zero. Keep counting, and cover the next patch of the
+        strip at each count in the table.</li>
+      <li>Step error is how far a row's real exposure lands from its target, as a share of one
+        step.</li>
+      <li>Ticking "Count each step from zero" restarts the count for every patch. This can be
+        easier to count when you want to stop exposing between each patch.</li>
+      <li>If your metronome lacks the tempo shown, press "My metronome can't do …". The next best
+        tempo appears, and the choice is remembered on this device.</li>
+      <li>There is purposely no metronome built in: this way of working exists for the accuracy a
+        dedicated metronome gives, and finding the tempo is the whole trick. If you would rather
+        the page did the timing, that is what it does with the box left unticked, and if what you
+        want is a proper f-stop timer, something like
+        <a href="https://gotimer.org/photography/enlarger-timer" target="_blank">GoTimer's enlarger
+        timer</a> is a better fit.</li>
+    </ul>
+  </details>
 </details>
 
 <footer>
@@ -781,8 +745,8 @@
 <div id="darkroom">
   <p id="tell"></p>
   <div id="plan"></div>
-  <button id="run" class="sound" type="button">Start</button>
-  <button id="dark" class="sound" type="button">Start dark</button>
+  <button id="run" class="seconds" type="button">Start</button>
+  <button id="dark" class="seconds" type="button">Start dark</button>
   <button id="leave" type="button">Close</button>
 </div>
 
@@ -984,7 +948,7 @@
     return { tempo: winner.tempo, every, rows };
   }
 
-  // The strip timed with a timer instead: every patch gets its seconds rounded to a tenth and
+  // The strip timed in seconds instead: every patch gets its seconds rounded to a tenth and
   // never below one tenth, and `add` is what the strip is given once the patch before is covered
   function timed({ base, stepsize, numsteps, baseplace }) {
     const steps = Array.from({ length: numsteps }, (_, i) => i - baseplace);
@@ -1124,7 +1088,7 @@
   const field = id => document.getElementById(id);
   const number = id => field(id).valueAsNumber;
   const SHOWN = 5;
-  const { skipped, timing, paper, countin } = recall();
+  const { skipped, metronome, paper, countin } = recall();
   const HELD = 700;
   let darkroom = document.documentElement.classList.contains('darkroom');
   let awake = null;
@@ -1138,10 +1102,13 @@
 
   function recall() {
     try {
-      const { skipped, timing, paper, countin } = JSON.parse(localStorage.getItem('striptest'));
+      const { skipped, metronome, timing, paper, countin } =
+        JSON.parse(localStorage.getItem('striptest'));
       // Only numbers can ever match a tempo, and anything else would be counted by the button
-      // that offers to forget them while never being one of them
-      return { skipped: new Set([...skipped].filter(Number.isFinite)), timing, paper, countin };
+      // that offers to forget them while never being one of them. `timing` is what a device that
+      // was last here while the page still asked stored; it can go once they have all been back.
+      return { skipped: new Set([...skipped].filter(Number.isFinite)), paper, countin,
+        metronome: metronome ?? timing === 'metronome' };
     } catch {
       return { skipped: new Set() };
     }
@@ -1151,7 +1118,7 @@
     try {
       const kept = {
         skipped: [...skipped],
-        timing: form.timing.value,
+        metronome: field('metronome').checked,
         paper: field('paper').value,
         countin: field('countin').value,
         darkroom,
@@ -1194,10 +1161,10 @@
   }
 
   // Which line of the plan the run is waiting on, counted as the marks are: the count-in is the
-  // first. Called with nothing, no line is lit. The lines are three cells each.
+  // first. Called with nothing, no line is lit. The lines are four cells each.
   function lit(line) {
     [...field('plan').children]
-      .forEach((cell, i) => cell.classList.toggle('now', Math.floor(i / 3) === line));
+      .forEach((cell, i) => cell.classList.toggle('now', Math.floor(i / 4) === line));
   }
 
   // Everything a run sounds is scheduled on the audio clock the moment it starts, so nothing
@@ -1411,12 +1378,11 @@
   }
 
   // Every row is exposed so many stops more than `anchor`, the reference row, errors included
-  function tableRow(row, { stepsize, filters, paper, timing }, every, anchor) {
+  function tableRow(row, { stepsize, filters, paper, counting }, every, anchor) {
     const { step, seconds, error } = row;
-    const texts = timing === 'metronome'
+    const texts = counting
       ? [formatCount(row.count, every), formatStops(step, stepsize), seconds.toFixed(2),
         formatError(error * stepsize)]
-      : timing === 'sound' ? [seconds.toFixed(1), formatStops(step, stepsize)]
       : [formatAdd(row.add, seconds), formatStops(step, stepsize), seconds.toFixed(1)];
     const tr = element('tr', ...texts.map(text => element('td', text)));
     const exposed = (step - anchor.step) / stepsize + error - anchor.error;
@@ -1478,9 +1444,9 @@
   }
 
   // What is typed in, once the strip itself is filled in. There are tempi only when the two
-  // tempo fields are filled in too: a timer's table can do without them. Each way of timing
-  // names the fields it needs rather than asking the whole form, because the form still holds
-  // the fields of the other two, hidden — and a count-in nobody can see must not be able to
+  // tempo fields are filled in too: the table of seconds can do without them. Each way of
+  // working names the fields it needs rather than asking the whole form, because the form still
+  // holds the other one's fields, hidden — and a count-in nobody can see must not be able to
   // empty the metronome's table.
   function settings() {
     const strip = [field('base'), field('numsteps'), field('baseplace')];
@@ -1504,14 +1470,13 @@
       divisions: Number(field('divisions').value),
       filters,
       paper: field('paper').value,
-      timing: form.timing.value,
+      counting: field('metronome').checked,
       countIn: Number.isNaN(wait) ? COUNT_IN : clamp(wait, COUNT_IN, 60),
     };
   }
 
   function render() {
-    const method = form.timing.value;
-    const timer = method === 'timer';
+    const counting = field('metronome').checked;
     // Before anything is read from them: the sliders reach only as far as this paper was measured
     const [least, most] = offered(field('paper').value);
     for (const slider of ['filter', 'other']) {
@@ -1526,7 +1491,7 @@
     const skipping = result.passed.slice(0, SHOWN).map(chip);
     if (skipping.length) skipping.unshift('Skipping ');
     if (result.passed.length > SHOWN) skipping.push(` and ${result.passed.length - SHOWN} more`);
-    const found = (method === 'metronome' ? result.rows : chosen && timed(chosen)) ?? [];
+    const found = (counting ? result.rows : chosen && timed(chosen)) ?? [];
     // The reference is the row nearest to the step that was chosen: the strip may have lost it
     const anchor = found.reduce((near, row) =>
       Math.abs(row.step - reference) < Math.abs(near.step - reference) ? row : near, found[0]);
@@ -1536,24 +1501,24 @@
     // waits, which is the one the bars are drawn against
     const waits = planned.map((mark, i) => mark - (planned[i - 1] ?? 0));
     const longest = Math.max(...waits);
-    const notice = method === 'sound'
-      ? found.length && `The darkroom view runs it, after ${chosen.countIn} seconds of count-in.`
-      : !result.tempo || timer ? ''
-      : `and count every ${nthBeat(result.every)}, from zero.`;
-    // The same plan for the darkroom view: a patch number, what to do, and the total behind it.
-    // By ear it is a line for every wait the run holds, the count-in first and nameless, each
-    // with the seconds its patch ends at and the wait itself drawn
-    const lines = method === 'sound' ? waits.flatMap((wait, i) => [
+    const notice = counting
+      ? !result.tempo ? '' : `and count every ${nthBeat(result.every)}, from zero.`
+      : found.length && `The darkroom view runs it, after ${chosen.countIn} seconds of count-in.`;
+    // The same plan for the darkroom view: a patch number, what to give it, and what it has had
+    // by then. By ear there is a line for every wait the run holds — the count-in first, which
+    // is nobody's patch — and the wait itself is drawn beside the numbers.
+    const lines = counting ? found.flatMap((row, i) => [
+      element('span', String(i + 1)),
+      element('span', formatCount(row.count, result.every)),
+      element('span', ''),
+      element('span', ''),
+    ]) : waits.flatMap((wait, i) => [
       element('span', i ? String(i) : ''),
+      element('span', i ? formatAdd(found[i - 1].add, found[i - 1].seconds) : ''),
       element('span', i ? found[i - 1].seconds.toFixed(1) : ''),
       bar(wait, planned[i] - wait, longest),
-    ]) : found.flatMap((row, i) => [
-      element('span', String(i + 1)),
-      element('span', timer ? formatAdd(row.add, row.seconds)
-        : formatCount(row.count, result.every)),
-      element('span', timer ? row.seconds.toFixed(1) : ''),
     ]);
-    document.body.className = method;
+    document.body.className = counting ? 'metronome' : '';
     field('grade').textContent = grade;
     field('filter').setAttribute('aria-valuetext', grade);
     field('othergrade').textContent = other;
@@ -1564,8 +1529,8 @@
     field('skip').value = result.tempo ?? '';
     field('skip').hidden = !result.tempo;
     field('skipped').replaceChildren(...skipping);
-    tell(method === 'sound' ? found.length && 'Ready' || ''
-      : timer || !result.tempo ? ''
+    tell(!counting ? found.length && 'Ready' || ''
+      : !result.tempo ? ''
       : `${result.tempo} bpm, every ${nthBeat(result.every)}`);
     field('plan').replaceChildren(...lines);
     field('forget').textContent = `Forget all skipped tempos (${skipped.size})`;
@@ -1664,10 +1629,9 @@
 
   field('paper').append(...Object.keys(PAPERS).map(name => element('option', name)));
   if (paper in PAPERS) field('paper').value = paper;
-  // A link can name the way of timing, and otherwise it is the one last chosen here
-  const asked = location.hash.slice(1);
-  const wanted = [...form.timing].some(radio => radio.value === asked) ? asked : timing;
-  if (wanted) form.timing.value = wanted;
+  // A link can ask for the metronome, and otherwise it is what was last chosen here. Any other
+  // fragment, such as a link written when the page still named its ways of timing, asks nothing.
+  field('metronome').checked = location.hash === '#metronome' || !!metronome;
   if (countin !== undefined) field('countin').value = countin;
   render();
   navigator.serviceWorker?.register('sw.js').catch(() => {});
