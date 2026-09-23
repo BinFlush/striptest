@@ -673,7 +673,7 @@
       right gives the seconds for that filter. This goes by Ilford's speeds for the paper: filters 4
       and 5 need a stop more light than 00 to 3 on Multigrade IV and Art 300, and an eighth of a
       stop more on FB Classic and Multigrade RC Deluxe. Your enlarger may differ.</li>
-    <li>"Run in Darkroom Mode" turns the page into large red type on black, to read at the
+    <li>The button under the settings turns the page into large red type on black, to read at the
       enlarger. It shows only what your hands need, the plan or the Start button, and nothing that
       can be set. Escape, or Close, brings the page back.</li>
     <li>Red only is safer than white, not safe. The screen is still a light source, and
@@ -1525,6 +1525,7 @@
     // Which step the base lands on when nobody says: a hint rather than a value, so that an
     // empty box still means the middle and a longer strip still moves it
     field('baseplace').placeholder = Math.floor((number('numsteps') - 1) / 2) + 1 || '';
+    field('enter').textContent = `${counting ? 'View' : 'Run'} in Darkroom Mode`;
     field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
     field('skip').value = result.tempo ?? '';
     field('skip').hidden = !result.tempo;
