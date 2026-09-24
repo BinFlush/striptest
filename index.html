@@ -598,32 +598,23 @@
     background: var(--dim);
   }
 
-  /* A run lights the line it is on and dims the others, which is both how the view says where it
-     has got to and the least light it can give while saying it */
-  html.running #plan :not(.now) {
-    color: var(--dim);
-  }
-
+  /* The numbers are what is read in the dark, so a run dims nothing in the plan: it lights the
+     small figures of the line it is on, and lets the line about the run and the Stop button fall
+     back instead. Named down to the button to outrank the rules that name it — and kept off the
+     black screen, where the button is the screen and must show nothing at all. */
   html.running #plan .now {
     color: var(--glow);
   }
 
-  /* Counting to a metronome there is no line to walk, and the counts are what is read: a run
-     leaves them lit and lets the rest of the view fall back instead. Named down to the button
-     to outrank the rules that name it. */
-  html.running body.metronome #plan :nth-child(4n+2) {
-    color: var(--glow);
-  }
-
-  html.running body.metronome #tell, html.running body.metronome #darkroom #run {
+  html.running:not(.blackout) #tell, html.running:not(.blackout) #darkroom #run {
     color: var(--dim);
   }
 
   /* Every bar is set filling at once, each held back by everything before it and by the buffer
-     the sound waits in, so that a bar meets its end as its mark is heard. The fill takes the
-     line's own colour, so only the wait being held is bright: the rest fill dimly, out of the
-     way of it. Nothing here is asked to keep in step — the lit line is what a throttled clock
-     cannot get wrong, and this is the picture of the second it is in. */
+     the sound waits in, so that a bar meets its end as its mark is heard. Every fill is the
+     plan's own glow: the full bars are behind you, the one filling is where the run is, the
+     empty ones lie ahead. Nothing here is asked to keep in step — the lit line is what a
+     throttled clock cannot get wrong, and this is the picture of the second it is in. */
   html.running #plan div::before {
     content: "";
     display: block;
