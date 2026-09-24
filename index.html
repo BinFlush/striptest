@@ -607,6 +607,17 @@
     color: var(--glow);
   }
 
+  /* Counting to a metronome there is no line to walk, and the counts are what is read: a run
+     leaves them lit and lets the rest of the view fall back instead. Named down to the button
+     to outrank the rules that name it. */
+  html.running body.metronome #plan :nth-child(4n+2) {
+    color: var(--glow);
+  }
+
+  html.running body.metronome #tell, html.running body.metronome #darkroom #run {
+    color: var(--dim);
+  }
+
   /* Every bar is set filling at once, each held back by everything before it and by the buffer
      the sound waits in, so that a bar meets its end as its mark is heard. The fill takes the
      line's own colour, so only the wait being held is bright: the rest fill dimly, out of the
