@@ -301,9 +301,12 @@
   /* The probe is parked on the map at rest — a hairline through every band, a grip above the
      first — so the slide is there to be seen. A slide moves it, and it stays where the finger
      leaves it. Both sit above the strips, which are positioned too. */
+  /* The margin keeps the caption off the map on a phone; on the wide screen the help fold, which
+     follows the map there, brings its own */
   #map {
     --probe: .5;
     position: relative;
+    margin-bottom: 2rem;
   }
 
   .band::after {
@@ -333,24 +336,6 @@
 
   #map:empty::before {
     content: none;
-  }
-
-  /* A fixed axis under the map, 0 to X evenly spaced: the ruler the base row is drawn to, so
-     its numerals read straight against it and every other row's as a departure from it */
-  #axis {
-    display: flex;
-    margin: .375rem 0 2rem calc(var(--gutter) + .75rem);
-  }
-
-  #map:empty + #axis {
-    display: none;
-  }
-
-  #axis span {
-    flex: 1;
-    color: var(--muted);
-    font: 600 .5625rem/1 Georgia, serif;
-    text-align: center;
   }
 
   /* The lines above and below the map, and between patches when comparing puts two strips in
@@ -469,7 +454,7 @@
       order: -1;
     }
 
-    #axis {
+    #map {
       margin-bottom: 0;
     }
 
@@ -797,8 +782,6 @@
 <p id="head" class="head">Seconds</p>
 
 <div id="map"></div>
-
-<p id="axis"></p>
 
 <label>Paper
   <select id="paper"></select>
@@ -1900,7 +1883,6 @@
     render();
   });
 
-  field('axis').append(...NUMERALS.map(numeral => element('span', numeral)));
   field('paper').append(...Object.keys(PAPERS).map(name => element('option', name)));
   if (paper in PAPERS) field('paper').value = paper;
   // A link can ask for the metronome, and otherwise it is what was last chosen here. Any other
