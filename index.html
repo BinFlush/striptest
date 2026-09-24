@@ -13,6 +13,7 @@
 <style>
   :root {
     --gutter: calc((100% - 1.5rem) / 3);
+    --band: 3rem;
     --paper: #F3F3F1;
     --surface: #FFF;
     --ink: #161616;
@@ -196,7 +197,7 @@
     font-family: var(--mono);
   }
 
-  body > label + label {
+  .sheet > label + label {
     margin-top: .75rem;
   }
 
@@ -388,6 +389,40 @@
 
   #map + details {
     margin-top: 2rem;
+  }
+
+  /* A wide screen gets the settings in a rail on the left with the way in under them, and the
+     map on the right, its bands taller and its gutter a fixed width rather than a third */
+  @media (min-width: 900px) {
+    :root {
+      --gutter: 9.5rem;
+      --band: 4rem;
+    }
+
+    body {
+      display: grid;
+      grid-template-columns: 22rem 1fr;
+      grid-template-rows: auto 1fr;
+      column-gap: 3rem;
+      align-items: start;
+      max-width: 72rem;
+    }
+
+    .sheet {
+      grid-column: 2;
+      grid-row: 1 / 3;
+    }
+
+    #enter {
+      position: static;
+      grid-row: 2;
+      margin-top: 0;
+      box-shadow: none;
+    }
+
+    html.darkroom body {
+      display: block;
+    }
   }
 
   /* The darkroom view. Everything it draws is red on black, down to the focus ring: green and
@@ -608,6 +643,8 @@
   } catch {}
 </script>
 
+<div class="rail">
+
 <nav>
   <a href="https://time.lutzen.co/">Time</a>
   <a aria-current="page">Striptest</a>
@@ -678,6 +715,10 @@
   <button id="skip" class="metronome" type="button" hidden></button>
   <p id="skipped" class="metronome"></p>
 </section>
+
+</div>
+
+<div class="sheet">
 
 <label>Paper
   <select id="paper"></select>
@@ -801,6 +842,8 @@
 <footer>
   <a href="https://github.com/BinFlush/striptest#readme" target="_blank">How it works and source</a>
 </footer>
+
+</div>
 
 <button id="enter" type="button">Run in Darkroom Mode</button>
 
@@ -1460,7 +1503,7 @@
     const strips = filters.map(other => zoneStrip(exposed, filters[0], other, paper));
     const band = element('div', ...strips);
     band.className = 'band';
-    band.style.minHeight = `${strips.length * 3}rem`;
+    band.style.minHeight = `calc(${strips.length} * var(--band))`;
     band.setAttribute('aria-hidden', 'true');
     const line = element('div', cue, band);
     line.className = 'row';
