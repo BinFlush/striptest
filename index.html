@@ -18,6 +18,7 @@
     --ink: #161616;
     --muted: #6B6B68;
     --line: #D9D9D5;
+    --tint: #E7E7E4;
     --accent: #B3261E;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
@@ -29,6 +30,7 @@
       --ink: #ECECEA;
       --muted: #9A9A96;
       --line: #2C2C2C;
+      --tint: #222;
       --accent: #E5484D;
     }
   }
@@ -139,10 +141,6 @@
     cursor: pointer;
   }
 
-  .middle {
-    grid-column: 2;
-  }
-
   .wide {
     grid-column: 1 / -1;
     grid-template-columns: auto 1fr;
@@ -233,13 +231,34 @@
      themselves. */
   .cue {
     display: grid;
+    position: relative;
     grid-template-columns: 1fr auto;
-    column-gap: .5rem;
-    margin: 0;
+    gap: 0 .5rem;
+    margin: 0 -.375rem;
+    padding: .25rem .375rem;
+    border-radius: .375rem;
     align-self: center;
     color: var(--muted);
     font: .8125rem/1.3 var(--mono);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Each cue is a radio: which patch is the base. The radio itself never shows — the tile is
+     what is seen and pressed — but it makes the gutter one stop for the keyboard, with the
+     arrows moving the base, and something a screen reader can name. */
+  .cue input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .row.base .cue {
+    background: var(--tint);
+  }
+
+  .cue:has(:focus-visible) {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
   }
 
   .add {
@@ -325,9 +344,15 @@
     border-top-width: 1px;
   }
 
-  .row.reference .band {
-    outline: 2px solid var(--accent);
-    outline-offset: -2px;
+  /* The reference wears a box that reads on any tone: an ink line with paper either side */
+  .row.reference .band::before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    border: 2px solid var(--ink);
+    box-shadow: inset 0 0 0 1px var(--paper), 0 0 0 1px var(--paper);
+    pointer-events: none;
   }
 
   .strip {
@@ -619,9 +644,6 @@
   <label>Patches
     <input id="numsteps" type="number" value="7" min="1" max="24" required inputmode="numeric">
   </label>
-  <label class="middle">Base is step
-    <input id="baseplace" type="number" min="-50" max="50" placeholder="4">
-  </label>
   <label class="wide">
     <input id="metronome" type="checkbox">
     Use a metronome instead
@@ -697,8 +719,8 @@
     <li>Type in the exposure you think the print needs, how big a step to take between patches,
       and how many patches. The table then has a row for each one, and Seconds is what that patch
       ends up with.</li>
-    <li>"Base is step" says where your guess sits in the strip. Left empty it lands in the
-      middle, so the patches bracket it; 1 puts it on the first patch, so the strip only goes up
+    <li>Your guess is the base. It starts on the middle patch, so the others bracket it; tap a
+      patch's numbers to make that one the base instead — on the first, the strip only goes up
       from there.</li>
     <li>The table then says what to give each patch: Add is what to put on once the patch before
       has been covered, and Seconds is what that patch has had by the time you cover it. Give the
@@ -713,18 +735,19 @@
       what that patch prints as, in the zones of the Zone System: 0 is full black, V middle grey and
       X paper white, on the paper and at the filter set above the table. Your prints may
       differ.</li>
-    <li>To see what a tone does in the other patches, find it in the boxed row, the reference,
-      and look straight up or down: a place along the strips is one part of the picture. Tap or
-      click the row you take to be right to make it the reference.</li>
-    <li>To follow one tone closely, slide a finger sideways along a row, or drag with the mouse:
-      every strip then shows that part of the picture in full, and the zone it is nearest to.
-      The row you slide on becomes the reference.</li>
+    <li>To see what a tone does in the other patches, find it in the strip with the box round
+      it, the reference, and look straight up or down: a place across the map is one part of the
+      picture. Tap or click a strip to make it the reference.</li>
+    <li>To follow one tone closely, slide a finger sideways along a strip, or drag with the
+      mouse: every strip then shows that part of the picture in full, and the zone it is nearest
+      to. The strip you slide on becomes the reference, and the line stays where you leave
+      it.</li>
     <li>To see what another filter would do, open "Compare with another filter" and set it. Every
       row gets a second strip under its first: the same seconds through that filter. Follow a tone
-      from the boxed row's upper strip straight down as before, and the row whose lower strip has it
-      right gives the seconds for that filter. This goes by Ilford's speeds for the paper: filters 4
-      and 5 need a stop more light than 00 to 3 on Multigrade IV and Art 300, and an eighth of a
-      stop more on FB Classic and Multigrade RC Deluxe. Your enlarger may differ.</li>
+      from the reference's upper strip straight down as before, and the patch whose lower strip
+      has it right gives the seconds for that filter. This goes by Ilford's speeds for the paper:
+      filters 4 and 5 need a stop more light than 00 to 3 on Multigrade IV and Art 300, and an
+      eighth of a stop more on FB Classic and Multigrade RC Deluxe. Your enlarger may differ.</li>
     <li>The button under the settings turns the page into large red type on black, to read at the
       enlarger. It shows only what your hands need, the plan or the Start button, and nothing that
       can be set. Escape, or Close, brings the page back.</li>
@@ -1148,7 +1171,8 @@
   let behind = 0;
   let planned = [];
   let holding = 0;
-  let reference = 0;
+  let reference = null;
+  let placed = null;
   let touched = null;
   let probing = false;
 
@@ -1423,7 +1447,7 @@
   // The strips under a row's numbers: one at the filter printed with, which is the first, and
   // under it one at the filter it is compared with
   // Every row is exposed so many stops more than `anchor`, the reference row, errors included
-  function tableRow(row, { stepsize, filters, paper, counting }, every, anchor) {
+  function tableRow(row, { stepsize, filters, paper, counting, baseplace }, every, anchor) {
     const { step, seconds, error } = row;
     const add = element('span', counting ? formatCount(row.count, every)
       : formatAdd(row.add, seconds));
@@ -1437,7 +1461,12 @@
       off.className = 'off';
       stops.append(' ', off);
     }
-    const cue = element('p', add, stops, ends);
+    const pick = element('input');
+    pick.type = 'radio';
+    pick.name = 'placed';
+    pick.value = step + baseplace;
+    pick.checked = !step;
+    const cue = element('label', pick, add, stops, ends);
     cue.className = 'cue';
     const exposed = (step - anchor.step) / stepsize + error - anchor.error;
     const strips = filters.map(other => zoneStrip(exposed, filters[0], other, paper));
@@ -1498,14 +1527,13 @@
   // holds the other one's fields, hidden — and a count-in nobody can see must not be able to
   // empty the metronome's table.
   function settings() {
-    const strip = [field('base'), field('numsteps'), field('baseplace')];
+    const strip = [field('base'), field('numsteps')];
     field('tmax').setCustomValidity('');
     if (!strip.every(input => input.validity.valid)) return null;
     const complete = [field('tmin'), field('tmax')].every(input => input.validity.valid);
     const tempi = complete ? range(number('tmin'), number('tmax')) : [];
     field('tmax').setCustomValidity(complete && !tempi.length ? 'No tempo in this range' : '');
     const numsteps = number('numsteps');
-    const place = number('baseplace');
     const wait = number('countin');
     const filters = [FILTERS[number('filter')]];
     if (field('compare').open) filters.push(FILTERS[number('other')]);
@@ -1513,7 +1541,7 @@
       base: number('base'),
       stepsize: Number(field('stepsize').value),
       numsteps,
-      baseplace: Number.isNaN(place) ? Math.floor((numsteps - 1) / 2) : place - 1,
+      baseplace: placed === null ? Math.floor((numsteps - 1) / 2) : clamp(placed, 0, numsteps - 1),
       tempi,
       cumulative: field('cumulative').checked,
       divisions: Number(field('divisions').value),
@@ -1541,9 +1569,10 @@
     if (skipping.length) skipping.unshift('Skipping ');
     if (result.passed.length > SHOWN) skipping.push(` and ${result.passed.length - SHOWN} more`);
     const found = (counting ? result.rows : chosen && timed(chosen)) ?? [];
-    // The reference is the row nearest to the step that was chosen: the strip may have lost it
-    const anchor = found.reduce((near, row) =>
-      Math.abs(row.step - reference) < Math.abs(near.step - reference) ? row : near, found[0]);
+    // The reference is a patch of the strip: the base, unless one was picked, and the last one
+    // there is when the strip has grown shorter than the pick
+    const anchor = reference === null ? found[chosen?.baseplace]
+      : found[clamp(reference, 0, found.length - 1)];
     const rows = found.map(row => tableRow(row, chosen, result.every, anchor));
     const widest = Math.max(0, ...rows.map(row => row.querySelector('.add').textContent.length));
     field('map').style.setProperty('--widest', counting ? 'auto' : `${widest}ch`);
@@ -1574,9 +1603,6 @@
     field('tempo').textContent = result.tempo ?? '?';
     field('notice').textContent = counting && result.tempo
       ? `and count every ${nthBeat(result.every)}, from zero.` : '';
-    // Which step the base lands on when nobody says: a hint rather than a value, so that an
-    // empty box still means the middle and a longer strip still moves it
-    field('baseplace').placeholder = Math.floor((number('numsteps') - 1) / 2) + 1 || '';
     field('head').textContent = counting ? 'Count' : 'Add';
     field('enter').textContent = `${counting ? 'View' : 'Run'} in Darkroom Mode`;
     field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
@@ -1589,7 +1615,10 @@
     field('plan').replaceChildren(...lines);
     field('forget').textContent = `Forget all skipped tempos (${skipped.size})`;
     field('forget').hidden = !skipped.size;
+    // The rows are built afresh, so a pick made from the keyboard keeps its focus on the new one
+    const picking = field('map').contains(document.activeElement);
     field('map').replaceChildren(...rows);
+    if (picking) field('map').querySelector(':checked')?.focus({ preventScroll: true });
     fit();
   }
 
@@ -1598,7 +1627,11 @@
   // Nothing in the view may open one of the browser's own menus: they are not red
   field('darkroom').addEventListener('contextmenu', event => event.preventDefault());
 
-  addEventListener('input', render);
+  // The one thing the map sets for itself: which patch is the base, picked in the gutter
+  addEventListener('input', ({ target }) => {
+    if (target.name === 'placed') placed = Number(target.value);
+    render();
+  });
   addEventListener('keydown', event => {
     if (event.key !== 'Escape' || !darkroom) return;
     leaveDarkroom();
@@ -1630,7 +1663,7 @@
     if (target.id === 'dark') document.documentElement.classList.add('blackout');
     if (target.id === 'run' && black) hold();
     else if (target.id === 'run' || target.id === 'dark') toggle();
-    if (target.closest('#map')) touched = event;
+    if (target.closest('.band')) touched = event;
   });
 
   addEventListener('pointermove', event => {
@@ -1656,7 +1689,8 @@
   for (const over of ['pointerup', 'pointercancel']) {
     addEventListener(over, ({ type }) => {
       if (!touched) return;
-      if (type === 'pointerup') reference = Number(touched.target.closest('.row').dataset.step);
+      const row = touched.target.closest('.row');
+      if (type === 'pointerup') reference = [...field('map').children].indexOf(row);
       touched = null;
       probing = false;
       field('map').classList.remove('probing');
