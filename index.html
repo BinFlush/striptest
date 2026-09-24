@@ -160,6 +160,50 @@
     cursor: pointer;
   }
 
+  /* A choice between two named states is a field like the ones beside it — its legend set as
+     their labels are, its two segments one box the height of an input — and the chosen segment
+     is marked as the gutter marks the base: on the tint, in ink */
+  fieldset {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  legend {
+    padding: 0 0 .25rem;
+    color: var(--muted);
+    font-size: .8125rem;
+  }
+
+  fieldset label {
+    display: grid;
+    position: relative;
+    box-sizing: border-box;
+    place-items: center;
+    height: 2.75rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    font-size: .9375rem;
+    cursor: pointer;
+  }
+
+  fieldset label:first-of-type {
+    border-radius: 8px 0 0 8px;
+  }
+
+  fieldset label:last-of-type {
+    margin-left: -1px;
+    border-radius: 0 8px 8px 0;
+  }
+
+  fieldset label:has(:checked) {
+    background: var(--tint);
+    color: var(--ink);
+    font-weight: 600;
+  }
+
   .wide {
     grid-column: 1 / -1;
     grid-template-columns: auto 1fr;
@@ -258,8 +302,9 @@
 
   /* Each cue is a radio: which patch is the base. The radio itself never shows — the tile is
      what is seen and pressed — but it makes the gutter one stop for the keyboard, with the
-     arrows moving the base, and something a screen reader can name. */
-  .cue input {
+     arrows moving the base, and something a screen reader can name. The two segments of a
+     choice in the form are radios the same way. */
+  .cue input, fieldset input {
     position: absolute;
     opacity: 0;
     pointer-events: none;
@@ -270,7 +315,8 @@
     color: var(--ink);
   }
 
-  .cue:has(:focus-visible) {
+  .cue:has(:focus-visible), fieldset label:has(:focus-visible) {
+    z-index: 1;
     outline: 2px solid var(--ink);
     outline-offset: 2px;
   }
@@ -748,10 +794,11 @@
         <input id="countin" type="number" value="3" min="3" max="60" step="any"
           inputmode="decimal">
       </label>
-      <label class="wide">
-        <input id="cumulative" type="checkbox">
-        Count each step from zero, adding to the one before
-      </label>
+      <fieldset>
+        <legend>Figures</legend>
+        <label><input id="totals" type="radio" name="figures" value="totals" checked>Totals</label>
+        <label><input id="additions" type="radio" name="figures" value="additions">Additions</label>
+      </fieldset>
       <label class="wide seconds">
         <input id="separate" type="checkbox">
         Stop between exposures
@@ -811,9 +858,9 @@
     <li>Each patch's seconds are what it has had by the time you cover it. Give the whole strip
       the first patch's seconds, cover it, and cover the next at each patch's own seconds in
       turn. To expose every patch on its own instead, give each its seconds by itself.</li>
-    <li>Ticking "Count each step from zero, adding to the one before" makes every figure what the
-      patch adds to the one before, rather than its total: counts start again from zero, and
-      seconds become what to add.</li>
+    <li>"Figures", under Configuration, says what every figure is: each patch's total, or what it
+      adds to the one before — counts that start again at each patch, seconds that are what to
+      add. Stopping between exposures, that is what each exposure gets.</li>
     <li>The page can keep that time for you, by sounding every moment you have to act on — that
       is what it does unless you say otherwise. If you would rather count it on a metronome, tick
       "Use a metronome instead" and the table turns into counts. Both ways have a fold at the end
@@ -1706,7 +1753,7 @@
       numsteps,
       baseplace: placed === null ? Math.floor((numsteps - 1) / 2) : clamp(placed, 0, numsteps - 1),
       tempi,
-      cumulative: field('cumulative').checked,
+      cumulative: form.figures.value === 'additions',
       divisions: Number(field('divisions').value),
       filters,
       paper: field('paper').value,
@@ -1771,7 +1818,7 @@
     field('tempo').textContent = result.tempo ?? '?';
     field('notice').textContent = counting && result.tempo
       ? `and count every ${nthBeat(result.every)}, from zero.` : '';
-    field('head').textContent = counting ? 'Count' : chosen?.cumulative ? 'Add' : 'Seconds';
+    field('head').textContent = counting ? 'Count' : chosen?.cumulative ? 'Additions' : 'Seconds';
     field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
     field('skip').value = result.tempo ?? '';
     field('skip').hidden = !result.tempo;
