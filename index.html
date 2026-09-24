@@ -346,8 +346,8 @@
     content: none;
   }
 
-  /* A fixed axis under the map, 0 to X evenly spaced: the ruler the reference row is drawn to,
-     so its numerals read straight against it and every other row's as a departure from it */
+  /* A fixed axis under the map, 0 to X evenly spaced: the ruler the base row is drawn to, so
+     its numerals read straight against it and every other row's as a departure from it */
   #axis {
     display: flex;
     margin: .375rem 0 0 calc(var(--gutter) + .75rem);
@@ -378,8 +378,9 @@
     box-shadow: 0 -1px 0 var(--line), 0 1px 0 var(--line);
   }
 
-  /* The reference wears a box that reads on any tone: an ink line with paper either side */
-  .row.reference .band::before {
+  /* The base wears a box on its strip as well as the tile on its numbers, one that reads on any
+     tone: an ink line with paper either side */
+  .row.base .band::before {
     content: "";
     position: absolute;
     z-index: 1;
@@ -818,8 +819,8 @@
       and how many patches. The table then has a row for each one, and Seconds is what that patch
       ends up with.</li>
     <li>Your guess is the base. It starts on the middle patch, so the others bracket it; tap a
-      patch's numbers to make that one the base instead — on the first, the strip only goes up
-      from there.</li>
+      patch, its numbers or its strip, to make that one the base instead — on the first, the
+      strip only goes up from there.</li>
     <li>The table then says what to give each patch: Add is what to put on once the patch before
       has been covered, and Seconds is what that patch has had by the time you cover it. Give the
       whole strip the first row's seconds, cover the first patch, give the rest what the next row
@@ -833,16 +834,15 @@
       what that patch prints as, in the zones of the Zone System: 0 is full black, V middle grey and
       X paper white, on the paper and at the filter set above the table. Your prints may
       differ.</li>
-    <li>To see what a tone does in the other patches, find it in the strip with the box round
-      it, the reference, and look straight up or down: a place across the map is one part of the
-      picture. Tap or click a strip to make it the reference.</li>
-    <li>To follow one tone closely, slide a finger sideways along a strip, or drag with the
+    <li>To see what a tone does in the other patches, find it in the base's strip, the boxed
+      one, and look straight up or down: a place across the map is one part of the
+      picture.</li>
+    <li>To follow one tone closely, slide a finger sideways along any strip, or drag with the
       mouse: every strip then shows that part of the picture in full, and the zone it is nearest
-      to. The strip you slide on becomes the reference, and the line stays where you leave
-      it.</li>
+      to. Sliding picks nothing; the line stays where you leave it.</li>
     <li>To see what another filter would do, open "Compare with another filter" and set it. Every
       row gets a second strip under its first: the same seconds through that filter. Follow a tone
-      from the reference's upper strip straight down as before, and the patch whose lower strip
+      from the base's upper strip straight down as before, and the patch whose lower strip
       has it right gives the seconds for that filter. This goes by Ilford's speeds for the paper:
       filters 4 and 5 need a stop more light than 00 to 3 on Multigrade IV and Art 300, and an
       eighth of a stop more on FB Classic and Multigrade RC Deluxe. Your enlarger may differ.</li>
@@ -1208,9 +1208,9 @@
   }
 
   // A place along the strips is one part of the picture, and it sits where the zone it prints as
-  // in the reference row puts it: the reference row is an even scale, and a row given `exposed`
-  // stops more shows what each of its tones becomes. The row can be shown at `other`, another
-  // filter than the reference row's, under the same light. These are the places, in % along
+  // in the base row puts it: the base row is an even scale, and a row given `exposed` stops
+  // more shows what each of its tones becomes. The row can be shown at `other`, another filter
+  // than the base row's, under the same light. These are the places, in % along
   // the strip, where that row's zones begin and end.
   function edges(exposed, filter, other, paper) {
     const [light, dark] = scale(filter, paper);
@@ -1279,7 +1279,6 @@
   let planned = [];
   let solved = null;
   let holding = 0;
-  let reference = null;
   let placed = null;
   let touched = null;
   let probing = false;
@@ -1593,7 +1592,7 @@
 
   // The strips under a row's numbers: one at the filter printed with, which is the first, and
   // under it one at the filter it is compared with
-  // Every row is exposed so many stops more than `anchor`, the reference row, errors included
+  // Every row is exposed so many stops more than `anchor`, the base row, errors included
   function tableRow(row, { stepsize, filters, paper, counting, baseplace }, every, anchor) {
     const { step, seconds, error } = row;
     const add = element('span', counting ? formatCount(row.count, every)
@@ -1624,15 +1623,8 @@
     const line = element('div', cue, band);
     line.className = 'row';
     line.classList.toggle('base', !step);
-    line.classList.toggle('reference', step === anchor.step);
     line.dataset.step = step;
     return line;
-  }
-
-  // Boxes one row's band, and only that one
-  function box(row) {
-    document.querySelector('.row.reference')?.classList.remove('reference');
-    row.classList.add('reference');
   }
 
   // Hides the numerals that do not fit in their zone. All is measured before anything is
@@ -1644,21 +1636,19 @@
   }
 
   // While a finger or the mouse slides across the rows, every strip shows in full the tone that
-  // the part of the picture under it has in that row, and names the zone it is nearest to. The
-  // row the slide began on takes the box and is the reference from then on: it runs evenly
-  // through the scale, and the others are reckoned from it. Nothing is taken out of the page
-  // meanwhile: a finger that loses the element it touched may stop being reported.
+  // the part of the picture under it has in that row, and names the zone it is nearest to — the
+  // part being known by its place in the base row, which runs evenly through the scale. A slide
+  // picks nothing, whichever row it is on. Nothing is taken out of the page meanwhile: a finger
+  // that loses the element it touched may stop being reported.
   function probe({ clientX }) {
     const strips = [...document.querySelectorAll('.strip')];
     const { left } = strips[0].getBoundingClientRect();
     const share = clamp((clientX - left - strips[0].clientLeft) / strips[0].clientWidth, 0, 1);
     field('map').style.setProperty('--probe', share);
-    const active = touched.target.closest('.row');
-    const held = active.querySelector('.strip');
+    const held = document.querySelector('.row.base .strip');
     const paper = field('paper').value;
     probing = true;
     field('map').classList.add('probing');
-    box(active);
     for (const strip of strips) {
       const exposed = strip.dataset.exposed - held.dataset.exposed;
       const printed = probed(share, exposed, held.dataset.filter, strip.dataset.filter, paper);
@@ -1716,10 +1706,8 @@
     if (skipping.length) skipping.unshift('Skipping ');
     if (result.passed.length > SHOWN) skipping.push(` and ${result.passed.length - SHOWN} more`);
     const found = (counting ? result.rows : chosen && timed(chosen)) ?? [];
-    // The reference is a patch of the strip: the base, unless one was picked, and the last one
-    // there is when the strip has grown shorter than the pick
-    const anchor = reference === null ? found[chosen?.baseplace]
-      : found[clamp(reference, 0, found.length - 1)];
+    // The map is drawn against the base row: every other row is so many stops from it
+    const anchor = found[chosen?.baseplace];
     const rows = found.map(row => tableRow(row, chosen, result.every, anchor));
     const widest = Math.max(0, ...rows.map(row => row.querySelector('.add').textContent.length));
     field('map').style.setProperty('--widest', counting ? 'auto' : `${widest}ch`);
@@ -1798,9 +1786,10 @@
   field('paper').addEventListener('change', remember);
   new ResizeObserver(fit).observe(field('map'));
 
-  // A tap or click on a row makes it the reference, and so does a slide along it. The slide only
-  // begins once the pointer moves more sideways than up or down, so that scrolling the page
-  // over the rows does not make them flicker; a scroll ends in `pointercancel` and sets nothing.
+  // A tap on a row's strip picks that patch as the base, as a tap on its numbers does; a slide
+  // picks nothing, it only moves the probe. The slide begins once the pointer moves more
+  // sideways than up or down, so that scrolling the page over the rows does not make them
+  // flicker; a scroll ends in `pointercancel` and sets nothing.
   addEventListener('pointerdown', event => {
     const { target } = event;
     if (!(target instanceof Element) || !event.isPrimary || event.button) return;
@@ -1837,7 +1826,7 @@
     addEventListener(over, ({ type }) => {
       if (!touched) return;
       const row = touched.target.closest('.row');
-      if (type === 'pointerup') reference = [...field('map').children].indexOf(row);
+      if (type === 'pointerup' && !probing) placed = [...field('map').children].indexOf(row);
       touched = null;
       probing = false;
       field('map').classList.remove('probing');
