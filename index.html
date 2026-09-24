@@ -627,6 +627,21 @@
     }
   }
 
+  /* Running one patch at a time, the bars keep the score, running or not: the patches done are
+     full, the ones ahead wait empty */
+  html #plan div.done::before {
+    content: "";
+    display: block;
+    height: 100%;
+    animation: none;
+    border-radius: inherit;
+    background: currentColor;
+  }
+
+  html #plan div.ahead::before {
+    content: none;
+  }
+
   #darkroom button {
     height: auto;
     padding: 1rem;
@@ -748,9 +763,13 @@
         <input id="countin" type="number" value="3" min="3" max="60" step="any"
           inputmode="decimal">
       </label>
-      <label class="wide metronome">
+      <label class="wide">
         <input id="cumulative" type="checkbox">
         Count each step from zero, adding to the one before
+      </label>
+      <label class="wide seconds">
+        <input id="separate" type="checkbox">
+        Stop between exposures
       </label>
       <button id="forget" class="metronome" type="button" hidden></button>
     </div>
@@ -809,6 +828,9 @@
     <li>Each patch's seconds are what it has had by the time you cover it. Give the whole strip
       the first patch's seconds, cover it, and cover the next at each patch's own seconds in
       turn. To expose every patch on its own instead, give each its seconds by itself.</li>
+    <li>Ticking "Count each step from zero, adding to the one before" makes every figure what the
+      patch adds to the one before, rather than its total: counts start again from zero, and
+      seconds become what to add.</li>
     <li>The page can keep that time for you, by sounding every moment you have to act on — that
       is what it does unless you say otherwise. If you would rather count it on a metronome, tick
       "Use a metronome instead" and the table turns into counts. Both ways have a fold at the end
@@ -867,6 +889,11 @@
         see it on, and the hold belongs to the dark.</li>
       <li>On an iPhone this may pause music playing from another app. Bluetooth speakers and
         headphones delay every sound by the same amount, which does no harm when you go by ear.</li>
+      <li>With "Stop between exposures" ticked, Start runs one patch at a time. It says which
+        first — one short blip for the first patch, two for the second — then counts in, gives
+        the patch its figure, and the lamp goes off. The view then waits, and Start, or a tap on
+        the black screen, runs the next. A patch stopped part way starts again from its
+        blips.</li>
       <li>With "Use a metronome instead" ticked, Start runs a metronome at the tempo shown rather
         than the strip, for as long as you let it; Start dark, the tap and the hold work as they
         do for a run.</li>
@@ -884,8 +911,6 @@
         strip at each count in the table.</li>
       <li>Step error is how far a row's real exposure lands from its target, as a share of one
         step.</li>
-      <li>Ticking "Count each step from zero" restarts the count for every patch. This can be
-        easier to count when you want to stop exposing between each patch.</li>
       <li>If your metronome lacks the tempo shown, press "My metronome can't do …". The next best
         tempo appears, and the choice is remembered on this device.</li>
       <li>This way of working exists for the accuracy a steady beat gives, and finding the tempo is
@@ -1049,6 +1074,10 @@
   const GLIDE = .09;
   const ACCENT = .22;
   const COUNTED = .12;
+  // A patch run on its own says which it is first: its number in short blips, this far apart,
+  // two octaves above the count-in, and this long a breath before the count-in begins
+  const BLIP = .2;
+  const BREATH = .5;
 
   // The moments of a run, in seconds from the moment it starts: the lamp goes on when the
   // count-in ends, a patch is covered at each row's seconds after that, and the last of them is
@@ -1252,6 +1281,8 @@
   let audio = null;
   let behind = 0;
   let planned = [];
+  let parts = [];
+  let patch = 0;
   let solved = null;
   let holding = 0;
   let placed = null;
@@ -1393,7 +1424,14 @@
 
   // Everything a run sounds is scheduled on the audio clock the moment it starts, so nothing
   // after that depends on a timer firing or on the page staying awake. Silence is the end of it.
-  function play(marks) {
+  // The marks of one patch run on its own: its blips, the count-in, and then its own figure
+  function alone(k) {
+    const head = (k + 1) * BLIP + BREATH;
+    return [planned[0] + head, planned[0] + head + parts[k]];
+  }
+
+  // `k` names the one patch this run is, when patches are run one at a time
+  function play(marks, k) {
     open();
     const from = audio.currentTime + LEAD;
     const over = marks[marks.length - 1];
@@ -1422,6 +1460,11 @@
     const wave = audio.createPeriodicWave(new Float32Array(3), Float32Array.of(0, 1, OVERTONE));
     sound(wave, DRONE, marks[0], over).frequency.value = FUNDAMENTAL;
 
+    // A patch on its own is announced first, in as many short blips as its number
+    if (k !== undefined) {
+      for (let n = 0; n <= k; n++) beat(n * BLIP, 4 * FUNDAMENTAL, COUNTED, TICK);
+    }
+
     // The count-in counts three in: a soft note on each of its last three seconds, an octave
     // under the one the lamp gets, and then the lamp's own note is the go
     for (let count = COUNT_IN; count > 0; count--) {
@@ -1448,12 +1491,23 @@
     marks.forEach((mark, i) => {
       const tail = i === marks.length - 1 ? TAIL : 0;
       const accent = beat(mark, 2 * FUNDAMENTAL, ACCENT, heard + tail);
-      accent.onended = () => reached(i, marks.length);
+      accent.onended = () => reached(i, marks.length, k);
     });
 
     // The bars are held back by the same, so that one meets its end as its mark is heard
     field('plan').style.setProperty('--late', `${late}s`);
-    began('Count-in');
+    // Running one patch, the bars keep the score: the patches before it full, its own filling
+    // after the count-in, the ones ahead empty — and the count-in's own bar fills after the blips
+    const bars = [...field('plan').querySelectorAll('div')];
+    bars.forEach((div, i) => {
+      div.classList.toggle('done', k !== undefined && i > 0 && i <= k);
+      div.classList.toggle('ahead', k !== undefined && i > k + 1);
+    });
+    if (k !== undefined) {
+      bars[0].style.setProperty('--after', `${LEAD + marks[0] - planned[0]}s`);
+      bars[k + 1].style.setProperty('--after', `${LEAD + marks[0]}s`);
+    }
+    began(k === undefined ? 'Count-in' : `Patch ${k + 1}`);
     lit(0);
   }
 
@@ -1477,11 +1531,23 @@
     lit();
   }
 
-  function reached(mark, marks) {
+  function reached(mark, marks, k) {
     if (!audio) return;
-    if (mark === marks - 1) return hush('Lamp off');
+    if (mark === marks - 1) {
+      hush('Lamp off');
+      if (k !== undefined) next(k);
+      return;
+    }
     tell(mark ? `Patch ${mark}` : 'Lamp on');
-    lit(mark + 1);
+    lit(mark + 1 + (k ?? 0));
+  }
+
+  // One patch done: its bar stays full, the next is up — or the strip is done, and a run from
+  // here begins again
+  function next(k) {
+    field('plan').querySelectorAll('div')[k + 1].classList.add('done');
+    patch = k + 1 < parts.length ? k + 1 : 0;
+    tell(patch ? `Patch ${patch + 1} next` : 'Done');
   }
 
   // A press starts a run and a press stops one: the press itself, not the tap it may or may not
@@ -1517,7 +1583,9 @@
   function toggle() {
     if (audio) return hush('Stopped');
     if (field('metronome').checked) return void (solved && tick(solved));
-    if (planned.length) play(planned);
+    if (!planned.length) return;
+    if (field('separate').checked) play(alone(patch), patch);
+    else play(planned);
   }
 
   function element(name, ...content) {
@@ -1568,9 +1636,9 @@
   // The strips under a row's numbers: one at the filter printed with, which is the first, and
   // under it one at the filter it is compared with
   // Every row is exposed so many stops more than `anchor`, the base row, errors included
-  function tableRow(row, { stepsize, filters, paper, counting, baseplace }, every, anchor) {
+  function tableRow(row, { stepsize, filters, paper, counting, baseplace }, every, anchor, part) {
     const { step, seconds, error } = row;
-    const figure = element('span', counting ? formatCount(row.count, every) : seconds.toFixed(1));
+    const figure = element('span', counting ? formatCount(row.count, every) : part.toFixed(1));
     figure.className = 'figure';
     const stops = element('span', formatStops(step, stepsize));
     stops.className = 'stops';
@@ -1657,6 +1725,7 @@
       filters,
       paper: field('paper').value,
       counting: field('metronome').checked,
+      separate: field('separate').checked,
       countIn: Number.isNaN(wait) ? COUNT_IN : clamp(wait, COUNT_IN, 60),
     };
   }
@@ -1680,14 +1749,21 @@
     const found = (counting ? result.rows : chosen && timed(chosen)) ?? [];
     // The map is drawn against the base row: every other row is so many stops from it
     const anchor = found[chosen?.baseplace];
-    const rows = found.map(row => tableRow(row, chosen, result.every, anchor));
+    // Each patch's figure in seconds: its total, or with the box ticked what it adds to the one
+    // before. Run one at a time, that is also what each patch is given.
+    parts = counting ? [] : found.map((row, i) =>
+      chosen.cumulative && i ? row.seconds - found[i - 1].seconds : row.seconds);
+    patch = Math.min(patch, Math.max(0, parts.length - 1));
+    const rows = found.map((row, i) => tableRow(row, chosen, result.every, anchor, parts[i]));
     const widest = Math.max(0, ...rows.map(row => row.querySelector('.figure').textContent.length));
     field('map').style.setProperty('--widest', counting ? 'auto' : `${widest}ch`);
     planned = chosen ? schedule(found, chosen.countIn) : [];
     solved = counting && result.tempo ? { tempo: result.tempo, every: result.every } : null;
-    // What is waited before each mark — the count-in before the first — and the longest of those
-    // waits, which is the one the bars are drawn against
-    const waits = planned.map((mark, i) => mark - (planned[i - 1] ?? 0));
+    // What the bars draw: by ear, what is waited before each mark, the count-in first; stopping
+    // between exposures, each patch's own exposure after the count-in every one of them gets.
+    // The longest of them is the one the bars are drawn against.
+    const waits = chosen?.separate ? [planned[0], ...parts]
+      : planned.map((mark, i) => mark - (planned[i - 1] ?? 0));
     const longest = Math.max(...waits);
     // The same plan for the darkroom view: a patch number and its figure. By ear there is a
     // line for every wait the run holds — the count-in first, which is nobody's patch — and the
@@ -1698,7 +1774,7 @@
       element('span', ''),
     ]) : waits.flatMap((wait, i) => [
       element('span', i ? String(i) : ''),
-      element('span', i ? found[i - 1].seconds.toFixed(1) : ''),
+      element('span', i ? parts[i - 1].toFixed(1) : ''),
       bar(wait, planned[i] - wait, longest),
     ]);
     document.body.className = counting ? 'metronome' : '';
@@ -1709,7 +1785,7 @@
     field('tempo').textContent = result.tempo ?? '?';
     field('notice').textContent = counting && result.tempo
       ? `and count every ${nthBeat(result.every)}, from zero.` : '';
-    field('head').textContent = counting ? 'Count' : 'Seconds';
+    field('head').textContent = counting ? 'Count' : chosen?.cumulative ? 'Add' : 'Seconds';
     field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
     field('skip').value = result.tempo ?? '';
     field('skip').hidden = !result.tempo;
