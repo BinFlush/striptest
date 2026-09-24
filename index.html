@@ -487,21 +487,24 @@
       max-width: 72rem;
     }
 
-    /* Paper, filter and the comparison head the column here, where there is room, and go back
-       under the map on a phone, where they are its caption and the map is the answer */
     .sheet {
-      display: flex;
-      flex-direction: column;
       grid-column: 2;
       grid-row: 1 / 3;
     }
 
-    .sheet > label, #compare {
-      order: -1;
+    .head {
+      margin-top: 0;
     }
 
-    #map {
-      margin-bottom: 0;
+    /* The rail has room, so Configuration stands open here and its summary is a heading, not a
+       fold: the script keeps it open, this keeps it still */
+    form summary {
+      pointer-events: none;
+      list-style: none;
+    }
+
+    form summary::-webkit-details-marker {
+      display: none;
     }
 
     #enter {
@@ -772,7 +775,7 @@
     <input id="numsteps" type="number" value="7" min="1" max="24" required inputmode="numeric">
   </label>
 
-  <details>
+  <details id="configuration">
     <summary>Configuration</summary>
     <div>
       <label class="metronome">Slowest, bpm
@@ -1861,6 +1864,14 @@
   });
 
   field('compare').addEventListener('toggle', render);
+  // On a wide screen Configuration stands open: folding buys nothing where there is room
+  const wide = matchMedia('(min-width: 900px)');
+  const unfold = () => {
+    if (wide.matches) field('configuration').open = true;
+  };
+  unfold();
+  wide.addEventListener('change', unfold);
+  field('configuration').addEventListener('toggle', unfold);
   form.addEventListener('change', remember);
   field('paper').addEventListener('change', remember);
   new ResizeObserver(fit).observe(field('map'));
