@@ -263,13 +263,12 @@ def speed_failures(paper, speeds):
 def timer_failures(settings, rows):
     """The same strip timed with a timer: each patch gets its f-stop seconds, to a tenth.
 
-    `add` is what the strip is given once the patch before has been covered, so the additions
-    must run up to each patch's seconds. The error is what the rounding costs, in stops.
+    The error is what the rounding costs, in stops.
     """
     steps = np.arange(settings["numsteps"]) - settings["baseplace"]
     exact = settings["base"] * 2.0 ** (steps / settings["stepsize"])
-    seconds, error, add = (np.array([row[key] for row in rows], dtype=float)
-                           for key in ("seconds", "error", "add"))
+    seconds, error = (np.array([row[key] for row in rows], dtype=float)
+                      for key in ("seconds", "error"))
     checks = [
         ("one row for each step", [row["step"] for row in rows] == list(steps)),
         ("seconds are whole tenths, and at least a tenth",
@@ -278,8 +277,6 @@ def timer_failures(settings, rows):
          all(abs(got - want) <= 0.05 + 1e-9 for got, want in zip(seconds, exact) if want > 0.05)),
         ("the error is what rounding the seconds costs, in stops",
          np.allclose(error, np.log2(seconds / exact), atol=1e-9)),
-        ("what is added runs up to each patch's seconds",
-         np.allclose(np.cumsum(add), seconds, atol=1e-9)),
     ]
     return [f"timer: {name}\n  settings {settings}" for name, holds in checks if not holds]
 
@@ -405,8 +402,6 @@ def main():
         failures += strip_failures(paper, told["strips"], told["zones"]["printed"])
         failures += speed_failures(paper, told["speeds"])
 
-    if answer["added"] != ["5.0", "+1.3", "0.1", "+12.0"]:
-        failures.append(f"timer: what is added is written as {answer['added']}")
     for settings, rows in zip(all_settings, answer["timers"]):
         failures += timer_failures(settings, rows)
     for settings, rows, marks in zip(all_settings, answer["timers"], answer["runs"]):

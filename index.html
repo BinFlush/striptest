@@ -228,8 +228,6 @@
      row with nothing touched. Every row is the same two-column grid as the form's fields, so
      the map's left edge lands under the second field. */
   .head {
-    display: flex;
-    justify-content: space-between;
     width: var(--gutter);
     margin: 1rem 0 .375rem;
     color: var(--muted);
@@ -244,15 +242,11 @@
     touch-action: pan-y pinch-zoom;
   }
 
-  /* Each cue is a small table under the head's two words: what to add, large and aligned on
-     the decimal point down the whole strip; then where the patch sits in stops, and against
-     the map what it has had by then. The same face throughout, so the figures line up of
-     themselves. */
+  /* Each cue: the patch's seconds, or its count, large and aligned on the decimal point down
+     the whole strip, and where the patch sits in stops under it. One face throughout. */
   .cue {
     display: grid;
     position: relative;
-    grid-template-columns: 1fr auto;
-    gap: 0 .5rem;
     margin: 0 -.375rem;
     padding: .25rem .375rem;
     border-radius: .375rem;
@@ -281,18 +275,13 @@
     outline-offset: 2px;
   }
 
-  .add {
-    grid-column: 1 / -1;
+  .figure {
     justify-self: start;
     min-width: var(--widest);
     color: var(--ink);
     font-size: 1.375rem;
     font-weight: 600;
     line-height: 1.2;
-    text-align: right;
-  }
-
-  .ends {
     text-align: right;
   }
 
@@ -579,23 +568,18 @@
        whole `animation` shorthand that reads it. */
     --late: 0s;
     display: grid;
-    grid-template-columns: auto auto auto 1fr;
+    grid-template-columns: auto auto 1fr;
     gap: .625rem .75rem;
     align-items: baseline;
     font: 600 2.25rem/1 var(--mono);
     font-variant-numeric: tabular-nums;
   }
 
-  /* A line is four cells: which patch it is, what to give it, what it has had by then, and the
-     wait itself. The middle one is what a hand acts on, so it is the one read across the room;
-     the other two are there to be checked rather than read. */
-  #plan :nth-child(4n+1), #plan :nth-child(4n+3) {
+  /* A line is three cells: which patch it is, small; its seconds or its count, read across the
+     room; and the wait itself, drawn */
+  #plan :nth-child(3n+1) {
     color: var(--dim);
     font-size: 1rem;
-  }
-
-  #plan :nth-child(4n+3) {
-    text-align: right;
   }
 
   /* Going by ear there is nothing to do at a patch but wait for it, so the wait itself is drawn:
@@ -791,7 +775,7 @@
 
 <div class="sheet">
 
-<p class="head"><span id="head">Add</span><span>ends</span></p>
+<p id="head" class="head">Seconds</p>
 
 <div id="map"></div>
 
@@ -822,11 +806,9 @@
     <li>Your guess is the base. It starts on the middle patch, so the others bracket it; tap a
       patch, its numbers or its strip, to make that one the base instead — on the first, the
       strip only goes up from there.</li>
-    <li>The table then says what to give each patch: Add is what to put on once the patch before
-      has been covered, and Seconds is what that patch has had by the time you cover it. Give the
-      whole strip the first row's seconds, cover the first patch, give the rest what the next row
-      says under Add, and so on. To expose every patch on its own instead, give each what its row
-      says under Seconds.</li>
+    <li>Each patch's seconds are what it has had by the time you cover it. Give the whole strip
+      the first patch's seconds, cover it, and cover the next at each patch's own seconds in
+      turn. To expose every patch on its own instead, give each its seconds by itself.</li>
     <li>The page can keep that time for you, by sounding every moment you have to act on — that
       is what it does unless you say otherwise. If you would rather count it on a metronome, tick
       "Use a metronome instead" and the table turns into counts. Both ways have a fold at the end
@@ -1131,18 +1113,14 @@
   }
 
   // The strip timed in seconds instead: every patch gets its seconds rounded to a tenth and
-  // never below one tenth, and `add` is what the strip is given once the patch before is covered
+  // never below one tenth
   function timed({ base, stepsize, numsteps, baseplace }) {
     const steps = Array.from({ length: numsteps }, (_, i) => i - baseplace);
-    const rows = steps.map(step => {
+    return steps.map(step => {
       const exact = base * 2 ** (step / stepsize);
       const seconds = Math.max(.1, Math.round(exact * 10) / 10);
       return { step, seconds, error: Math.log2(seconds / exact) };
     });
-    return rows.map((row, i, all) => ({
-      ...row,
-      add: i ? row.seconds - all[i - 1].seconds : row.seconds,
-    }));
   }
 
   function solveSkipping(settings, skipped) {
@@ -1241,10 +1219,6 @@
   }
 
   // Only the first patch is given all of its seconds at once
-  function formatAdd(add, seconds) {
-    return `${add < seconds ? '+' : ''}${add.toFixed(1)}`;
-  }
-
   function formatStops(step, stepsize) {
     if (!step) return 'base';
     const sign = step > 0 ? '+' : '−';
@@ -1345,10 +1319,10 @@
   }
 
   // Which line of the plan the run is waiting on, counted as the marks are: the count-in is the
-  // first. Called with nothing, no line is lit. The lines are four cells each.
+  // first. Called with nothing, no line is lit. The lines are three cells each.
   function lit(line) {
     [...field('plan').children]
-      .forEach((cell, i) => cell.classList.toggle('now', Math.floor(i / 4) === line));
+      .forEach((cell, i) => cell.classList.toggle('now', Math.floor(i / 3) === line));
   }
 
   // The context a run or a metronome sounds through, and the page's one at a time
@@ -1596,11 +1570,8 @@
   // Every row is exposed so many stops more than `anchor`, the base row, errors included
   function tableRow(row, { stepsize, filters, paper, counting, baseplace }, every, anchor) {
     const { step, seconds, error } = row;
-    const add = element('span', counting ? formatCount(row.count, every)
-      : formatAdd(row.add, seconds));
-    add.className = 'add';
-    const ends = element('span', seconds.toFixed(counting ? 2 : 1));
-    ends.className = 'ends';
+    const figure = element('span', counting ? formatCount(row.count, every) : seconds.toFixed(1));
+    figure.className = 'figure';
     const stops = element('span', formatStops(step, stepsize));
     stops.className = 'stops';
     if (Math.abs(error * stepsize) >= LOUD) {
@@ -1613,7 +1584,7 @@
     pick.name = 'placed';
     pick.value = step + baseplace;
     pick.checked = !step;
-    const cue = element('label', pick, add, stops, ends);
+    const cue = element('label', pick, figure, stops);
     cue.className = 'cue';
     const exposed = (step - anchor.step) / stepsize + error - anchor.error;
     const strips = filters.map(other => zoneStrip(exposed, filters[0], other, paper));
@@ -1710,7 +1681,7 @@
     // The map is drawn against the base row: every other row is so many stops from it
     const anchor = found[chosen?.baseplace];
     const rows = found.map(row => tableRow(row, chosen, result.every, anchor));
-    const widest = Math.max(0, ...rows.map(row => row.querySelector('.add').textContent.length));
+    const widest = Math.max(0, ...rows.map(row => row.querySelector('.figure').textContent.length));
     field('map').style.setProperty('--widest', counting ? 'auto' : `${widest}ch`);
     planned = chosen ? schedule(found, chosen.countIn) : [];
     solved = counting && result.tempo ? { tempo: result.tempo, every: result.every } : null;
@@ -1718,17 +1689,15 @@
     // waits, which is the one the bars are drawn against
     const waits = planned.map((mark, i) => mark - (planned[i - 1] ?? 0));
     const longest = Math.max(...waits);
-    // The same plan for the darkroom view: a patch number, what to give it, and what it has had
-    // by then. By ear there is a line for every wait the run holds — the count-in first, which
-    // is nobody's patch — and the wait itself is drawn beside the numbers.
+    // The same plan for the darkroom view: a patch number and its figure. By ear there is a
+    // line for every wait the run holds — the count-in first, which is nobody's patch — and the
+    // wait itself is drawn beside the numbers.
     const lines = counting ? found.flatMap((row, i) => [
       element('span', String(i + 1)),
       element('span', formatCount(row.count, result.every)),
       element('span', ''),
-      element('span', ''),
     ]) : waits.flatMap((wait, i) => [
       element('span', i ? String(i) : ''),
-      element('span', i ? formatAdd(found[i - 1].add, found[i - 1].seconds) : ''),
       element('span', i ? found[i - 1].seconds.toFixed(1) : ''),
       bar(wait, planned[i] - wait, longest),
     ]);
@@ -1740,7 +1709,7 @@
     field('tempo').textContent = result.tempo ?? '?';
     field('notice').textContent = counting && result.tempo
       ? `and count every ${nthBeat(result.every)}, from zero.` : '';
-    field('head').textContent = counting ? 'Count' : 'Add';
+    field('head').textContent = counting ? 'Count' : 'Seconds';
     field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
     field('skip').value = result.tempo ?? '';
     field('skip').hidden = !result.tempo;

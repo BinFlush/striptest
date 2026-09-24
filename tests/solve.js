@@ -8,11 +8,11 @@ const vm = require('vm');
 const page = fs.readFileSync(`${__dirname}/../index.html`, 'utf8');
 const algorithm = page.match(/<script id="algorithm">([\s\S]*?)<\/script>/)[1];
 const context = vm.createContext({});
-const used = `{ solveSkipping, timed, formatAdd, schedule, climb,
+const used = `{ solveSkipping, timed, schedule, climb,
   FUNDAMENTAL, BEND, CLIMBS, COUNT_IN,
   density, shade, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED }`;
 vm.runInContext(`${algorithm}\nthis.page = ${used};`, context);
-const { solveSkipping, timed, formatAdd, schedule, climb } = context.page;
+const { solveSkipping, timed, schedule, climb } = context.page;
 const { FUNDAMENTAL, BEND, CLIMBS, COUNT_IN } = context.page;
 const { density, shade, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED } = context.page;
 
@@ -24,10 +24,8 @@ const results = asked.map(({ skipped, ...settings }) => {
   return { tempo, every, beats, counts: rows.map(row => row.count), passed };
 });
 
-// The same strips timed with a timer, and how what is added for a patch is written
+// The same strips timed with a timer
 const timers = asked.map(settings => timed(settings));
-const added = [[5, 5], [6.3 - 5, 6.3], [0.1, 0.1], [12, 22]]
-  .map(([add, seconds]) => formatAdd(add, seconds));
 
 // The run the page would sound for those same strips: when every mark falls, and the glide
 // through gaps of very different lengths
@@ -94,4 +92,4 @@ const papers = Object.fromEntries(Object.keys(PAPERS).map(paper => {
   const curves = Object.fromEntries(filters.map(filter => [filter, PAPERS[paper][filter]]));
   return [paper, { filters, curves, tones, zones, strips, speeds }];
 }));
-console.log(JSON.stringify({ results, timers, added, runs, waits, climbs, sound, papers }));
+console.log(JSON.stringify({ results, timers, runs, waits, climbs, sound, papers }));
