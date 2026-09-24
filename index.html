@@ -255,6 +255,7 @@
 
   .row.base .cue {
     background: var(--tint);
+    color: var(--ink);
   }
 
   .cue:has(:focus-visible) {
@@ -275,10 +276,6 @@
 
   .ends {
     text-align: right;
-  }
-
-  .row.base .stops {
-    color: var(--ink);
   }
 
   .off {
@@ -349,18 +346,18 @@
     text-align: center;
   }
 
-  .row:first-child .band {
-    border-top-width: 1px;
+  /* The lines above and below the map, and between patches when comparing puts two strips in
+     every row, are shadows rather than borders, so that every row stays exactly the same height */
+  .row:first-child .band, .row + .row .band:has(.strip + .strip) {
+    box-shadow: 0 -1px 0 var(--line);
   }
 
   .row:last-child .band {
-    border-bottom-width: 1px;
+    box-shadow: 0 1px 0 var(--line);
   }
 
-  /* Comparing puts two strips in every row, and without a line between the patches the map
-     reads as twice as many of them */
-  .row + .row .band:has(.strip + .strip) {
-    border-top-width: 1px;
+  .row:first-child:last-child .band {
+    box-shadow: 0 -1px 0 var(--line), 0 1px 0 var(--line);
   }
 
   /* The reference wears a box that reads on any tone: an ink line with paper either side */
