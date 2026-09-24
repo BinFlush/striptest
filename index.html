@@ -873,6 +873,9 @@
         see it on, and the hold belongs to the dark.</li>
       <li>On an iPhone this may pause music playing from another app. Bluetooth speakers and
         headphones delay every sound by the same amount, which does no harm when you go by ear.</li>
+      <li>With "Use a metronome instead" ticked, Start runs a metronome at the tempo shown rather
+        than the strip, for as long as you let it; Start dark, the tap and the hold work as they
+        do for a run.</li>
     </ul>
   </details>
 
@@ -880,7 +883,9 @@
     <summary>Your own metronome</summary>
     <ul>
       <li>Set any metronome, a physical one or an app, to the tempo shown. If it can accent beats,
-        let it accent the one you count.</li>
+        let it accent the one you count. Or let the page keep it: in the darkroom view, Start runs
+        a metronome at that tempo, the beat you count struck an octave above the rest, and Start
+        dark does the same with the screen black.</li>
       <li>Start the exposure on the count of zero. Keep counting, and cover the next patch of the
         strip at each count in the table.</li>
       <li>Step error is how far a row's real exposure lands from its target, as a share of one
@@ -889,10 +894,10 @@
         easier to count when you want to stop exposing between each patch.</li>
       <li>If your metronome lacks the tempo shown, press "My metronome can't do …". The next best
         tempo appears, and the choice is remembered on this device.</li>
-      <li>There is purposely no metronome built in: this way of working exists for the accuracy a
-        dedicated metronome gives, and finding the tempo is the whole trick. If you would rather
-        the page did the timing, that is what it does with the box left unticked, and if what you
-        want is a proper f-stop timer, something like
+      <li>This way of working exists for the accuracy a steady beat gives, and finding the tempo is
+        the whole trick; the metronome the page runs is that beat and nothing more. If you would
+        rather the page did the timing, that is what it does with the box left unticked, and if
+        what you want is a proper f-stop timer, something like
         <a href="https://gotimer.org/photography/enlarger-timer" target="_blank">GoTimer's enlarger
         timer</a> is a better fit.</li>
     </ul>
@@ -910,8 +915,8 @@
 <div id="darkroom">
   <p id="tell"></p>
   <div id="plan"></div>
-  <button id="run" class="seconds" type="button">Start</button>
-  <button id="dark" class="seconds" type="button">Start dark</button>
+  <button id="run" type="button">Start</button>
+  <button id="dark" type="button">Start dark</button>
   <button id="leave" type="button">Close</button>
 </div>
 
@@ -1261,6 +1266,7 @@
   let audio = null;
   let behind = 0;
   let planned = [];
+  let solved = null;
   let holding = 0;
   let reference = null;
   let placed = null;
@@ -1334,9 +1340,8 @@
       .forEach((cell, i) => cell.classList.toggle('now', Math.floor(i / 4) === line));
   }
 
-  // Everything a run sounds is scheduled on the audio clock the moment it starts, so nothing
-  // after that depends on a timer firing or on the page staying awake. Silence is the end of it.
-  function play(marks) {
+  // The context a run or a metronome sounds through, and the page's one at a time
+  function open() {
     if (navigator.audioSession) navigator.audioSession.type = 'playback';
     // Ask for a quarter of a second of buffer, which is where Chrome tops out. Nothing here is
     // played in response to a touch, so latency costs nothing, and a small buffer is what makes
@@ -1350,6 +1355,61 @@
     made.onstatechange = () => {
       if (audio === made && made.state !== 'running') hush('Interrupted');
     };
+    return made;
+  }
+
+  // A note struck at `when` on `context` and gone a tick later, still sounding to `over` so
+  // that what it ends can be timed by it
+  function strike(context, when, hertz, loud, over) {
+    const note = context.createOscillator();
+    const sounding = context.createGain();
+    note.type = 'triangle';
+    note.frequency.value = hertz;
+    note.connect(sounding).connect(context.destination);
+    sounding.gain.setValueAtTime(0, when);
+    sounding.gain.linearRampToValueAtTime(loud, when + RAMP);
+    sounding.gain.linearRampToValueAtTime(0, when + TICK);
+    note.start(when);
+    note.stop(when + over);
+    return note;
+  }
+
+  // The view is running something: the buttons say so, and only Stop is left to press
+  function began(said) {
+    document.documentElement.classList.add('running');
+    field('run').textContent = 'Stop';
+    field('dark').hidden = true;
+    field('leave').hidden = true;
+    tell(said);
+  }
+
+  // A metronome at the tempo the strip was solved for, the beat that is counted struck an
+  // octave above the rest as the marks of a run are above its count-in. One cycle of it is
+  // rendered, to the sample, and looped: it keeps time on the audio clock alone, for as long
+  // as it is let run, with nothing left to a timer.
+  async function tick({ tempo, every }) {
+    const made = open();
+    const period = 60 / tempo;
+    const cycle = new OfflineAudioContext(1, Math.round(every * period * made.sampleRate),
+      made.sampleRate);
+    for (let n = 0; n < every; n++) {
+      strike(cycle, n * period, n ? FUNDAMENTAL : 2 * FUNDAMENTAL, n ? COUNTED : ACCENT, TICK);
+    }
+    const beats = await cycle.startRendering();
+    // Stopped, or interrupted, while the cycle was being rendered
+    if (audio !== made) return;
+    const source = made.createBufferSource();
+    source.buffer = beats;
+    source.loop = true;
+    source.connect(made.destination);
+    source.start(made.currentTime + LEAD);
+    began(`${tempo} bpm, every ${nthBeat(every)}`);
+  }
+
+  // Everything a run sounds is scheduled on the audio clock the moment it starts, so nothing
+  // after that depends on a timer firing or on the page staying awake. Silence is the end of it.
+  function play(marks) {
+    open();
     const from = audio.currentTime + LEAD;
     const over = marks[marks.length - 1];
     const last = from + over;
@@ -1370,21 +1430,7 @@
       return voice;
     }
 
-    // A note struck at `at` and gone a tick later, still sounding to `over` so that what it
-    // ends can be timed by it
-    function beat(at, hertz, loud, over) {
-      const note = audio.createOscillator();
-      const sounding = audio.createGain();
-      note.type = 'triangle';
-      note.frequency.value = hertz;
-      note.connect(sounding).connect(audio.destination);
-      sounding.gain.setValueAtTime(0, from + at);
-      sounding.gain.linearRampToValueAtTime(loud, from + at + RAMP);
-      sounding.gain.linearRampToValueAtTime(0, from + at + TICK);
-      note.start(from + at);
-      note.stop(from + at + over);
-      return note;
-    }
+    const beat = (at, hertz, loud, over) => strike(audio, from + at, hertz, loud, over);
 
     // The drone says the lamp is on, and holds for as long as the exposure runs. Its own octave
     // is in the tone, so it shares partials with the accents above it.
@@ -1422,11 +1468,7 @@
 
     // The bars are held back by the same, so that one meets its end as its mark is heard
     field('plan').style.setProperty('--late', `${late}s`);
-    document.documentElement.classList.add('running');
-    field('run').textContent = 'Stop';
-    field('dark').hidden = true;
-    field('leave').hidden = true;
-    tell('Count-in');
+    began('Count-in');
     lit(0);
   }
 
@@ -1485,8 +1527,11 @@
     return true;
   }
 
+  // A press runs what the view is showing: the metronome the strip was solved for, or the
+  // strip itself, by ear
   function toggle() {
     if (audio) return hush('Stopped');
+    if (field('metronome').checked) return void (solved && tick(solved));
     if (planned.length) play(planned);
   }
 
@@ -1668,6 +1713,7 @@
     const widest = Math.max(0, ...rows.map(row => row.querySelector('.add').textContent.length));
     field('map').style.setProperty('--widest', counting ? 'auto' : `${widest}ch`);
     planned = chosen ? schedule(found, chosen.countIn) : [];
+    solved = counting && result.tempo ? { tempo: result.tempo, every: result.every } : null;
     // What is waited before each mark — the count-in before the first — and the longest of those
     // waits, which is the one the bars are drawn against
     const waits = planned.map((mark, i) => mark - (planned[i - 1] ?? 0));
@@ -1695,7 +1741,6 @@
     field('notice').textContent = counting && result.tempo
       ? `and count every ${nthBeat(result.every)}, from zero.` : '';
     field('head').textContent = counting ? 'Count' : 'Add';
-    field('enter').textContent = `${counting ? 'View' : 'Run'} in Darkroom Mode`;
     field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
     field('skip').value = result.tempo ?? '';
     field('skip').hidden = !result.tempo;
