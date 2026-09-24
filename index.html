@@ -330,31 +330,6 @@
     content: none;
   }
 
-  .row:first-child .band {
-    border-top-width: 1px;
-  }
-
-  .row:last-child .band {
-    border-bottom-width: 1px;
-  }
-
-  /* Comparing puts two strips in every row, and without a line between the patches the map
-     reads as twice as many of them */
-  .row + .row .band:has(.strip + .strip) {
-    border-top-width: 1px;
-  }
-
-  /* The reference wears a box that reads on any tone: an ink line with paper either side */
-  .row.reference .band::before {
-    content: "";
-    position: absolute;
-    z-index: 1;
-    inset: 0;
-    border: 2px solid var(--ink);
-    box-shadow: inset 0 0 0 1px var(--paper), 0 0 0 1px var(--paper);
-    pointer-events: none;
-  }
-
   .strip {
     display: grid;
     position: relative;
@@ -394,9 +369,21 @@
     }
   }
 
+  /* The way into the view stays at the foot of the screen, one thumb away, and never pushes
+     the map down: it is the last thing on the page and sticks there while the rest scrolls up
+     under it, a paper halo keeping the rows off its edge */
   #enter {
+    position: sticky;
+    z-index: 2;
+    bottom: .75rem;
     width: 100%;
-    margin-top: 1.25rem;
+    height: 3.25rem;
+    margin-top: 2rem;
+    border: 0;
+    background: var(--accent);
+    color: #FFF;
+    font-weight: 600;
+    box-shadow: 0 0 0 .75rem var(--paper);
   }
 
   #map + details {
@@ -690,7 +677,6 @@
   <p id="notice" class="metronome"></p>
   <button id="skip" class="metronome" type="button" hidden></button>
   <p id="skipped" class="metronome"></p>
-  <button id="enter" type="button">Run in Darkroom Mode</button>
 </section>
 
 <label>Paper
@@ -748,9 +734,9 @@
       has it right gives the seconds for that filter. This goes by Ilford's speeds for the paper:
       filters 4 and 5 need a stop more light than 00 to 3 on Multigrade IV and Art 300, and an
       eighth of a stop more on FB Classic and Multigrade RC Deluxe. Your enlarger may differ.</li>
-    <li>The button under the settings turns the page into large red type on black, to read at the
-      enlarger. It shows only what your hands need, the plan or the Start button, and nothing that
-      can be set. Escape, or Close, brings the page back.</li>
+    <li>The button at the foot of the screen turns the page into large red type on black, to read
+      at the enlarger. It shows only what your hands need, the plan or the Start button, and
+      nothing that can be set. Escape, or Close, brings the page back.</li>
     <li>Red only is safer than white, not safe. The screen is still a light source, and
       Multigrade paper is most sensitive to the green and blue in it. Turn the phone's brightness
       right down and keep it away from the paper.</li>
@@ -815,6 +801,8 @@
 <footer>
   <a href="https://github.com/BinFlush/striptest#readme" target="_blank">How it works and source</a>
 </footer>
+
+<button id="enter" type="button">Run in Darkroom Mode</button>
 
 <div id="darkroom">
   <p id="tell"></p>
