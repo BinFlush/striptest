@@ -168,9 +168,14 @@
     font-size: .9375rem;
   }
 
+  /* The metronome's own block, and nothing of it when there is no metronome: one sentence with
+     the tempo in it, the button under, so that the map is not pushed down by a hero */
   section {
-    margin: 2.5rem 0 2rem;
-    text-align: center;
+    margin: 1.5rem 0 0;
+  }
+
+  body:not(.metronome) section {
+    display: none;
   }
 
   section p {
@@ -178,14 +183,9 @@
     color: var(--muted);
   }
 
-  output {
-    display: block;
-  }
-
   #tempo {
     color: var(--ink);
-    font: 600 5.5rem/1.1 var(--mono);
-    letter-spacing: -.04em;
+    font: 600 1.5rem/1 var(--mono);
   }
 
   button {
@@ -201,7 +201,7 @@
   }
 
   #skip {
-    margin-top: 1.25rem;
+    margin-top: .75rem;
   }
 
   #skipped {
@@ -350,7 +350,7 @@
      its numerals read straight against it and every other row's as a departure from it */
   #axis {
     display: flex;
-    margin: .375rem 0 0 calc(var(--gutter) + .75rem);
+    margin: .375rem 0 2rem calc(var(--gutter) + .75rem);
   }
 
   #map:empty + #axis {
@@ -446,7 +446,7 @@
     box-shadow: 0 0 0 .75rem var(--paper);
   }
 
-  #axis + details {
+  .sheet > details:not(#compare) {
     margin-top: 2rem;
   }
 
@@ -467,9 +467,21 @@
       max-width: 72rem;
     }
 
+    /* Paper, filter and the comparison head the column here, where there is room, and go back
+       under the map on a phone, where they are its caption and the map is the answer */
     .sheet {
+      display: flex;
+      flex-direction: column;
       grid-column: 2;
       grid-row: 1 / 3;
+    }
+
+    .sheet > label, #compare {
+      order: -1;
+    }
+
+    #axis {
+      margin-bottom: 0;
     }
 
     #enter {
@@ -770,16 +782,20 @@
 </noscript>
 
 <section>
-  <p class="metronome">Set your metronome to</p>
-  <output id="tempo" class="metronome"></output>
-  <p id="notice" class="metronome"></p>
-  <button id="skip" class="metronome" type="button" hidden></button>
-  <p id="skipped" class="metronome"></p>
+  <p>Set your metronome to <output id="tempo"></output> <span id="notice"></span></p>
+  <button id="skip" type="button" hidden></button>
+  <p id="skipped"></p>
 </section>
 
 </div>
 
 <div class="sheet">
+
+<p class="head"><span id="head">Add</span><span>ends</span></p>
+
+<div id="map"></div>
+
+<p id="axis"></p>
 
 <label>Paper
   <select id="paper"></select>
@@ -796,12 +812,6 @@
     <input id="other" type="range" min="0" max="6" value="4">
   </label>
 </details>
-
-<p class="head"><span id="head">Add</span><span>ends</span></p>
-
-<div id="map"></div>
-
-<p id="axis"></p>
 
 <details>
   <summary>How to use</summary>
@@ -823,7 +833,7 @@
       of this list.</li>
     <li>To see how far apart the patches will be, look at the strip under each row. It shows roughly
       what that patch prints as, in the zones of the Zone System: 0 is full black, V middle grey and
-      X paper white, on the paper and at the filter set above the table. Your prints may
+      X paper white, on the paper and at the filter set under the map. Your prints may
       differ.</li>
     <li>To see what a tone does in the other patches, find it in the base's strip, the boxed
       one, and look straight up or down: a place across the map is one part of the
