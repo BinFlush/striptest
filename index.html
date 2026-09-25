@@ -1705,7 +1705,7 @@
     figure.className = 'figure';
     const stops = element('span', formatStops(step, stepsize));
     stops.className = 'stops';
-    if (Math.abs(error * stepsize) >= LOUD) {
+    if (counting && Math.abs(error * stepsize) >= LOUD) {
       const off = element('span', `${formatError(error * stepsize)} off`);
       off.className = 'off';
       stops.append(' ', off);
