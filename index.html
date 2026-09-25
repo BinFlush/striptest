@@ -1299,28 +1299,32 @@
     return density(stops + exposed + lead, other, paper);
   }
 
-  // A count is whole counted beats and a part of the next, the part one glyph — 5⅔ — so that a
-  // column of counts stays as narrow as a column of seconds
-  const PARTS = { 2: ['', '½'], 3: ['', '⅓', '⅔'], 4: ['', '¼', '½', '¾'] };
-  function formatCount(count, every) {
-    const whole = Math.floor(count / every);
-    const rest = count % every;
-    if (!rest) return String(whole);
+  // A whole and a part, as printers say it — 5⅔, +1½ — the part one glyph where there is one,
+  // which keeps a column of counts as narrow as one of seconds. Twelfths have no glyph and are
+  // written out, 1 5/12, the space one that never breaks.
+  const PARTS = {
+    2: ['', '½'], 3: ['', '⅓', '⅔'], 4: ['', '¼', '½', '¾'], 6: ['', '⅙', '⅓', '½', '⅔', '⅚'],
+  };
+  function mixed(whole, rest, every) {
     const part = PARTS[every]?.[rest];
-    if (!part) return whole ? `${whole}+${rest}/${every}` : `${rest}/${every}`;
-    return `${whole || ''}${part}`;
+    if (part) return `${whole || ''}${part}`;
+    return whole ? `${whole}\u00a0${rest}/${every}` : `${rest}/${every}`;
+  }
+
+  function formatCount(count, every) {
+    const rest = count % every;
+    return rest ? mixed(Math.floor(count / every), rest, every) : String(count / every);
   }
 
   // Only the first patch is given all of its seconds at once
-  // Stops read as printers say them, a whole and a part: +1 1/2, never +3/2. The part keeps
-  // the strip's own denominator, so a column of twelfths stays a column of twelfths.
   function formatStops(step, stepsize) {
     if (!step) return 'base';
     const sign = step > 0 ? '+' : '−';
-    const whole = Math.floor(Math.abs(step) / stepsize);
-    const rest = Math.abs(step) % stepsize;
-    if (!rest) return `${sign}${whole}`;
-    return whole ? `${sign}${whole}\u00a0${rest}/${stepsize}` : `${sign}${rest}/${stepsize}`;
+    const size = Math.abs(step);
+    const rest = size % stepsize;
+    const whole = Math.floor(size / stepsize);
+    const stops = rest ? mixed(whole, rest, stepsize) : String(whole);
+    return sign + stops;
   }
 
   function formatError(share) {
