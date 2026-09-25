@@ -1,40 +1,99 @@
 # striptest
-A tool for planning f/stop teststrips in the darkroom, and for timing them: with an ordinary timer, with a physical metronome at the optimal tempo, or by the sound of the page itself.
+A tool for planning f/stop test strips in the darkroom, and for timing them: by sound cues the page makes itself, or with a physical metronome at the best tempo for the strip. The seconds are there too, for anyone with a timer.
 
-**Use it right here: https://binflush.github.io/striptest/**
+**Use it here: https://binflush.github.io/striptest/**
+
 ## Overview
-**striptest** is a tool designed for darkroom enthusiasts who want to optimize their exposure settings for f/stop printing using a metronome, and specifically for making teststrips. This tool finds the best tempo settings and counting instructions, reducing exposure inaccuracies.
+**striptest** is for darkroom printers who f/stop print. It has two parts.
 
-It started out as a Python script that I wrote for my own use, to be run on a laptop while planning a printing session. That works fine, but it is not very portable, and the computer I actually carry around is a phone. So the whole thing has been reimplemented as a website, which does the same calculation directly in your browser. There is nothing to install, it fits on a phone screen, and nothing you type is sent anywhere.
+1. A plan for the test strip, with two ways of timing it, neither of which I have seen elsewhere.
+2. A map of tones under the plan: roughly what every patch is going to do to the picture, on the paper and filter chosen, so that a test strip can be planned before it is exposed and read after.
 
-The Python script is still here and still works. It is in fact the reference: the website is tested against it on thousands of random settings, so the two always agree on the tempo and the counts. The website has also grown a few things the script never had. It plans the teststrip no matter how it is going to be timed: with an ordinary timer it simply gives the seconds for every patch, with a metronome it finds the tempo, and it can also do the timing itself, by sound, so that neither is needed. It has a darkroom view, which is red on black and large enough to read at the enlarger, an easy way to tell it which tempos your metronome lacks, and a simulated teststrip that shows roughly what the patches are going to do to the tones. Opened once while online it works in airplane mode after that, and it can be added to a phone's home screen like any other app. All of it is described below.
+### Timing
+1. **Sound cues.** The page counts you in and then sounds every moment you have to act on, so there is nothing to read in the dark. A steady tone holds while the lamp is on, and another sweeps up an octave, from 440 Hz to 880 Hz, into each moment; when it lands, that is the moment to cover the next patch, or to move the strip along. It can also stop between the patches, for you to move the card.
+2. **Metronome.** Timing with a metronome is not a new idea. There is an established tradition of darkroom printing with one, but it has traditionally been set to measure whole or fractional seconds. This tool expands on that by solving an optimisation problem: for a given set of exposures, what tempo gives the best alignment with them. It is a surprisingly accurate and usable way to time a print, and the page can run the metronome for you too.
+3. **Your own timer.** The plan gives the seconds for every patch, to a tenth, which is about what a timer can be set to.
+
+### The map
+Every patch has a strip of tones beside its figure. Each strip shows what that patch prints as, in the zones of the Zone System, and the strips abut, so a tone in the picture can be followed straight up and down the map from patch to patch. Each paper has its own curves, and the filter changes how far apart the patches land, so both are chosen under the map. A second filter can be laid under the first, to see whether a change of contrast would do what more exposure would not. This is for the age-old question, *"should I change the exposure, or is it the contrast?"*
 
 ## Quickstart
-### On the website
-Open https://binflush.github.io/striptest/, type in your base time, and pick the stepsize and the number of steps. The table then gives the seconds for every patch, to be used with a timer. Choose **Your own metronome** under **Timed with**, and you get a big red number instead, which is the tempo for your metronome, and a table that tells you what to count to. Choose **Sound cues** and it will simply sound every moment you have to act on. That is all there is to it. The section **The website** further down goes through the rest.
+Open https://binflush.github.io/striptest/, type in your base time, and pick the step size and the number of patches. The map gives the seconds for every patch. Press **Run in Darkroom Mode** at the foot of the screen, then **Start**, and the page counts you in and sounds each patch. Tick **Use a metronome instead** and it gives you a tempo and the counts instead. The section **The website** below goes through the rest.
 
-### With the Python script
-Ensure you have python and numpy installed, download the file `striptest.py`, open a terminal, navigate to where the file is located and run
-```
-python striptest.py
-```
-By default it outputs a 7-step list in 1/3 stop increments with the base of 10 seconds in the middle. The optimal metronome tempo for timing these exposures happens to be 181 bpm. You will thus see the following output:
-```
-TEMPO 181
-Count every 3rd beat
+## The website
+The website lives at https://binflush.github.io/striptest/. It does the same job as the Python script this started as, and a good deal more, and it does it in your browser, so it also works on the phone in your pocket. Everything is calculated on your own device, and nothing is sent anywhere.
 
-     Count      Stops    Seconds   Target Sec   % of stepsize Error
-     5             -1      4.972        5.000      -2.4%
-     6+1/3       -2/3      6.298        6.300      -0.1%
-     8           -1/3      7.956        7.937       1.0%
-    10              0      9.945       10.000      -2.4%
-    12+2/3       +1/3     12.597       12.599      -0.1%
-    16           +2/3     15.912       15.874       1.0%
-    20             +1     19.890       20.000      -2.4%
-```
-Doing these exposures simply amounts to setting your metronome to the tempo (181), optionally making the metronome mark every third beat, and start counting (from 0) when you start your exposure. Keep counting on every third beat and make adjustments according to whatever teststrip method you use, as per the "Count" column.
+The easiest way to explain it is to go through a printing session.
 
-As shown, we expose the entire strip for 5 counts (15 beats), then we cover the first piece and expose the rest for an additional 1+1/3 counts (4 beats) and so on.
+### The plan
+Let's say we have a fresh negative in the enlarger and our best guess is that it needs somewhere around 10 seconds. We want a test strip of 7 patches in 1/3 stop steps around that guess. So we type 10 into **Base, seconds**, choose 1/3 under **Step, stops** and 7 under **Patches**. These happen to be the defaults, so in this case we just open the page:
+
+<p align="center"><img src="figures/web-plan.png" width="300" align="top" alt="The page as it opens: base 10 seconds, 1/3 stop steps, 7 patches, and the map underneath with the seconds for every patch"> <img src="figures/web-base.png" width="300" align="top" alt="The sixth patch tapped: the tile and the box have moved to it, and the other patches are drawn against it"></p>
+
+The map has one row for each patch. On the left, large, are the seconds the patch ends up with, and under them where it sits in stops: 5.0 seconds a stop below the base, 6.3 two thirds below, and so on up to 20.0 a stop above. The base is the patch we believe in, marked with a tile round its figure and a box round its strip. It starts on the middle patch, so the others bracket it; tapping any patch, its figure or its strip, makes that one the base instead, and the others are drawn against it. On the first patch the strip only goes up from there.
+
+With a timer these figures are all there is to it: give the whole strip 5.0 seconds, cover the first patch, and cover the next at 6.3, 7.9, 10.0 and so on. To expose every patch on its own instead, give each its own seconds. Those who would rather see what each patch *adds* to the one before choose **Additions** under **Exposures** in Configuration, and the figures become 5.0, 1.3, 1.6, 2.1 and so on, with the heading over them saying so. The choice is also what a run in the darkroom gives each patch; more on that below.
+
+### Reading the map
+The strips are a rough simulation of what the patches are going to look like, in the zones of the Zone System: 0 is full black, V is middle grey and X is paper white. The base patch's strip is simply the scale from 0 to X, and every other strip is that same scale after the patch's exposure. A place across the map is one part of the picture. So we pick a tone in the base row, say a highlight in Zone VIII, and look straight up and down: the zone we find at that same place in another row is what that highlight prints as in that patch. Here it is a IX one patch lighter and paper white beyond that, and one patch darker it is a VII, three patches darker a VI.
+
+The zones are coarse, and a lot can happen inside one. For the nuances, slide a finger sideways along any strip, or drag with the mouse. The map then stops showing the scale, and every strip shows one single tone in full: the tone that the part of the picture under the finger gets in that patch, with the zone it is nearest to. The pin stays where the finger leaves it, and sliding picks nothing.
+
+<p align="center"><img src="figures/web-map.png" width="300" align="top" alt="The map: seven strips of tones, the base patch boxed in the middle, the probe parked on it"> <img src="figures/web-slide.png" width="300" align="top" alt="Sliding along the base strip over a Zone VIII highlight: every strip shows the one tone that highlight becomes in that patch"></p>
+
+How much happens from one patch to the next depends on the paper, chosen under **Paper** below the map, and a lot on the filter, set with the **Filter** slider under it. Here is the same strip at filter 00 and at filter 5:
+
+<p align="center"><img src="figures/web-filter-00.png" width="300" align="top" alt="The map at filter 00: the strips hardly change from row to row"> <img src="figures/web-filter-5.png" width="300" align="top" alt="The map at filter 5: the strips change a lot from row to row"></p>
+
+At filter 00 it takes most of a stop to move a tone by one zone, so patches a third of a stop apart are hard to tell from each other, and I would go for bigger steps. At filter 5 a third of a stop is more than a zone and a half, neighbouring patches look nothing alike, and finer steps are needed to land anywhere near the right exposure.
+
+How seriously should the strips be taken? Not very. The tones come from the characteristic curves in Ilford's data sheets for the papers offered — the current Multigrade RC Deluxe, the cotton-rag Multigrade Art 300, the fibre-based Multigrade FB Classic, and the Multigrade IV RC Deluxe that the first of them replaced — developed the way Ilford developed them. Art 300 is the odd one: being matte, its blackest black is 1.4 against a glossy paper's 2.08, and the strips show that, with the dark zones far closer together. Only Zone V is a fixed tone, 18% grey. Zone 0 and Zone X are simply the blackest and the whitest the paper gets, and the zones in between are placed where a normally developed negative would put them at filter 2 on Multigrade IV. Your paper, your developer and above all your negative are different. The strips are there to build intuition; they do not replace the actual test strip.
+
+### Reading the test strip
+The strip is developed and dry, and the fourth patch, 10 seconds, looks about right, but the shadows do not: the darkest part of the picture that should still show some detail, which we would like to see in Zone II, has only made it to a III. More exposure would darken it, but as we just saw, that drags the highlights down with it. This is a job for a harder filter, and we can try one on the page before we expose for it. Under the filter slider we open **Compare with another filter** and set it to 3:
+
+<p align="center"><img src="figures/web-compare.png" width="300" align="top" alt="Filter 2 compared with filter 3: every row has a second strip under its first, where the zones lie closer together"> <img src="figures/web-compare-slide.png" width="300" align="top" alt="Sliding along the base row over a shadow in Zone III: through filter 3 the same patch prints it as Zone II"></p>
+
+Every row now has a second strip under its first. It is the same patch, exposed for the same seconds, but through filter 3. The strips are read exactly as before, and a place across them is still one part of the picture. So we find our shadow in the base row's upper strip and look at the strip right under it: the III becomes a II, which is what we wanted. And the highlights? The same slide over the Zone VIII highlight shows filter 3 lifting it to a IX at 10 seconds, and an VIII again a third of a stop up, at 12.6. So filter 3 it is, and the exposure lies somewhere between 10 and 12.6 seconds. That is what the next strip is for: 11 as the base, 1/6 stop steps, 5 patches, and the filter slider up to 3 — or, to start the strip at the base and only go up from there, the first patch tapped as the base.
+
+The two filters are lined up by the paper speeds in Ilford's data sheets. Multigrade filters are speed matched: 00 to 3 need the same exposure, and 4 and 5 need more — a whole stop on Multigrade IV and on Art 300, about an eighth of one on FB Classic and the current RC Deluxe, if the sheets are to be believed. With other filters, a colour head, or filters that have faded over the years this is going to be off, so the same goes as before: the strips are there to build intuition.
+
+### Configuration
+Under the fields, **Configuration** holds what belongs to the way of timing chosen. For sound cues that is the **count-in**, the seconds the page waits before the lamp goes on: three is the least, because it counts three in, and a longer one simply waits before counting them — make it as long as you need to get a hand to the switch. **Exposures** is the choice above between totals and additions: it says what the map shows and what a run gives each patch. **Stop between exposures** is described in the next section. On a wide screen Configuration stands open, in a rail beside the map.
+
+<p align="center"><img src="figures/web-configuration.png" width="300" align="top" alt="Configuration open: the count-in, Exposures as Totals or Additions, and Stop between exposures"> <img src="figures/web-additions.png" width="300" align="top" alt="With Additions chosen the figures are what each patch adds: 5.0, then 1.3, 1.6, 2.1 and so on"></p>
+
+### At the enlarger
+Everything so far happens with the lights on. When they go out the phone is the wrong shape entirely: a white page is a fog risk, the browser's bars are in the way, and the screen turns itself off halfway through a strip. The button at the foot of the screen, **Run in Darkroom Mode**, deals with all three. It fills the screen with the plan in large red type on black, asks the phone to stay awake, and shows nothing that can be set. **Close**, or Escape, brings the page back.
+
+<p align="center"><img src="figures/web-darkroom.png" width="300" align="top" alt="The darkroom view: the plan in red on black, a bar for every wait, and Start, Start dark and Close"> <img src="figures/web-resume.png" width="300" align="top" alt="Part way through a strip run one patch at a time: the first patch done and its bar full, Patch 2 next, and Resume, Reset and Resume dark"></p>
+
+The plan in the view is the map's figures with a bar beside each, as long as that patch's exposure, with one more above them all for the count-in, all to one scale, so that before anything is started the plan is already a picture of how long the strip takes. **Start** runs it, and a run gives every patch exactly the figure beside it, in turn. With **Totals** that is each patch's whole exposure, one after the other, for a strip moved along in a holder at each mark: 5.0 seconds, then 6.3, then 7.9. With **Additions** it is what each patch adds, for a strip covered as it goes: 5.0, then 1.3, then 1.6, the lamp staying on and the next patch covered at each mark. The count-in counts three soft beats, one a second, the last of them a second before the lamp. On the lamp a drone comes in and holds for as long as the exposure runs. Over it a tone climbs, and lands an octave higher exactly on each moment you have to act on, where a short beat falls, louder and an octave above the ones that counted you in: one for each patch, and the last is the lamp off. Then silence, which is how you know it is over. Because the pitch is always climbing towards the next one, a moment never arrives unannounced, and it arrives just as decisively whether the gap was one second or ten. As the run goes, the bar of the wait it is on fills, meeting its end as the beat is heard, and the line about the run and the Stop button fall back, so that the figures stay the brightest thing on the screen.
+
+**Start dark** gives the screen up altogether: by ear you need not look at all, and a screen is only a light source. It stays black after the run has finished as well, which is deliberate — a strip ending is the worst possible moment to light the room, with the paper still out. The whole of that black screen is then the one control. A tap starts a run and stops one that is going, and a hold of about three quarters of a second gives the screen back and ends the run with it; it reddens very faintly while you hold, so you can tell the hold has taken. Started the lit way, a press on the button stops the run at once. If the phone rings, or anything else takes the page away mid-run, the sound stops and the view says so: that strip is spoiled, and better to know it.
+
+With **Stop between exposures** ticked, the page runs one patch at a time. Each patch is announced first — one short blip for the first, two for the second — then counted in and given its figure, and the lamp goes off. The view then waits, *Patch 2 next*, and **Resume**, or a tap on the black screen, runs the next. **Reset** goes back to the first patch. A patch stopped part way starts again from its blips, and the bars keep the score: the patches done stay full.
+
+Red only is safer than white, but it is not safe, and the page says so too. The screen is still a light source, and Multigrade paper is most sensitive to exactly the green and blue that a red-only screen leaves out — which is the point, but a bright phone held over the paper will still fog it. Turn the brightness right down, keep the phone away from the easel, and test your own phone before trusting it: leave a scrap of paper face up beside it for five minutes and develop that. Turn on airplane mode or Do Not Disturb first, because a notification lights the whole screen at full brightness, and that is a fogged sheet.
+
+### With a metronome
+Tick **Use a metronome instead**, and the page says what to set the metronome to and what to count:
+
+<p align="center"><img src="figures/web-metronome.png" width="300" align="top" alt="The metronome: set it to 181 and count every 3rd beat, from zero; the map now gives the counts"> <img src="figures/web-skipping.png" width="300" align="top" alt="181 has been skipped, and the page suggests 144 instead, counting every 2nd beat"></p>
+
+We set the metronome to 181 and count every 3rd beat. The figures are now counts: we start the exposure on the count of zero, cover the first patch on the count of 5, the next on 6+1/3, then on 8, 10 and so on. A count of 6+1/3 means the first beat after the sixth counted one. Every patch is a whole number of beats, so it always begins on a counted beat, though it may end on one between. The counts are chosen to land as close to the f/stop times as a tempo allows — here no patch is more than 2.4% of a third of a stop off, which is quite a bit better than counting half seconds gave us in the **Background** section — and when a patch is more than a tenth of a step off, the page says so in red beside its stops.
+
+Most metronomes can't do 181. Many have gaps between their tempos, especially the fast ones. So we press **My metronome can't do 181**, and get the next best tempo instead: 144, which even my old mechanical metronome has, counting every 2nd beat. If 144 had been missing too, we would press again, until we land on a tempo the metronome has. The tempos we have skipped are remembered on the device, so after a few sessions the page knows the metronome and stops suggesting tempos it lacks. A tempo skipped by mistake is brought back by pressing it in the **Skipping** list, and **Forget all skipped tempos** under Configuration starts over. Configuration also holds the metronome's range, **Slowest** and **Fastest**, and **Count every**, which is normally chosen for you so that the counting pace stays near one a second. Choose **Additions** under **Exposures** and the counts start again from zero at every patch, which many find easier to count.
+
+The page can run the metronome too. Press **Run in Darkroom Mode**, then **Start**, and it keeps that tempo for as long as you let it, striking the beat you count an octave above the rest. **Start dark** does the same with the screen black. It is a plain metronome, nothing more: the counting is still yours, and a hardware one does just as well.
+
+### On a phone, on a desk
+Before a printing session, add the page to the home screen — from Share → Add to Home Screen on an iPhone, or the browser menu on Android. It then opens without the browser's bars, which on an iPhone is the only way to be rid of them in the darkroom view, and it works with no network at all once it has been opened online once.
+
+On a wide screen the settings go into a rail on the left with the run button under them, and the map takes the rest:
+
+<p align="center"><img src="figures/web-wide.png" width="600" alt="The page on a wide screen: the settings in a rail on the left, Configuration open, and the map on the right with taller bands"></p>
+
 ## Background
 
 ### Traditional f/stop Printing
@@ -59,261 +118,72 @@ Since we have a metronome at hand, there are many other timing options than 60 o
 
 This is what motivated the creation of this script.
 
-## The website
-The website lives at https://binflush.github.io/striptest/. It does the same job as the Python script and a bit more, and it does it in your browser, so it also works on the phone you already have in your pocket. Everything is calculated on your own device.
-
-The easiest way to explain it is to go through a printing session.
-
-### A first teststrip
-Let's say we have a fresh negative in the enlarger, and our best guess is that it needs somewhere around 10 seconds. We want a teststrip with 7 patches in 1/3 stop steps around that guess. So we type 10 into **Base, seconds**, choose 1/3 under **Step, stops** and 7 under **Steps**. These happen to be the defaults, so in this case we just open the website:
-
-<p align="center"><img src="figures/web-timer.png" width="300" align="top" alt="The top of the website with a base of 10 seconds, 7 steps of 1/3 stop, timed with a timer"> <img src="figures/web-timer-table.png" width="300" align="top" alt="The table underneath: what to add for each patch and the seconds it ends up with, with a strip of tones under every row"></p>
-
-Until we say otherwise, the website takes the teststrip to be **Timed with** a timer. The table has one row for each patch. **Seconds** is the exposure the patch should end up with, and **Add** is how to get there when the patches are covered one by one: the whole strip first gets 5.0 seconds, then we cover the first patch and give the rest 1.3 seconds more, cover the next one and give the rest another 1.6, and so on. If we would rather expose every patch on its own, each simply gets what it says under **Seconds**. The times are rounded to tenths of a second, which is about what a timer can be set to.
-
-### Without a timer
-With a timer that is all there is to it. Without one these times are hopeless, since nobody can count to 1.3 seconds, and something has to keep time for us. There are two answers under **Timed with**: your own metronome, which is what the rest of this walkthrough uses, or the page's own sound cues, which are further down under **At the enlarger**. We choose **Your own metronome**, which the website remembers until we choose something else:
-
-<p align="center"><img src="figures/web-first-strip.png" width="300" align="top" alt="The top of the website, now timed with a metronome: tempo 181, counting every 3rd beat"> <img src="figures/web-first-strip-table.png" width="300" align="top" alt="The table underneath: the count for each patch, with a strip of tones under every row"></p>
-
-The big red number tells us to set the metronome to 181, and the line under it to count every 3rd beat. The table is read exactly like the output of the Python script. We start the exposure on the count of zero, cover the first patch on the count of 5, the next one on 6+1/3, then on 8, 10 and so on. **Seconds** is the time each patch really gets, and **Step error** is how far that is from the ideal time, as a percentage of the stepsize. Here no patch is more than 2.4% of a third of a stop off, which is quite a bit better than what counting half seconds gave us in the **Background** section.
-
-### But my metronome can't do 181
-Most likely it can't. Many metronomes have gaps between their tempos, especially the fast ones. With the Python script this is what the tempo file is for. On the website we just press **My metronome can't do 181**, and get the next best tempo instead:
-
-<p align="center"><img src="figures/web-skipping.png" width="300" alt="181 has been skipped, and the website suggests 144 bpm instead, counting every 2nd beat"></p>
-
-144 is a tempo that even my old mechanical metronome has, so we go with that, and count every 2nd beat. The price is a slightly worse teststrip, where the worst patch is now 3.4% of a step off. If 144 had been missing as well, we would just press again, until we land on a tempo the metronome can do.
-
-The tempos we have skipped are remembered on the device, so after a few printing sessions the website knows the metronome, and stops suggesting tempos it doesn't have. If one was skipped by mistake, pressing it in the **Skipping** list brings it back, and to start over entirely there is a **Forget all skipped tempos** button under **Configuration**.
-
-### How big should the steps be?
-Before any paper is exposed, the little strips under each row are worth a look, whichever way the teststrip is timed. They are a rough simulation of what the patches are going to look like, expressed in the zones of the Zone System: 0 is full black, V is middle grey and X is paper white.
-
-The strips are read up and down. A place along the strips is one part of the picture. The row with the box around it is the **reference**, the exposure we are hoping is the right one, and its strip is simply the scale from Zone 0 to Zone X. Now we pick a tone in the reference row, say a highlight in Zone VIII, and look straight up and down. The zone we find at that same place in another row is what that highlight prints as in that patch. In the table above, the Zone VIII highlight has become a VII one patch darker than the base, and a VI a full stop darker. Going the other way it is a IX one patch lighter, and after that it is gone: paper white.
-
-How much happens from one patch to the next depends on the paper, which is chosen under **Paper**, and a lot on the filter, which is set with the **Filter** slider right below it. Here is the same teststrip at filter 00, 2 and 5:
-
-<p align="center"><img src="figures/web-filter-00.png" width="260" alt="The teststrip at filter 00: the strips hardly change from row to row"> <img src="figures/web-first-strip-table.png" width="260" alt="The teststrip at filter 2"> <img src="figures/web-filter-5.png" width="260" alt="The teststrip at filter 5: the strips change a lot from row to row"></p>
-
-At filter 00 it takes most of a stop to move a tone by one zone, so patches a third of a stop apart are hard to tell from each other, and I would go for bigger steps. At filter 5 a third of a stop is more than a zone and a half, neighbouring patches look nothing alike, and finer steps are needed if we want to land anywhere near the right exposure.
-
-How seriously should these strips be taken? Not very. The tones come from the characteristic curves in Ilford's data sheet for the chosen paper — the current Multigrade RC Deluxe, the cotton-rag Multigrade Art 300, the fibre-based Multigrade FB Classic, or the Multigrade IV RC Deluxe the first of them replaced — developed the way Ilford developed it. Art 300 is the odd one: being matte, its blackest black is 1.4 against a glossy paper's 2.08, and the strips show that, with the dark zones far closer together. Only Zone V is a fixed tone (18% grey). Zone 0 and Zone X are simply the blackest and the whitest the paper gets, and the zones in between are placed where a normally developed negative would put them at filter 2 on Multigrade IV. They are the same tones on every paper. Your paper, your developer and above all your negative are different. The strips are there to build intuition, and they do not replace the actual teststrip. They do however use the exposures we actually get, including the small errors in the table. With a timer that is the rounding to tenths of a second.
-
-### Reading the teststrip
-The teststrip is developed and dry, and the patch at +2/3 looks about right, but we would like to know what happens to the highlights if we go a little either way. We tap that row, and it becomes the reference (on the left below). Everything is now reckoned from the patch we believe in.
-
-The zones are handy for this, but they are also coarse, and a lot can happen inside a single zone. So for the nuances, we slide a finger sideways along the row, or drag with the mouse (on the right below). The strips then stop showing the whole scale, and every strip instead shows one single tone in full: the tone that the part of the picture under the finger gets in that patch, along with the zone it is nearest to.
-
-<p align="center"><img src="figures/web-reference.png" width="300" align="top" alt="The row at +2/3 stop has been tapped and is now the reference, with the box around it"> <img src="figures/web-slide.png" width="300" align="top" alt="Sliding along the row at +2/3 stop, over a highlight in Zone VIII: every strip shows what that highlight prints as"></p>
-
-Here the finger is on a Zone VIII highlight in our chosen patch. One patch darker it would be a VII, one patch lighter a IX, and in the rest of the teststrip it is blown out. The row we slide on is the reference for as long as we like, until another row is tapped.
-
-### Would another filter be better?
-The highlights look right at 16 seconds, but let's say the shadows do not. The darkest part of the picture that should still show some detail, which we would like to see in Zone II, has only made it to a III. More exposure would darken it, but as we just saw, that drags the highlights down with it. This is a job for a harder filter, and we can try one on the website before we expose for it. Under the filter slider we open **Compare with another filter**, and set the other filter to 3 (on the left below):
-
-<p align="center"><img src="figures/web-compare.png" width="300" align="top" alt="Filter 2 compared with filter 3: every row has a second strip under its first, where the zones lie closer together"> <img src="figures/web-compare-slide.png" width="300" align="top" alt="Sliding along the row at +2/3 stop, over a shadow in Zone III: at filter 3 the same patch prints it as Zone II"></p>
-
-Every row has now got a second strip under its first. It is the same patch, exposed for the same number of seconds, but through filter 3 instead of filter 2. The strips are read exactly as before, and a place along them is still one part of the picture. So we find our shadow in the upper strip of the reference row, and look at the strip right under it. Sliding a finger along the row works here too (on the right above): the shadow that is a III at filter 2 becomes a II at filter 3, which is what we wanted.
-
-And the highlights? The same exercise on the Zone VIII highlight shows that filter 3 lifts it to a IX at 16 seconds, and that it is an VIII again at 20 seconds. So filter 3 it is, and the right exposure is probably a third of a stop or so above 16 seconds.
-
-The two filters are lined up by the paper speeds in Ilford's data sheet. Multigrade filters are speed matched: 00 to 3 need the same exposure, and 4 and 5 need more. On Multigrade IV that is a whole stop, on Art 300 a whole stop too, and on FB Classic and the current Multigrade RC Deluxe about an eighth of one, if the data sheets are to be believed. What two filters of the same speed have in common is a tone just a bit lighter than middle grey, and from there a harder filter pushes everything lighter further up, and everything darker further down. With other filters, a colour head, or filters that have faded over the years this is going to be off, so the same goes as before: the strips are there to build intuition.
-
-### The second teststrip
-So we go up to filter 3, and expect the right exposure to be somewhat above 16 seconds. We want a finer teststrip that starts just above 16 seconds: 5 patches in 1/6 stop steps. We type 16 into **Base, seconds**, choose 1/6 and 5 steps, and set **Base is step** to 0, which places the base one step *before* the first patch, like `-p -1` does in the script (leave it empty and the base lands in the middle, and 1 puts it on the first patch). Since we want to stop the exposure between each patch this time, we open **Configuration** — which holds whatever belongs to the way of timing chosen, and so is not offered to a timer at all — and tick **Count each step from zero, adding to the one before**, and set **Count every** to beat, which makes that kind of counting easier:
-
-<p align="center"><img src="figures/web-second-strip-settings.png" width="300" align="top" alt="Base 16 seconds, 5 steps of 1/6 stop, base placed before the first patch, counting every beat and each step from zero"> <img src="figures/web-second-strip.png" width="300" align="top" alt="The result: tempo 194, and the counts 58, 7, 8, 9 and 10"></p>
-
-We set the metronome to 194 and count every beat. The whole strip first gets 58 beats. Then we cover the first patch and give the rest 7 more beats, starting from zero again, then 8, 9 and 10. This is exactly what `python striptest.py -b 16 -n 5 -s 6 -p -1 -c -d 1` tells us to do.
-
-If the metronome has another range than 40 to 208 bpm, this is also the place to say so, under **Slowest, bpm** and **Fastest, bpm**.
-
-### At the enlarger
-Everything so far happens with the lights on. When they go out, the phone is the wrong shape entirely: a white page is a fog risk, the browser's bars are in the way, and the screen turns itself off halfway through a strip. The button under the table, **Darkroom view**, deals with all three. It fills the screen with the plan in large red type on black, asks the phone to stay awake, and shows nothing that can be tapped by mistake. Close, or Escape, brings the page back.
-
-Red only is safer than white, but it is not safe, and the website says so too. The screen is still a light source, and Multigrade paper is most sensitive to exactly the green and blue that a red-only screen leaves out — which is the point, but a bright phone held over the paper will still fog it. Turn the brightness right down, keep the phone away from the easel, and test your own phone before trusting it: leave a scrap of paper face up beside it for five minutes and develop that. It is also worth turning on airplane mode or Do Not Disturb first, because a notification lights the whole screen at full brightness, and that is a fogged sheet.
-
-The third choice under **Timed with**, **Sound cues**, is for when there is neither a timer nor a metronome to hand. The table then simply gives the seconds each patch ends up with, and the darkroom view offers a Start button. Pressing it gives a count-in, counted in by three soft beats, one a second, the last of them a second before the lamp. Three seconds is what the count-in is given and the least it can be given, under **Configuration**, and it is remembered; a longer one simply waits before counting its three. On the lamp a drone comes in and holds for as long as the exposure runs. Over it a tone climbs, and lands an octave higher exactly on each moment you have to act on, where a short beat falls, louder and an octave above the ones that counted you in: one for each patch to cover, and the last is the lamp off. Then silence, which is how you know it is over. Because the pitch is always climbing towards the next one, a mark never arrives unannounced, and it arrives just as decisively whether the gap was one second or ten.
-
-Inside the darkroom view, sound mode shows the same plan as the other two: the patch numbers and the seconds each patch ends at. Beside each of them is a bar as long as the wait for that patch, with one more above them all for the count-in. They are drawn to one scale, so before anything is started the plan is already a picture of how long the strip takes — the long bar near the top is the base exposure, and the rest grow by a step each. While a run goes, the line it is waiting on is lit and the others go dim, and its bar fills over exactly that wait, meeting its end as the beat is heard. The rest fill dimly, out of the way of it, so a glance says both where the run has got to and how much of this patch is left.
-
-Sound mode offers two ways to start: **Start**, which keeps the red type and the bars up while the run goes, and **Start dark**, which gives the screen up altogether. A screen is only a light source, and by ear you need not look at all. A black screen stays black after the run has finished as well, which is deliberate — a strip ending is the worst possible moment to light the room, with the paper still out. The whole of that black screen is then the one control, and it knows two things: a tap starts a run and stops one that is going, so a strip can be halted and begun again without ever seeing the screen, and a hold of about three quarters of a second gives the screen back and ends the run with it. It reddens very faintly while you hold, so you can tell the hold has taken. Started the lit way instead, a press on the button stops the run outright: there is a screen to see it on, and the hold belongs to the dark. If the phone rings, or anything else takes the page away mid-run, the sound stops and the view says so: that strip is spoiled, and better to know it.
-
-One last thing worth doing before a printing session: add the page to the home screen, from Share → Add to Home Screen on an iPhone, or the browser menu on Android. It then opens without the browser's bars, which on an iPhone is the only way to be rid of them, and it works with no network at all once it has been opened online once.
-
 ## The Python script
+This started as a Python script, written for my own use and run on a laptop while planning a printing session. It is still here, and it is still the reference: the website is tested against it on thousands of random settings, so the two always agree on the tempo and the counts. It finds the tempo and the counts for a metronome, and nothing else.
 
-### Basic Example
-As shown in the **quickstart** section, the script can be run without any arguments.
-
-However, to find the optimal tempo for a 6-second base exposure over 5 steps, we use the -b (base) and -n (numsteps) arguments:
-```bash
-$ python striptest.py -b 6 -n 5
-TEMPO 190
+Ensure you have python and numpy installed, download `striptest.py`, and run it:
+```
+python striptest.py
+```
+By default it plans 7 patches in 1/3 stop steps around a base of 10 seconds, for which the best tempo happens to be 181 bpm:
+```
+TEMPO 181
 Count every 3rd beat
 
      Count      Stops    Seconds   Target Sec   % of stepsize Error
-     4           -2/3      3.789        3.780       1.1%
-     5           -1/3      4.737        4.762      -2.3%
-     6+1/3          0      6.000        6.000       0.0%
-     8           +1/3      7.579        7.560       1.1%
-    10           +2/3      9.474        9.524      -2.3%
+     5             -1      4.972        5.000      -2.4%
+     6+1/3       -2/3      6.298        6.300      -0.1%
+     8           -1/3      7.956        7.937       1.0%
+    10              0      9.945       10.000      -2.4%
+    12+2/3       +1/3     12.597       12.599      -0.1%
+    16           +2/3     15.912       15.874       1.0%
+    20             +1     19.890       20.000      -2.4%
 ```
-As seen, the script finds an optimal tempo (e.g., 190 bpm) to minimize exposure inaccuracies, with much smaller errors compared to the above example counting half seconds.
-
-In this case, set your metronome to 190 bpm, optionally make the metronome accent every third beat, and simply start exposing by counting the accented beats. The metronome will in this case be effectively beating triplets, so a count of 6+1/3 illustrates you should stop on the first triplet after the 6th accented beat.
-
-As always in darkroom printing, you should start your exposure at the count of zero.
+Set the metronome to 181, let it accent every third beat if it can, and start counting from zero as the exposure starts: the whole strip gets 5 counts (15 beats), then the first patch is covered and the rest get up to 6+1/3, and so on.
 
 ### Usage
-
-To use the script, you can adjust several parameters to control how the tempo is calculated. Below are the options available:
-
 - `-b`, `--base`: Base exposure time in seconds (float). Default is `10`.
-- `-s`, `--stepsize`: Inverse of the stepsize as an integer (int). `1` is one stop, `2` is 1/2 stop, etc. Default is `3`.
-- `-n`, `--numsteps`: Number of steps (int) for the strip test. Default is `7`.
-- `-p`, `--baseplace`: Amount of steps away from the first value, for the base value to be placed. -p 0 sets the base at the first step. -p -1 sets it 1 step before the output list. By default, base is placed in the middle for uneven n, and just before middle for even n. 
-- `-tmin`, `--tmin`: Minimum tempo (int) in bpm to consider. Default is `40`.
-- `-tmax`, `--tmax`: Maximum tempo (int) in bpm to consider. Default is `208`.
-- `-f`, `--file`: Optional input file with specific tempo options (plaintext file).
-  Each line can either be:
-    - A single BPM number (e.g., `60`).
-    - A range of BPMs using the shorthand format `start:end [step]` (e.g., `40:60 [2]` for a range from 40 to 60 in steps of 2).
-      Multiple ranges can be listed on separate lines. 
-  If a file is provided, it overrides `-tmax` and `-tmin`.
-- `-c`, `--cumulative`: Use cumulative timing for the test strip such that each step builds upon the previous. Useful for those who prefer to start counting from 0 on each step. Default is local timing where each step shows the time for its full exposure.
-- `-d`, `--divisions`: Force a specific subdivision pattern for beats. Accepts an integer that sets the divisor (e.g., `2` for halves, `3` for triplets). Overrides the automatic subdivision based on tempo.
-- `--plot`: If specified, plot the achieved stops vs the theoretical stops in the end. Provides a visual reference for the accuracy. 
+- `-s`, `--stepsize`: Inverse of the step size as an integer (int). `1` is one stop, `2` is 1/2 stop, etc. Default is `3`.
+- `-n`, `--numsteps`: Number of steps (int). Default is `7`.
+- `-p`, `--baseplace`: Where the base is placed, in steps from the first patch. `-p 0` puts the base on the first patch, `-p -1` one step before the strip. By default the base is placed in the middle for an uneven number of steps, and just before the middle for an even one.
+- `-tmin`, `--tmin`: Slowest tempo (int) in bpm to consider. Default is `40`.
+- `-tmax`, `--tmax`: Fastest tempo (int) in bpm to consider. Default is `208`.
+- `-f`, `--file`: A file of the tempos the metronome has, one per line, either a single bpm (`60`) or a range as `start:end [step]` (`40:60 [2]`). Lines starting with `#` are comments. A file overrides `-tmin` and `-tmax`. Metronomes with gaps between their tempos are what this is for; a common scale is `40:60 [2]`, `60:72 [3]`, `72:120 [4]`, `120:144 [6]`, `144:208 [8]`.
+- `-c`, `--cumulative`: Count each patch from zero, so that every count is what the patch adds to the one before. By default each count is the patch's total.
+- `-d`, `--divisions`: Count every so many beats (`1` for every beat, `3` for every third). By default this is chosen from the tempo.
+- `--plot`: Plot the achieved stops against the target stops at the end.
 
-#### More examples
+For a 6-second base over 5 patches, `python striptest.py -b 6 -n 5` finds 190 bpm, counting every 3rd beat: 4, 5, 6+1/3, 8 and 10. And a strip of 5 patches in 1/6 stop steps from an 8-second base placed one step before it, counted from zero on every beat on a metronome that runs from 30 to 200 — `python striptest.py -n 5 -b 8 -p -1 -s 6 -tmin 30 -tmax 200 -c -d 1 --plot` — comes to 160 bpm: 24 beats, then 3, 3, 4 and 4 more, none of them more than 4.9% of a step off, which the plot shows:
 
-To run a strip test with a base exposure of 6 seconds, 5 steps, and default options:
-```bash
-python striptest.py -b 6 -n 5
-```
-
-To specify a different stepsize (e.g., 1/2 stop increments):
-```bash
-python striptest.py -s 2
-```
-
-To use a custom tempo range between 60 and 180 bpm, and specify that we want to count every beat:
-```bash
-python striptest.py -tmin 60 -tmax 180 -d 1
-```
-
-To use a custom file with tempo options:
-```bash
-python striptest.py -b 6 -n 5 -f tempos.txt
-```
-
-Custom tempo files are useful for metronomes with skips in their possible bpm options. Some metronomes, for instance, only include every other bpm above a certain value, and even every third bpm above a higher value. Tempo files should contain tempo values in either of the following formats:
-
-- **Single BPMs**: Each line should contain a single integer value representing a BPM.
-  If you only want to use tempos 60, 120, and 180, the file contents should look like:
-  ```
-  60
-  120
-  180
-  ```
-
-- **Shorthand Ranges**: You can also specify ranges of tempos using the shorthand format:
-  ```
-  start:end [step]
-  ```
-  where `start` is the starting BPM, `end` is the ending BPM, and `step` is the interval. This makes it easy to specify a large range of tempos concisely.
-
-  **Example**: 
-  ```
-  # This is a very common set of BPMs, used in many metronomes
-  40:60 [2]
-  60:72 [3]
-  72:120 [4]
-  120:144 [6]
-  144:208 [8]
-  ```
-
-Multiple ranges and single BPMs can be mixed within the same file. Each tempo or range should be on its own line. If a tempo file is provided, it will override the `-tmax` and `-tmin` options specified on the command line.
-
-
-#### Extended example
-Let's say our metronome has a range from 30-200 bpm, and that we previously obtained a good exposure at 8 seconds, but the contrast needed modification such that we know that the 8-second exposure will be underexposed by at least 1/6 stop at the new contrast setting. We can do the following:
-We make a 5-step teststrip (`-n 5`) where we place the base of 8 seconds before the first step (`-b 8 -p -1`), and do increments of 1/6 stops from there (`-s 6`). Furthermore, we are doing a cumulative teststrip, so each step builds upon the next (`-c`). For cumulative counting, it is often easier to set the divisions to 1, so we count every beat (`-d 1`), and in the end, we want to plot the stopwise error from the theoretical targets (`--plot`). This will result in the following output:
-```
-$ python striptest.py -n 5 -b 8 -p -1 -s 6 -tmin 30 -tmax 200 -c -d 1 --plot
-
-TEMPO 160
-Count every beat
-
-     Count      Stops    Seconds   Target Sec   % of stepsize Error
-    24           +1/6      9.000        8.980       2.0%
-     3           +2/6     10.125       10.079       3.9%
-     3           +3/6     11.250       11.314      -4.9%
-     4           +4/6     12.750       12.699       3.5%
-     4           +5/6     14.250       14.254      -0.3%
-```
-While -4.9% error might seem like a lot, remember it is percentages of the stepsize, so it is not so bad. The output plot shows this:
 ![Extended example errors plotted](figures/ext-example.png)
-### Installing and running
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/BinFlush/striptest.git
-   ```
-
-2. Navigate to the project directory:
-    ```bash
-    cd striptest
-    ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Run the script:
-    ```bash
-    python striptest.py
-    ```
+To run the tests as well, clone the repository and `pip install -r requirements.txt`.
 
 ## Contributing
-Contributions are welcome! Please open an issue or submit a pull request.
+Contributions are welcome. Please open an issue or submit a pull request.
 
-There is a test suite, which is run with `just test` (it needs python with numpy, node and [just](https://github.com/casey/just)). It checks that the Python script still reproduces the examples in this README, and that the website agrees with the Python script on a few thousand random settings.
+There is a test suite, run with `just check` (it needs python with numpy, node and [just](https://github.com/casey/just)). It checks that the Python script still reproduces the examples in this README, and that the website agrees with the Python script on a few thousand random settings.
 
 # FAQ
-* **How am I supposed to use the computer in a darkroom?**
+* **How am I supposed to use a screen in a darkroom?**
 
-Most people take some sort of notes when working in the darkroom. Many use an analog notebook, some use an ipad. Whatever your notetaking equipment may be, the data from this script can be easily transferred to the notes by hand. The intended use is, for this only to be used on a laptop in lights-on scenarios, while planning your next step. When lights go out, the laptop should hibernate, or at least by some means expel no light. As long as the data is transferred to your processing notes.
-
-If the "Count" numbers are difficult to memorize, they may be written on a scrap piece of paper, which can be referred to during exposure.
-
-With the website, the laptop can be swapped for a phone, which makes the planning part a lot less clumsy. The rest still applies though: a phone screen is a very effective way of fogging paper, so it goes face down or out of the room before the paper comes out.
+Most people take some sort of notes when working in the darkroom, and the plan can always go into them by hand. The website's darkroom mode is the other answer: red on black, large enough to read at the enlarger, or no screen at all with **Start dark**, since by ear there is nothing to read. Whatever you do, a phone screen is a very effective way of fogging paper, so it goes face down or out of the room before the paper comes out, unless you have tested it.
 
 * **Why not build an Arduino based f-stop timer since it's cheap?**
 
-An Arduino based f-stop timer is still not cheaper than a metronome, and the metronome is wonderfully flexible and simple. It can be seen as an example of the KISS design principle (Keep It Simple Stupid), where a basic wristwatch in principle could replace the metronome. This script then functions as a bridge between the metronomes full timing capabilities, and our f-stop printing.
+An Arduino based f-stop timer is still not cheaper than a metronome, and the metronome is wonderfully flexible and simple. It can be seen as an example of the KISS design principle (Keep It Simple Stupid), where a basic wristwatch in principle could replace the metronome. This tool then functions as a bridge between the metronome's full timing capabilities and our f-stop printing.
 
-Also, not everyone likes to solder, but everyone loves metronomes. 
+Also, not everyone likes to solder, but everyone loves metronomes.
 
-* **Why doesn't this script just include a metronome?**
+* **Why a metronome at all, when the page can time the strip?**
 
-If the python script was responsible for timing during exposure, that would be a whole other piece of software. You could imagine a timer that simply beeps at the appropriate stops (with some count-in before each beep), but that would completely negate the necessity for a metronome, be-it hardware or software. Instead, you would simply end up with an ordinary software f-stop timer, which is a much simpler task than the optimization task this **striptest.py** solves. 
+Because the tempo search is what this whole thing is about, and it is still the only way to get an arbitrary interval out of a real metronome, which remains my own way of working. The sound cues are a different answer to the same problem, for when there is neither a timer nor a metronome to hand: nothing to count, just the moments you have to act on, with the pitch climbing into each one. And if what you want is a proper f-stop timer, something like [GoTimer's enlarger timer](https://gotimer.org/photography/enlarger-timer) is a better fit than either.
 
-Software of this sorts would also need some way to reliably turn off any lights (screen, backlight keyboard, power switch, etc...) during exposure, which is a nontrivial task. Arduino-kits or commercial f-stop timers are better suited for this.
+* **Is this precision necessary?**
 
-The website has since gone at it from the other side. It can time a run itself, by sound, but that is not a metronome: there is no click track, no tempo, and nothing to count. It just sounds the moments you have to act on, and the pitch climbing into each one is what makes them easy to hit. It is a different answer to the same problem, for when there is neither a timer nor a metronome to hand.
-
-The tempo search is still what this whole thing is about, and it is still the only way to get an arbitrary interval out of a real metronome, which remains my own way of working. And if what you want is a proper f-stop timer, something like [GoTimer's enlarger timer](https://gotimer.org/photography/enlarger-timer) is still a better fit than either.
-
-* **Is this precision necessary**
-
-In short - not really. I have always done f-stop printing with the method as described in the **Background** section above, simply counting naively rounded half seconds. This is accurate enough as long as you keep the exposures long enough, typically above 10 or 12 seconds..
+In short - not really. I have always done f-stop printing with the method described in the **Background** section above, simply counting naively rounded half seconds. This is accurate enough as long as you keep the exposures long enough, typically above 10 or 12 seconds.
 
 This software is mostly for those who get satisfaction from using the simple tools at hand in an optimal manner. It is fun to get precise arbitrary exposure intervals from a simple metronome. I don't expect many people to use it, but I definitely do.
-
-
 
 # Not-so-FAQ
 * **How does the math work?**
