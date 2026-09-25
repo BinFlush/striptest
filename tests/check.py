@@ -284,15 +284,21 @@ def timer_failures(settings, rows):
 def sound_failures(settings, rows, marks, sound):
     """A run's marks, in seconds from the moment it starts.
 
-    The count-in comes first, then the lamp goes on, then a mark at each patch's seconds, the
-    last of which is the lamp going off again.
+    The count-in comes first, then the lamp goes on, then every patch is given its figure in
+    turn - its total, or what it adds to the one before - and the last mark is the lamp going
+    off again.
     """
     count_in = sound["COUNT_IN"]
-    want = [count_in] + [count_in + row["seconds"] for row in rows]
+    seconds = [row["seconds"] for row in rows]
+    parts = [second - (seconds[i - 1] if i and settings["cumulative"] else 0)
+             for i, second in enumerate(seconds)]
+    want = [count_in]
+    for part in parts:
+        want.append(want[-1] + part)
     checks = [
         ("one mark for the lamp, then one for every patch", len(marks) == len(rows) + 1),
         ("the lamp goes on when the count-in ends", abs(marks[0] - count_in) < 1e-9),
-        ("every mark falls at its patch's seconds after the lamp",
+        ("every patch is given its figure in turn",
          len(marks) == len(want) and all(abs(a - b) < 1e-9 for a, b in zip(marks, want))),
         ("the marks never run backwards", all(a <= b for a, b in zip(marks, marks[1:]))),
     ]
@@ -302,7 +308,9 @@ def sound_failures(settings, rows, marks, sound):
 def wait_failures(wait, rows):
     """A count-in of any length holds the run back by exactly that, and changes nothing else."""
     seconds = [row["seconds"] for row in rows]
-    want = [wait["countIn"]] + [wait["countIn"] + second for second in seconds]
+    want = [wait["countIn"]]
+    for second in seconds:
+        want.append(want[-1] + second)
     holds = (len(wait["marks"]) == len(want)
              and all(abs(a - b) < 1e-9 for a, b in zip(wait["marks"], want)))
     return [] if holds else [f"sound: a count-in of {wait['countIn']} s does not hold the run "

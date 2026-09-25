@@ -8,11 +8,11 @@ const vm = require('vm');
 const page = fs.readFileSync(`${__dirname}/../index.html`, 'utf8');
 const algorithm = page.match(/<script id="algorithm">([\s\S]*?)<\/script>/)[1];
 const context = vm.createContext({});
-const used = `{ solveSkipping, timed, schedule, climb,
+const used = `{ solveSkipping, timed, figures, schedule, climb,
   FUNDAMENTAL, BEND, CLIMBS, COUNT_IN,
   density, shade, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED }`;
 vm.runInContext(`${algorithm}\nthis.page = ${used};`, context);
-const { solveSkipping, timed, schedule, climb } = context.page;
+const { solveSkipping, timed, figures, schedule, climb } = context.page;
 const { FUNDAMENTAL, BEND, CLIMBS, COUNT_IN } = context.page;
 const { density, shade, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED } = context.page;
 
@@ -29,10 +29,11 @@ const timers = asked.map(settings => timed(settings));
 
 // The run the page would sound for those same strips: when every mark falls, and the glide
 // through gaps of very different lengths
-const runs = asked.map(settings => schedule(timed(settings), COUNT_IN));
-const waits = [0, 1.5, 12].map(countIn => ({ countIn, marks: schedule(timed(asked[0] ?? {
+const runs = asked.map(settings =>
+  schedule(figures(timed(settings), settings.cumulative), COUNT_IN));
+const waits = [0, 1.5, 12].map(countIn => ({ countIn, marks: schedule(figures(timed(asked[0] ?? {
   base: 10, stepsize: 3, numsteps: 7, baseplace: 3,
-}), countIn) }));
+}), false), countIn) }));
 const climbs = [[0, COUNT_IN], [4, 4.39], [10, 20], [0, 0.1], [3, 3.002]]
   .map(([from, mark]) => ({ from, mark, points: climb(from, mark) }));
 const sound = { FUNDAMENTAL, BEND, CLIMBS, COUNT_IN };
