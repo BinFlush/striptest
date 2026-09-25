@@ -826,7 +826,7 @@
 
 <div class="sheet">
 
-<p id="head" class="head">Seconds</p>
+<p id="head" class="head">Additions</p>
 
 <div id="map"></div>
 
@@ -1849,7 +1849,7 @@
     field('tempo').textContent = result.tempo ?? '?';
     field('notice').textContent = counting && result.tempo
       ? `and count every ${nthBeat(result.every)}, from zero.` : '';
-    field('head').textContent = counting ? 'Count' : chosen?.cumulative ? 'Additions' : 'Seconds';
+    field('head').textContent = counting ? 'Count' : chosen?.cumulative ? 'Additions' : 'Totals';
     field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
     field('skip').value = result.tempo ?? '';
     field('skip').hidden = !result.tempo;
