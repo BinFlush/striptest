@@ -584,7 +584,23 @@
 
   html.darkroom #darkroom {
     display: grid;
-    gap: 1.5rem;
+    grid-template-columns: 1fr auto;
+    gap: 1.5rem .75rem;
+  }
+
+  /* Everything spans the view, except when a strip run one patch at a time is part way through:
+     then the way on splits, Resume taking the row and Reset the end of it */
+  #darkroom > * {
+    grid-column: 1 / -1;
+  }
+
+  #darkroom:has(#reset:not([hidden])) #run {
+    grid-column: 1;
+  }
+
+  #reset {
+    grid-column: 2;
+    padding: 1rem 1.25rem;
   }
 
   #tell {
@@ -926,7 +942,8 @@
         first — one short blip for the first patch, two for the second — then counts in, gives
         the patch its figure, and the lamp goes off. The view then waits, and Start, or a tap on
         the black screen, runs the next. A patch stopped part way starts again from its
-        blips.</li>
+        blips. Part way through the strip the button is Resume, with Reset beside it to go back
+        to the first patch.</li>
       <li>With "Use a metronome instead" ticked, Start runs a metronome at the tempo shown rather
         than the strip, for as long as you let it; Start dark, the tap and the hold work as they
         do for a run.</li>
@@ -968,6 +985,7 @@
   <p id="tell"></p>
   <div id="plan"></div>
   <button id="run" type="button">Start</button>
+  <button id="reset" type="button" hidden>Reset</button>
   <button id="dark" type="button">Start dark</button>
   <button id="leave" type="button">Close</button>
 </div>
@@ -1423,13 +1441,28 @@
     return note;
   }
 
+  // Part way through a strip run one patch at a time: there is something to go on with, and
+  // something to go back to
+  function midway() {
+    return field('separate').checked && !field('metronome').checked && patch > 0;
+  }
+
+  // What the view offers: while something sounds, only Stop; at rest, Start — or, part way
+  // through a strip run one patch at a time, Resume and Reset — and the dark and Close
+  function offer() {
+    const on = midway();
+    field('run').textContent = audio ? 'Stop' : on ? 'Resume' : 'Start';
+    field('dark').textContent = on ? 'Resume dark' : 'Start dark';
+    field('reset').hidden = !!audio || !on;
+    field('dark').hidden = !!audio;
+    field('leave').hidden = !!audio;
+  }
+
   // The view is running something: the buttons say so, and only Stop is left to press
   function began(said) {
     document.documentElement.classList.add('running');
-    field('run').textContent = 'Stop';
-    field('dark').hidden = true;
-    field('leave').hidden = true;
     tell(said);
+    offer();
   }
 
   // A metronome at the tempo the strip was solved for, the beat that is counted struck an
@@ -1560,10 +1593,8 @@
     behind = measured > 0 && measured <= LEAD ? measured : behind;
     context.close();
     document.documentElement.classList.remove('running');
-    field('run').textContent = 'Start';
-    field('dark').hidden = false;
-    field('leave').hidden = false;
     tell(why);
+    offer();
     lit();
   }
 
@@ -1584,6 +1615,7 @@
     field('plan').querySelectorAll('div')[k + 1].classList.add('done');
     patch = k + 1 < parts.length ? k + 1 : 0;
     tell(patch ? `Patch ${patch + 1} next` : 'Done');
+    offer();
   }
 
   // A press starts a run and a press stops one: the press itself, not the tap it may or may not
@@ -1826,9 +1858,9 @@
     field('skip').value = result.tempo ?? '';
     field('skip').hidden = !result.tempo;
     field('skipped').replaceChildren(...skipping);
-    tell(!counting ? found.length && 'Ready' || ''
-      : !result.tempo ? ''
-      : `${result.tempo} bpm, every ${nthBeat(result.every)}`);
+    tell(counting ? result.tempo ? `${result.tempo} bpm, every ${nthBeat(result.every)}` : ''
+      : !found.length ? '' : midway() ? `Patch ${patch + 1} next` : 'Ready');
+    offer();
     field('plan').replaceChildren(...lines);
     field('forget').textContent = `Forget all skipped tempos (${skipped.size})`;
     field('forget').hidden = !skipped.size;
@@ -1935,6 +1967,7 @@
     if (target.matches('#skip')) skipped.add(Number(target.value));
     if (target.matches('#skipped button')) skipped.delete(Number(target.value));
     if (target.matches('#forget')) skipped.clear();
+    if (target.matches('#reset')) patch = 0;
     if (target.matches('#enter')) enterDarkroom();
     if (target.matches('#leave')) leaveDarkroom();
     remember();
