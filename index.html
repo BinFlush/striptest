@@ -793,10 +793,10 @@
       <fieldset>
         <legend>Exposures</legend>
         <label>
-          <input id="totals" type="radio" name="exposures" value="totals" checked>Totals
+          <input id="additions" type="radio" name="exposures" value="additions" checked>Additions
         </label>
         <label>
-          <input id="additions" type="radio" name="exposures" value="additions">Additions
+          <input id="totals" type="radio" name="exposures" value="totals">Totals
         </label>
       </fieldset>
       <label class="wide seconds">
@@ -855,10 +855,10 @@
     <li>Your guess is the base. It starts on the middle patch, so the others bracket it; tap a
       patch, its figure or its strip, to make that one the base instead — on the first, the strip
       only goes up from there.</li>
-    <li>"Exposures", under Configuration, says what every patch gets: its total, or with
-      "Additions" what it adds to the one before. Totals are for a strip moved along in a holder,
-      each patch exposed on its own; additions for a strip covered as it goes, the next patch
-      covered at each figure. With a timer, that is all there is to it.</li>
+    <li>"Exposures", under Configuration, says what every patch gets: what it adds to the one
+      before, or with "Totals" its whole exposure. Additions are for a strip covered as it goes,
+      the next patch covered at each figure; totals for a strip moved along in a holder, each
+      patch exposed on its own. With a timer, that is all there is to it.</li>
     <li>The strip beside each figure shows roughly what that patch prints as, in the zones of the
       Zone System: 0 is full black, V middle grey and X paper white, on the paper and at the
       filter set under the map. The base's strip is the whole scale, and every other is that
@@ -902,9 +902,9 @@
         beside each, as long as that exposure, and one above them for the count-in: the seconds
         the page waits before the lamp goes on, set under Configuration and remembered. Make it
         as long as you need to get a hand to the switch.</li>
-      <li>A run gives every patch exactly the figure beside it, in turn: with Totals each patch
-        its whole exposure, one after the other, the strip moved along at each mark; with
-        Additions what it adds, the next patch covered at each mark.</li>
+      <li>A run gives every patch exactly the figure beside it, in turn: with Additions what it
+        adds, the next patch covered at each mark; with Totals its whole exposure, one after the
+        other, the strip moved along at each mark.</li>
       <li>The count-in counts three beats in, one a second, the last of them a second before the
         lamp. On the lamp a drone comes in and holds for as long as the exposure runs. Over it a
         tone climbs, and arrives an octave higher exactly on each mark, where a short beat lands,
@@ -938,12 +938,13 @@
     <ul>
       <li>Tick "Use a metronome instead". The page then says what tempo to set and which beats to
         count, and every figure is a count, chosen to land as close to the f-stop time as a tempo
-        allows. A count of 5+2/3 is the second beat after the fifth counted one.</li>
+        allows. A count of 1+2/3 is the second beat after the first counted one.</li>
       <li>Set any metronome, a physical one or an app, to that tempo. If it can accent beats, let
         it accent the one you count. Or let the page keep it: in the darkroom view, Start runs a
         metronome at that tempo.</li>
-      <li>Start the exposure on the count of zero. Keep counting, and cover the next patch at each
-        count on the map; with "Additions" the count starts again from zero at every patch.</li>
+      <li>Start the exposure on the count of zero, and cover the next patch at each count on the
+        map. The count starts again from zero at every patch; with "Totals" it runs on from the
+        start of the strip.</li>
       <li>When a patch lands more than a tenth of a step from its target, the map says how far
         beside its stops.</li>
       <li>If your metronome lacks the tempo shown, press "My metronome can't do …". The next best
