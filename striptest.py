@@ -96,9 +96,9 @@ def parse_arguments():
     parser.add_argument('-b', '--base', type=float, default=10.0, 
                         help='Base value for calculation (default: 10)')
 
-    parser.add_argument('-s', '--stepsize', type=int, default=3, 
+    parser.add_argument('-s', '--stepsize', type=int, default=2, 
                         help='Inverse of the stepsize as an integer. 1 is one stop, '
-                             '2 is 1/2 stop etc. (default: 3)')
+                             '2 is 1/2 stop etc. (default: 2)')
 
     parser.add_argument('-n', '--numsteps', type=int, default=7, 
                         help='Number of steps (default: 7)')

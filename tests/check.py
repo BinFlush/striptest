@@ -64,9 +64,9 @@ BLACK = {"Multigrade RC Deluxe": (2.05, 2.10), "Multigrade Art 300": (1.35, 1.45
 
 # The README's worked examples: settings, then the tempo and counts it prints
 README = [
-    (dict(base=10.0, stepsize=3, numsteps=7, baseplace=3, tempi=list(range(40, 209)),
+    (dict(base=10.0, stepsize=2, numsteps=7, baseplace=3, tempi=list(range(40, 209)),
           cumulative=False, divisions=0),
-     181, ["5", "6+1/3", "8", "10", "12+2/3", "16", "20"]),
+     204, ["4", "5+2/3", "8", "11+1/3", "16", "22+2/3", "32"]),
     (dict(base=6.0, stepsize=3, numsteps=5, baseplace=2, tempi=list(range(40, 209)),
           cumulative=False, divisions=0),
      190, ["4", "5", "6+1/3", "8", "10"]),
