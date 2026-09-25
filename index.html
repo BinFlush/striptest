@@ -12,7 +12,7 @@
 
 <style>
   :root {
-    --gutter: calc((100% - 1.5rem) / 3);
+    --gutter: calc((100% - 1.5rem) * .4);
     --band: 3rem;
     --paper: #F3F3F1;
     --surface: #FFF;
@@ -142,19 +142,21 @@
     cursor: pointer;
   }
 
-  /* A choice between two named states is a field like the ones beside it — its legend set as
-     their labels are, its two segments one box the height of an input — and the chosen segment
-     is marked as the gutter marks the base: on the tint, in ink */
+  /* The choice between additions and totals heads the gutter: two segments, each over the
+     column of figures it names, together exactly the width of the tile under them and the
+     height of the fields above. The chosen segment is marked as the gutter marks the base, on
+     the tint and in ink, and so is its column. */
   fieldset {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    margin: 0;
+    width: calc(var(--gutter) + .75rem);
+    margin: 1rem -.375rem .75rem;
     padding: 0;
     border: 0;
   }
 
   legend {
-    padding: 0 0 .25rem;
+    padding: 0 .375rem .375rem;
     color: var(--muted);
     font-size: .8125rem;
   }
@@ -167,7 +169,7 @@
     height: 2.75rem;
     border: 1px solid var(--line);
     background: var(--surface);
-    font-size: .9375rem;
+    font-size: clamp(.6875rem, 3.4vw, .8125rem);
     cursor: pointer;
   }
 
@@ -253,13 +255,6 @@
      block, exposure down the page and tones across it, so a tone can be followed from row to
      row with nothing touched. Every row is the same two-column grid as the form's fields, so
      the map's left edge lands under the second field. */
-  .head {
-    width: var(--gutter);
-    margin: 1rem 0 .375rem;
-    color: var(--muted);
-    font: .8125rem/1.3 system-ui, sans-serif;
-  }
-
   .row {
     display: grid;
     grid-template-columns: var(--gutter) 1fr;
@@ -268,13 +263,15 @@
     touch-action: pan-y pinch-zoom;
   }
 
-  /* Each cue: the patch's seconds, or its count, large and aligned on the decimal point down
-     the whole strip, and where the patch sits in stops under it. One face throughout. */
+  /* Each cue: what the patch has had in all and what it adds, seconds or counts, side by side
+     and each aligned on its decimal point down the whole strip, and where the patch sits in
+     stops under them. One face throughout. */
   .cue {
     display: grid;
+    grid-template-columns: 1fr 1fr;
     position: relative;
     margin: 0 -.375rem;
-    padding: .25rem .375rem;
+    padding: .25rem 0;
     border-radius: .375rem;
     align-self: center;
     color: var(--muted);
@@ -303,14 +300,30 @@
     outline-offset: 2px;
   }
 
+  /* Each column's figures are aligned on the decimal point among themselves, and the column,
+     as wide as its widest figure, is centred under the segment that names it. The chosen
+     column is in ink and bold, the other kept faint, and the figures follow the phone's width
+     so that two columns fit the gutter. */
   .figure {
-    justify-self: start;
-    min-width: var(--widest);
-    color: var(--ink);
-    font-size: 1.375rem;
-    font-weight: 600;
+    justify-self: center;
+    min-width: var(--totals);
+    font-size: clamp(1rem, 5.5vw, 1.375rem);
     line-height: 1.2;
     text-align: right;
+  }
+
+  .figure + .figure {
+    min-width: var(--additions);
+  }
+
+  .figure.chosen {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .stops {
+    grid-column: 1 / -1;
+    text-align: center;
   }
 
   .off {
@@ -474,7 +487,7 @@
       grid-row: 1 / 3;
     }
 
-    .head {
+    fieldset {
       margin-top: 0;
     }
 
@@ -790,15 +803,6 @@
         <input id="countin" type="number" value="3" min="3" max="60" step="any"
           inputmode="decimal">
       </label>
-      <fieldset>
-        <legend>Exposures</legend>
-        <label>
-          <input id="additions" type="radio" name="exposures" value="additions" checked>Additions
-        </label>
-        <label>
-          <input id="totals" type="radio" name="exposures" value="totals">Totals
-        </label>
-      </fieldset>
       <label class="wide seconds">
         <input id="separate" type="checkbox">
         Stop between exposures
@@ -826,7 +830,15 @@
 
 <div class="sheet">
 
-<p id="head" class="head">Additions</p>
+<fieldset>
+  <legend>Exposures</legend>
+  <label>
+    <input id="totals" type="radio" name="exposures" value="totals">Totals
+  </label>
+  <label>
+    <input id="additions" type="radio" name="exposures" value="additions" checked>Additions
+  </label>
+</fieldset>
 
 <div id="map"></div>
 
@@ -850,15 +862,16 @@
   <summary>How to use</summary>
   <ul>
     <li>Type in the exposure you think the print needs, how big a step to take between patches,
-      and how many patches. The map then has a row for each patch: the seconds it ends up with,
-      large, and under them how many stops it is from the base.</li>
+      and how many patches. The map then has a row for each patch: its seconds, large, and under
+      them how many stops it is from the base.</li>
     <li>Your guess is the base. It starts on the middle patch, so the others bracket it; tap a
       patch, its figure or its strip, to make that one the base instead — on the first, the strip
       only goes up from there.</li>
-    <li>"Exposures", under Configuration, says what every patch gets: what it adds to the one
-      before, or with "Totals" its whole exposure. Additions are for a strip covered as it goes,
-      the next patch covered at each figure; totals for a strip moved along in a holder, each
-      patch exposed on its own. With a timer, that is all there is to it.</li>
+    <li>Every patch has two figures: what it has had in all, and what it adds to the one before.
+      The switch over them, Totals or Additions, says which a run gives, and that column is in
+      ink: totals for a strip moved along in a holder, each patch exposed on its own; additions
+      for a strip covered as it goes, the next patch covered at each figure. With a timer, that
+      is all there is to it.</li>
     <li>The strip beside each figure shows roughly what that patch prints as, in the zones of the
       Zone System: 0 is full black, V middle grey and X paper white, on the paper and at the
       filter set under the map. The base's strip is the whole scale, and every other is that
@@ -938,13 +951,13 @@
     <ul>
       <li>Tick "Use a metronome instead". The page then says what tempo to set and which beats to
         count, and every figure is a count, chosen to land as close to the f-stop time as a tempo
-        allows. A count of 1+2/3 is the second beat after the first counted one.</li>
+        allows. A count of 1⅔ is the second beat after the first counted one.</li>
       <li>Set any metronome, a physical one or an app, to that tempo. If it can accent beats, let
         it accent the one you count. Or let the page keep it: in the darkroom view, Start runs a
         metronome at that tempo.</li>
       <li>Start the exposure on the count of zero, and cover the next patch at each count on the
-        map. The count starts again from zero at every patch; with "Totals" it runs on from the
-        start of the strip.</li>
+        map. Additions start the count again from zero at every patch; Totals keep one count
+        running from the start of the strip.</li>
       <li>When a patch lands more than a tenth of a step from its target, the map says how far
         beside its stops.</li>
       <li>If your metronome lacks the tempo shown, press "My metronome can't do …". The next best
@@ -1286,23 +1299,24 @@
     return density(stops + exposed + lead, other, paper);
   }
 
+  // A count is whole counted beats and a part of the next, the part one glyph — 5⅔ — so that a
+  // column of counts stays as narrow as a column of seconds
+  const PARTS = { 2: ['', '½'], 3: ['', '⅓', '⅔'], 4: ['', '¼', '½', '¾'] };
   function formatCount(count, every) {
     const whole = Math.floor(count / every);
     const rest = count % every;
     if (!rest) return String(whole);
-    return whole ? `${whole}+${rest}/${every}` : `${rest}/${every}`;
+    const part = PARTS[every]?.[rest];
+    if (!part) return whole ? `${whole}+${rest}/${every}` : `${rest}/${every}`;
+    return `${whole || ''}${part}`;
   }
 
   // Only the first patch is given all of its seconds at once
-  // Stops read as printers say them, a whole and a part: +1 1/2, never +3/2. The part keeps
-  // the strip's own denominator, so a column of twelfths stays a column of twelfths.
   function formatStops(step, stepsize) {
     if (!step) return 'base';
     const sign = step > 0 ? '+' : '−';
-    const whole = Math.floor(Math.abs(step) / stepsize);
-    const rest = Math.abs(step) % stepsize;
-    if (!rest) return `${sign}${whole}`;
-    return whole ? `${sign}${whole}\u00a0${rest}/${stepsize}` : `${sign}${rest}/${stepsize}`;
+    const size = Math.abs(step);
+    return size % stepsize ? `${sign}${size}/${stepsize}` : `${sign}${size / stepsize}`;
   }
 
   function formatError(share) {
@@ -1703,10 +1717,15 @@
   // The strips under a row's numbers: one at the filter printed with, which is the first, and
   // under it one at the filter it is compared with
   // Every row is exposed so many stops more than `anchor`, the base row, errors included
-  function tableRow(row, { stepsize, filters, paper, counting, baseplace }, every, anchor, part) {
-    const { step, seconds, error } = row;
-    const figure = element('span', counting ? formatCount(row.count, every) : part.toFixed(1));
-    figure.className = 'figure';
+  function tableRow(row, { stepsize, filters, paper, counting, baseplace, cumulative }, anchor,
+    texts) {
+    const { step, error } = row;
+    const both = texts.map((text, i) => {
+      const figure = element('span', text);
+      figure.className = 'figure';
+      figure.classList.toggle('chosen', (i === 1) === cumulative);
+      return figure;
+    });
     const stops = element('span', formatStops(step, stepsize));
     stops.className = 'stops';
     if (counting && Math.abs(error * stepsize) >= LOUD) {
@@ -1719,7 +1738,7 @@
     pick.name = 'placed';
     pick.value = step + baseplace;
     pick.checked = !step;
-    const cue = element('label', pick, figure, stops);
+    const cue = element('label', pick, ...both, stops);
     cue.className = 'cue';
     const exposed = (step - anchor.step) / stepsize + error - anchor.error;
     const strips = filters.map(other => zoneStrip(exposed, filters[0], other, paper));
@@ -1787,7 +1806,7 @@
       numsteps,
       baseplace: placed === null ? Math.floor((numsteps - 1) / 2) : clamp(placed, 0, numsteps - 1),
       tempi,
-      cumulative: form.exposures.value === 'additions',
+      cumulative: field('additions').checked,
       divisions: Number(field('divisions').value),
       filters,
       paper: field('paper').value,
@@ -1819,9 +1838,17 @@
     // What a run gives each patch is exactly the figure beside it
     parts = counting ? [] : figures(found, chosen?.cumulative);
     patch = Math.min(patch, Math.max(0, parts.length - 1));
-    const rows = found.map((row, i) => tableRow(row, chosen, result.every, anchor, parts[i]));
-    const widest = Math.max(0, ...rows.map(row => row.querySelector('.figure').textContent.length));
-    field('map').style.setProperty('--widest', counting ? 'auto' : `${widest}ch`);
+    // Both figures every patch could be given, whichever the run gives
+    const additions = counting
+      ? found.map((row, i) =>
+        formatCount(i ? row.beats - found[i - 1].beats : row.beats, result.every))
+      : figures(found, true).map(part => part.toFixed(1));
+    const totals = counting ? found.map(row => formatCount(row.beats, result.every))
+      : found.map(row => row.seconds.toFixed(1));
+    const rows = found.map((row, i) => tableRow(row, chosen, anchor, [totals[i], additions[i]]));
+    const widest = texts => `${Math.max(0, ...texts.map(text => text.length))}ch`;
+    field('map').style.setProperty('--additions', widest(additions));
+    field('map').style.setProperty('--totals', widest(totals));
     planned = chosen ? schedule(parts, chosen.countIn) : [];
     solved = counting && result.tempo ? { tempo: result.tempo, every: result.every } : null;
     // What the bars draw: the count-in, then what each patch is given, whether the run goes
@@ -1849,7 +1876,6 @@
     field('tempo').textContent = result.tempo ?? '?';
     field('notice').textContent = counting && result.tempo
       ? `and count every ${nthBeat(result.every)}, from zero.` : '';
-    field('head').textContent = counting ? 'Count' : chosen?.cumulative ? 'Additions' : 'Totals';
     field('skip').textContent = result.tempo ? `My metronome can't do ${result.tempo}` : '';
     field('skip').value = result.tempo ?? '';
     field('skip').hidden = !result.tempo;
