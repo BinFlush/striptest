@@ -1312,11 +1312,15 @@
   }
 
   // Only the first patch is given all of its seconds at once
+  // Stops read as printers say them, a whole and a part: +1 1/2, never +3/2. The part keeps
+  // the strip's own denominator, so a column of twelfths stays a column of twelfths.
   function formatStops(step, stepsize) {
     if (!step) return 'base';
     const sign = step > 0 ? '+' : '−';
-    const size = Math.abs(step);
-    return size % stepsize ? `${sign}${size}/${stepsize}` : `${sign}${size / stepsize}`;
+    const whole = Math.floor(Math.abs(step) / stepsize);
+    const rest = Math.abs(step) % stepsize;
+    if (!rest) return `${sign}${whole}`;
+    return whole ? `${sign}${whole}\u00a0${rest}/${stepsize}` : `${sign}${rest}/${stepsize}`;
   }
 
   function formatError(share) {
