@@ -1523,7 +1523,8 @@
     };
     try {
       navigator.mediaSession.metadata = new MediaMetadata({ title: 'Striptest' });
-      navigator.mediaSession.setActionHandler('play', pressed('play', () => { if (!audio) toggle(); }));
+      const start = () => { if (!audio) toggle(); };
+      navigator.mediaSession.setActionHandler('play', pressed('play', start));
       navigator.mediaSession.setActionHandler('pause', pressed('pause', () => toggle()));
       navigator.mediaSession.setActionHandler('stop', pressed('stop', () => hush('Stopped')));
     } catch {}
