@@ -10,11 +10,11 @@ const algorithm = page.match(/<script id="algorithm">([\s\S]*?)<\/script>/)[1];
 const context = vm.createContext({});
 const used = `{ solveSkipping, timed, figures, schedule, climb,
   FUNDAMENTAL, BEND, CLIMBS, COUNT_IN,
-  density, shade, scale, exposure, middle, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED }`;
+  density, shade, scale, span, exposure, middle, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED }`;
 vm.runInContext(`${algorithm}\nthis.page = ${used};`, context);
 const { solveSkipping, timed, figures, schedule, climb } = context.page;
 const { FUNDAMENTAL, BEND, CLIMBS, COUNT_IN } = context.page;
-const { density, shade, scale, exposure, middle, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED } = context.page;
+const { density, shade, scale, span, exposure, middle, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED } = context.page;
 
 const asked = JSON.parse(fs.readFileSync(0, 'utf8'));
 const results = asked.map(({ skipped, ...settings }) => {
@@ -65,26 +65,31 @@ const papers = Object.fromEntries(Object.keys(PAPERS).map(paper => {
   };
 
   // Rows given from two stops less to two stops more than the reference, in sixths and a bit, at
-  // the reference row's filter and at every other: where their zones begin and end, and the
-  // density probed at 201 places along them
-  const strips = pairs.flatMap(([filter, other]) => Array.from({ length: 25 }, (_, i) => {
-    const exposed = (i - 12) / 6 + 0.013 * (i % 3);
-    return {
-      filter,
-      other,
-      exposed,
-      edges: [...edges(exposed, filter, other, paper)],
-      probed: shares.map(share => [share, probed(share, exposed, filter, other, paper)]),
-    };
-  }));
+  // the reference row's filter alone on screen and beside every other filter — the rows at
+  // that other filter, and the reference row's own inside the width the two share: where their
+  // zones begin and end, and the density probed at 201 places along them
+  const strips = pairs.flatMap(([filter, other]) => {
+    const filters = other === filter ? [filter] : [filter, other];
+    const rows = other === filter ? [filter] : [other, filter];
+    return rows.flatMap(shown => Array.from({ length: 25 }, (_, i) => {
+      const exposed = (i - 12) / 6 + 0.013 * (i % 3);
+      return {
+        filters,
+        other: shown,
+        exposed,
+        edges: [...edges(exposed, filters, shown, paper)],
+        probed: shares.map(share => [share, probed(share, exposed, filters, shown, paper)]),
+      };
+    }));
+  });
 
   // The tone ISO speed is measured at, 0.6 above paper white, found in the reference row and
   // probed at every filter there: in rows given a stop less, the same and a stop more, and in
   // one given what the page's own speeds say the other filter needs
   const white = PRINTED[paper][PRINTED[paper].length - 1];
-  // Where that tone sits along the axis in a reference row at each filter
-  const measured = filter => {
-    const [light, dark] = scale(filter, paper);
+  // Where that tone sits along the axis in a reference row at each filter, with the other beside it
+  const measured = (filter, other) => {
+    const [light, dark] = span([filter, other], paper);
     return (dark - exposure(white + 0.6, filter, paper)) / (dark - light);
   };
   const speeds = pairs.map(([filter, other]) => {
@@ -93,7 +98,7 @@ const papers = Object.fromEntries(Object.keys(PAPERS).map(paper => {
       filter,
       other,
       probed: [...new Set([-1, 0, 1, needed])]
-        .map(exposed => [exposed, probed(measured(filter), exposed, filter, other, paper)]),
+        .map(exposed => [exposed, probed(measured(filter, other), exposed, [filter, other], other, paper)]),
     };
   });
   // The curves as the page writes them, so the suite can hold the data itself to what the

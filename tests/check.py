@@ -211,23 +211,36 @@ def zone_failures(paper, zones):
     return [f"{paper}, zones: {name}" for name, holds in checks if not holds]
 
 
+def span(zones, filters):
+    """The stretch of the axis on screen: the reference filter's scale, or the wider of it and
+    the other filter's, as the page works it out."""
+    own = zones["scale"][filters[0]]
+    if len(filters) == 1:
+        return own
+    lead = zones["middle"][filters[0]] - zones["middle"][filters[1]]
+    theirs = [stops - lead for stops in zones["scale"][filters[1]]]
+    return theirs if theirs[1] - theirs[0] > own[1] - own[0] else own
+
+
 def strip_failures(paper, strips, printed, zones):
     """A row is drawn as zones between edges, and probed as a density at one place.
 
     Both must tell the same story: the zone a place lies in is the zone nearest to the density
     probed there, whether the row is at the reference row's filter or at another. And the
     edges are the row's own filter's zone borders on the axis the strips share - the reference
-    row's exposure in stops, from black at the left to white at the right at its filter -
-    shifted by the row's exposure and by the light its filter's middle grey takes, clipped.
+    row's exposure in stops, from black at the left to white at the right, over the widest
+    extent of the filters on screen - shifted by the row's exposure and by the light its
+    filter's middle grey takes, clipped. So the reference row fills the width on its own, and
+    beside a softer filter it sits inside that filter's width.
     """
     halfway = [(a + b) / 2 for a, b in zip(printed, printed[1:])]
     nearest = lambda reached: min(range(11), key=lambda zone: abs(printed[zone] - reached))
     failures = []
     for strip in strips:
-        name = (f"{paper}, filter {strip['other']} against {strip['filter']}, "
+        name = (f"{paper}, filter {strip['other']} beside {'/'.join(strip['filters'])}, "
                 f"{strip['exposed']:+.3f} stops")
-        light, dark = zones["scale"][strip["filter"]]
-        lead = zones["middle"][strip["filter"]] - zones["middle"][strip["other"]]
+        light, dark = span(zones, strip["filters"])
+        lead = zones["middle"][strip["filters"][0]] - zones["middle"][strip["other"]]
         along = lambda stops: min(max((dark - stops) / (dark - light), 0), 1) * 100
         wanted = [0] + [along(stops - strip["exposed"] - lead)
                         for stops, _ in zones["borders"][strip["other"]]] + [100]
