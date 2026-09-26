@@ -608,9 +608,9 @@
   }
 
   #plan {
-    /* What a run is measured to be behind by, which holds the bars back to match what is heard.
-       It must have a value even with nothing running: an undefined one would throw away the
-       whole `animation` shorthand that reads it. */
+    /* How far into its file a run already was when the view caught it playing: the bars start
+       from there. It must have a value even with nothing running: an undefined one would throw
+       away the whole `animation` shorthand that reads it. */
     --late: 0s;
     display: grid;
     grid-template-columns: auto auto 1fr;
@@ -938,6 +938,9 @@
         the patch its figure, and the lamp goes off. The view then waits, and Resume, or a tap on
         the black screen, runs the next; Reset goes back to the first patch. A patch stopped part
         way starts again from its blips.</li>
+      <li>A run plays on with the screen locked, and the lock screen's play and pause, or the
+        button on earbuds or a Bluetooth remote, start a run and stop it as the buttons here do.
+        A run stopped from anywhere starts again from its count-in.</li>
       <li>On an iPhone this may pause music playing from another app. Bluetooth speakers and
         headphones delay every sound by the same amount, which does no harm when you go by ear.</li>
       <li>With "Use a metronome instead" ticked, Start runs a metronome at the tempo shown rather
@@ -1119,7 +1122,11 @@
   // still counts three.
   const COUNT_IN = 3;
   const LEAD = .5;
-  const BUFFER = .25;
+  // Sound is rendered at this rate, plenty for tones under two kilohertz; a metronome for this
+  // many minutes before its file loops; and this many seconds of silence between runs
+  const RATE = 22050;
+  const MINUTES = 3;
+  const QUIET = 10;
   const RAMP = .012;
   const TICK = .12;
   const TAIL = .5;
@@ -1350,8 +1357,12 @@
   const HELD = 700;
   let darkroom = document.documentElement.classList.contains('darkroom');
   let awake = null;
+  // What is sounding — a run or a metronome — or nothing; the one element it sounds through;
+  // and the files it plays: the silence between runs, and the run or metronome of the moment
   let audio = null;
-  let behind = 0;
+  let player = null;
+  let silence = null;
+  let url = null;
   let planned = [];
   let parts = [];
   let patch = 0;
@@ -1406,11 +1417,17 @@
     document.documentElement.classList.add('darkroom');
     document.documentElement.requestFullscreen?.().catch(() => {});
     stayAwake();
+    ready();
+    quiet();
   }
 
   function leaveDarkroom() {
-    hush('');
     darkroom = false;
+    hush('');
+    player.pause();
+    player.removeAttribute('src');
+    player.load();
+    state('none');
     document.documentElement.classList.remove('darkroom', 'blackout');
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     awake?.release().catch(() => {});
@@ -1428,22 +1445,88 @@
       .forEach((cell, i) => cell.classList.toggle('now', Math.floor(i / 3) === line));
   }
 
-  // The context a run or a metronome sounds through, and the page's one at a time
-  function open() {
+  // Everything that sounds is rendered first, whole, into a wave file, and played through one
+  // media element: a file plays on with the screen locked, which sound made as it goes does
+  // not, and a file playing is what the lock screen, earbuds and a Bluetooth button are let
+  // start and stop. Between runs the element plays silence, so that those reach the page.
+  function wav(samples, rate) {
+    const bytes = new DataView(new ArrayBuffer(44 + samples.length * 2));
+    const text = (at, word) => [...word].forEach((c, i) => bytes.setUint8(at + i, c.charCodeAt(0)));
+    text(0, 'RIFF');
+    bytes.setUint32(4, 36 + samples.length * 2, true);
+    text(8, 'WAVEfmt ');
+    bytes.setUint32(16, 16, true);
+    bytes.setUint16(20, 1, true);
+    bytes.setUint16(22, 1, true);
+    bytes.setUint32(24, rate, true);
+    bytes.setUint32(28, rate * 2, true);
+    bytes.setUint16(32, 2, true);
+    bytes.setUint16(34, 16, true);
+    text(36, 'data');
+    bytes.setUint32(40, samples.length * 2, true);
+    samples.forEach((sample, i) => bytes.setInt16(44 + i * 2, clamp(sample, -1, 1) * 32767, true));
+    return URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
+  }
+
+  // The element, made the first time the view opens, which is a press: a page may only start
+  // sound on a press, and may go on from there
+  function ready() {
+    if (player) return;
     if (navigator.audioSession) navigator.audioSession.type = 'playback';
-    // Ask for a quarter of a second of buffer, which is where Chrome tops out. Nothing here is
-    // played in response to a touch, so latency costs nothing, and a small buffer is what makes
-    // web audio break up. It has to stay well under LEAD, or the opening would be cut off.
-    const made = new AudioContext({ latencyHint: BUFFER });
-    audio = made;
-    made.resume().catch(() => {});
-    // A context reports its own closing, which arrives after the page has let go of it — and by
-    // then the page may have started the next run. Only the context still being used may say a
-    // run was interrupted, or stopping one would silently interrupt the one after it.
-    made.onstatechange = () => {
-      if (audio === made && made.state !== 'running') hush('Interrupted');
-    };
-    return made;
+    player = new Audio();
+    silence = wav(new Float32Array(QUIET * 8000), 8000);
+    // Only the file that was asked for counts: the silence between runs may start playing
+    // just as a run is being rendered, and must not pass for it
+    const mine = () => audio && player.src === audio.file;
+    player.addEventListener('playing', () => {
+      if (!mine() || audio.begun) return;
+      audio.begun = true;
+      // The view caught the file this far in, and its bars start from there
+      field('plan').style.setProperty('--late', `${-player.currentTime}s`);
+      began(audio.said);
+      if (audio.marks) lit(0);
+      const frame = () => { if (audio) { follow(); requestAnimationFrame(frame); } };
+      frame();
+    });
+    player.addEventListener('timeupdate', follow);
+    player.addEventListener('ended', finish);
+    // A pause the page did not ask for is the phone taking the sound away, for a call or another
+    // app, and that is a spoiled strip. The page's own stops let go of `audio` first, a file
+    // playing out pauses as it ends, and loading a file pauses before anything has begun.
+    player.addEventListener('pause', () => {
+      if (mine() && audio.begun && !player.ended) hush('Interrupted');
+    });
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({ title: 'Striptest' });
+      navigator.mediaSession.setActionHandler('play', () => { if (!audio) toggle(); });
+      navigator.mediaSession.setActionHandler('pause', () => hush('Stopped'));
+      navigator.mediaSession.setActionHandler('stop', () => hush('Stopped'));
+    } catch {}
+  }
+
+  // What the lock screen shows: a run playing, or a play button between runs, or nothing once
+  // the view is closed
+  function state(playback) {
+    if (navigator.mediaSession) navigator.mediaSession.playbackState = playback;
+  }
+
+  // Between runs the element plays silence on a loop. To the lock screen a paused element is
+  // nothing; a playing one is what its buttons address.
+  function quiet() {
+    if (!darkroom) return;
+    player.loop = true;
+    player.src = silence;
+    player.play().catch(() => {});
+    state('paused');
+  }
+
+  function load(file, loop) {
+    if (url) URL.revokeObjectURL(url);
+    url = file;
+    audio.file = file;
+    player.loop = loop;
+    player.src = file;
+    player.play().catch(() => hush('Interrupted'));
   }
 
   // A note struck at `when` on `context` and gone a tick later, still sounding to `over` so
@@ -1484,33 +1567,32 @@
     document.documentElement.classList.add('running');
     tell(said);
     offer();
+    state('playing');
   }
 
   // A metronome at the tempo the strip was solved for, the beat that is counted struck an
   // octave above the rest as the marks of a run are above its count-in. One cycle of it is
-  // rendered, to the sample, and looped: it keeps time on the audio clock alone, for as long
-  // as it is let run, with nothing left to a timer.
+  // rendered, to the sample, and laid end to end for minutes, so the file loops at a cycle's
+  // edge and is let run for as long as it is wanted.
   async function tick({ tempo, every }) {
-    const made = open();
+    const token = audio = { said: `${tempo} bpm, every ${nthBeat(every)}` };
     const period = 60 / tempo;
-    const cycle = new OfflineAudioContext(1, Math.round(every * period * made.sampleRate),
-      made.sampleRate);
+    const context = new OfflineAudioContext(1, Math.round(every * period * RATE), RATE);
     for (let n = 0; n < every; n++) {
-      strike(cycle, n * period, n ? FUNDAMENTAL : 2 * FUNDAMENTAL, n ? COUNTED : ACCENT, TICK);
+      strike(context, n * period, n ? FUNDAMENTAL : 2 * FUNDAMENTAL, n ? COUNTED : ACCENT, TICK);
     }
-    const beats = await cycle.startRendering();
-    // Stopped, or interrupted, while the cycle was being rendered
-    if (audio !== made) return;
-    const source = made.createBufferSource();
-    source.buffer = beats;
-    source.loop = true;
-    source.connect(made.destination);
-    source.start(made.currentTime + LEAD);
-    began(`${tempo} bpm, every ${nthBeat(every)}`);
+    const cycle = (await context.startRendering()).getChannelData(0);
+    const cycles = Math.ceil(MINUTES * 60 / (every * period));
+    const samples = new Float32Array(cycle.length * cycles);
+    for (let n = 0; n < cycles; n++) samples.set(cycle, n * cycle.length);
+    const file = wav(samples, RATE);
+    // Stopped while it was being rendered
+    if (audio !== token) return URL.revokeObjectURL(file);
+    load(file, true);
   }
 
-  // Everything a run sounds is scheduled on the audio clock the moment it starts, so nothing
-  // after that depends on a timer firing or on the page staying awake. Silence is the end of it.
+  // Everything a run sounds is rendered before it starts, so nothing after that depends on a
+  // timer firing, on the page staying awake or on the screen staying on. Silence is the end.
   // The marks of one patch run on its own: its blips, the count-in, and then its own figure
   function alone(k) {
     const head = (k + 1) * BLIP + BREATH;
@@ -1518,22 +1600,23 @@
   }
 
   // `k` names the one patch this run is, when patches are run one at a time
-  function play(marks, k) {
-    open();
-    const from = audio.currentTime + LEAD;
+  async function play(marks, k) {
+    const said = k === undefined ? 'Count-in' : `Patch ${k + 1}`;
+    const token = audio = { marks, k, shown: 0, said };
+    const from = LEAD;
     const over = marks[marks.length - 1];
-    const last = from + over;
+    const context = new OfflineAudioContext(1, Math.ceil((from + over + TAIL) * RATE), RATE);
     // Where the count-in begins: at once for the whole strip, after the blips for one patch,
     // and nothing of the count-in's sound comes before it
     const start = marks[0] - planned[0];
 
     // A voice that sounds from `opens` to `closes` and nowhere else
     function sound(tone, loud, opens, closes) {
-      const voice = audio.createOscillator();
-      const level = audio.createGain();
+      const voice = context.createOscillator();
+      const level = context.createGain();
       if (typeof tone === 'string') voice.type = tone;
       else voice.setPeriodicWave(tone);
-      voice.connect(level).connect(audio.destination);
+      voice.connect(level).connect(context.destination);
       level.gain.setValueAtTime(0, from + opens);
       level.gain.linearRampToValueAtTime(loud, from + opens + RAMP);
       level.gain.setValueAtTime(loud, from + closes);
@@ -1543,11 +1626,11 @@
       return voice;
     }
 
-    const beat = (at, hertz, loud, over) => strike(audio, from + at, hertz, loud, over);
+    const beat = (at, hertz, loud, over) => strike(context, from + at, hertz, loud, over);
 
     // The drone says the lamp is on, and holds for as long as the exposure runs. Its own octave
     // is in the tone, so it shares partials with the accents above it.
-    const wave = audio.createPeriodicWave(new Float32Array(3), Float32Array.of(0, 1, OVERTONE));
+    const wave = context.createPeriodicWave(new Float32Array(3), Float32Array.of(0, 1, OVERTONE));
     sound(wave, DRONE, marks[0], over).frequency.value = FUNDAMENTAL;
 
     // A patch on its own is announced first, in as many short blips as its number
@@ -1569,23 +1652,9 @@
       for (const [at, hertz] of rest) glide.frequency.linearRampToValueAtTime(hertz, from + at);
     });
 
-    // An accent on every mark. Each one ends a moment after its own mark, which is how the view
-    // follows the run; the last of them ends it, and carries silence behind it first, because
-    // closing the run throws away whatever is still waiting in the buffer we asked for.
-    // That end is held back by the same, silently, so that the view follows what is heard rather
-    // than what is rendered. `behind` is what the last run measured of the whole delay, the
-    // speaker's own included; the first run of all has only the buffer the engine granted to go
-    // by, which is the part of the delay the page itself asked for and never the whole of it.
-    const late = behind || audio.baseLatency;
-    const heard = Math.max(TICK, late);
-    marks.forEach((mark, i) => {
-      const tail = i === marks.length - 1 ? TAIL : 0;
-      const accent = beat(mark, 2 * FUNDAMENTAL, ACCENT, heard + tail);
-      accent.onended = () => reached(i, marks.length, k);
-    });
+    // An accent on every mark, and the file carries a breath of silence after the last
+    for (const mark of marks) beat(mark, 2 * FUNDAMENTAL, ACCENT, TICK);
 
-    // The bars are held back by the same, so that one meets its end as its mark is heard
-    field('plan').style.setProperty('--late', `${late}s`);
     // Running one patch, the bars keep the score: the patches before it full, its own filling
     // after the count-in, the ones ahead empty — and the count-in's own bar fills after the blips
     const bars = [...field('plan').querySelectorAll('div')];
@@ -1597,37 +1666,46 @@
       bars[0].style.setProperty('--after', `${LEAD + marks[0] - planned[0]}s`);
       bars[k + 1].style.setProperty('--after', `${LEAD + marks[0]}s`);
     }
-    began(k === undefined ? 'Count-in' : `Patch ${k + 1}`);
-    lit(0);
+    const file = wav((await context.startRendering()).getChannelData(0), RATE);
+    // Stopped while it was being rendered
+    if (audio !== token) return URL.revokeObjectURL(file);
+    load(file, false);
   }
 
+  // A stop from anywhere — a press, a hold, the lock screen, a button on the earbuds — goes
+  // back to silence, and a run started again starts from its count-in
   function hush(why) {
     if (!audio) return;
-    // Let go of it before closing it: closing is what tells the page it was interrupted
-    const context = audio;
     audio = null;
-    // A run that has been going knows what a run cannot know as it starts: how far behind the
-    // speaker really is, this one included. The next run draws and lights by it — unless the
-    // answer is nonsense, and anything past the lead the sound is given is nonsense, in which
-    // case the run after this one goes on the buffer alone, as the first one did.
-    const measured = context.outputLatency;
-    behind = measured > 0 && measured <= LEAD ? measured : behind;
-    context.close();
+    player.pause();
+    quiet();
     document.documentElement.classList.remove('running');
     tell(why);
     offer();
     lit();
   }
 
+  // Where the run has got to, by the element's own clock, and every mark passed reported once
+  function follow() {
+    if (!audio?.marks || !audio.begun || player.src !== audio.file) return;
+    const at = player.currentTime - LEAD;
+    const passed = audio.marks.filter(mark => at >= mark).length;
+    while (audio && audio.shown < passed) reached(audio.shown++, audio.marks.length, audio.k);
+  }
+
+  // The last mark is the lamp going off; its line stays lit until the file has played out
   function reached(mark, marks, k) {
-    if (!audio) return;
-    if (mark === marks - 1) {
-      hush('Lamp off');
-      if (k !== undefined) next(k);
-      return;
-    }
+    if (mark === marks - 1) return tell('Lamp off');
     tell(mark ? `Patch ${mark}` : 'Lamp on');
     lit(mark + 1 + (k ?? 0));
+  }
+
+  // The file has played out: the run is over, and a patch run on its own hands on to the next
+  function finish() {
+    if (!audio?.marks || player.src !== audio.file) return;
+    const { k } = audio;
+    hush('Lamp off');
+    if (k !== undefined) next(k);
   }
 
   // One patch done: its bar stays full, the next is up — or the strip is done, and a run from
@@ -1918,11 +1996,10 @@
     render();
   });
 
-  // A run the page was taken away from is a spoiled strip and has to say so; and a screen that
-  // slept, or an app that was away, has let go of the wake lock
+  // A screen that slept, or an app that was away, has let go of the wake lock. The sound plays
+  // on through either, which is what the file is for.
   addEventListener('visibilitychange', () => {
-    if (document.hidden) return hush('Interrupted');
-    if (darkroom) stayAwake();
+    if (!document.hidden && darkroom) stayAwake();
   });
 
   field('compare').addEventListener('toggle', render);
