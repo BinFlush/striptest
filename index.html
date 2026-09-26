@@ -1514,11 +1514,18 @@
     });
     // To the phone an element playing silence is playing, whatever it is told, so a headset
     // or the lock screen only ever sends pause: pause is the press, and starts a run too
+    // For now the view also names the command each press arrives as, and what the two elements
+    // are doing when it does: the words a headset sends depend on what the phone has told it
+    const pressed = (name, act) => () => {
+      const was = field('tell').textContent.replace(/ ·.*$/, '');
+      tell(`${was} · ${name}${player.paused ? '' : ' ▶'}${still.paused ? '' : ' ~'}`);
+      act();
+    };
     try {
       navigator.mediaSession.metadata = new MediaMetadata({ title: 'Striptest' });
-      navigator.mediaSession.setActionHandler('play', () => { if (!audio) toggle(); });
-      navigator.mediaSession.setActionHandler('pause', () => audio ? hush('Stopped') : toggle());
-      navigator.mediaSession.setActionHandler('stop', () => hush('Stopped'));
+      navigator.mediaSession.setActionHandler('play', pressed('play', () => { if (!audio) toggle(); }));
+      navigator.mediaSession.setActionHandler('pause', pressed('pause', () => toggle()));
+      navigator.mediaSession.setActionHandler('stop', pressed('stop', () => hush('Stopped')));
     } catch {}
   }
 
