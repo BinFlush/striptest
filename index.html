@@ -1125,13 +1125,18 @@
   const COUNT_IN = 3;
   const LEAD = .5;
   // Sound is rendered at this rate, plenty for tones under two kilohertz; a metronome for this
-  // many minutes before its file loops; and this many seconds of silence between runs
+  // many minutes before its file loops, and a run's file plays silence for as long after its
+  // last mark; and this many seconds of silence loop between runs stopped by hand
   const RATE = 22050;
   const MINUTES = 3;
   const QUIET = 10;
   const RAMP = .012;
   const TICK = .12;
+  // A run's file carries this much silence after its last mark, for the mark's own note, and
+  // then MINUTES more of it, so that the element plays on after the run without the page
+  // touching it; the run counts as over this long after its last mark
   const TAIL = .5;
+  const DONE = .25;
   const OVERTONE = .3;
   const DRONE = .05;
   const GLIDE = .09;
@@ -1359,13 +1364,12 @@
   const HELD = 700;
   let darkroom = document.documentElement.classList.contains('darkroom');
   let awake = null;
-  // What is sounding — a run or a metronome — or nothing; the element it sounds through; the
-  // element that plays silence beside it, from the press that opens the view to the one that
-  // closes it; the file a press would play, made ahead of the press and keyed to the plan it
-  // was made from; and the render of it under way, if one is
+  // What is sounding — a run or a metronome — or nothing; the one element it sounds through;
+  // the silence the element plays when a press has stopped something; the file a press would
+  // play, made ahead of the press and keyed to the plan it was made from; and the render of
+  // it under way, if one is
   let audio = null;
   let player = null;
-  let still = null;
   let silence = null;
   let prepared = null;
   let rendering = null;
@@ -1431,8 +1435,8 @@
 
   function leaveDarkroom() {
     darkroom = false;
-    hush('');
-    still.pause();
+    if (audio) over('');
+    player.pause();
     player.removeAttribute('src');
     player.load();
     state('none');
@@ -1453,13 +1457,15 @@
       .forEach((cell, i) => cell.classList.toggle('now', Math.floor(i / 3) === line));
   }
 
-  // Everything that sounds is rendered first, whole, into a wave file, and played through a
+  // Everything that sounds is rendered first, whole, into a wave file, and played through one
   // media element: a file plays on with the screen locked, which sound made as it goes does
   // not, and a file playing is what the lock screen, earbuds and a Bluetooth button are let
-  // start and stop. A second element plays silence the whole time the view is open, started by
-  // the press that opened it and never touched again: the phone gives the buttons to a page
-  // whose playing was the user's doing, and takes the first press back for itself from one
-  // whose playing a timer began — which is what a run ending had been leaving behind.
+  // start and stop. The phone hands those buttons to a page whose playing a press began, and
+  // takes the first press back for itself the moment the page changes that playing on its
+  // own — a file ending, a source swapped by a timer, a second element started by script all
+  // cost that press. So nothing but a press touches the element: the press that opens the
+  // view starts it on silence, every press after swaps what it plays, and a run's file goes
+  // on playing silence after its last mark until the next press comes.
   function wav(samples, rate) {
     const bytes = new DataView(new ArrayBuffer(44 + samples.length * 2));
     const text = (at, word) => [...word].forEach((c, i) => bytes.setUint8(at + i, c.charCodeAt(0)));
@@ -1481,16 +1487,12 @@
     return URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
   }
 
-  // The elements, made the first time the view opens, which is a press: a page may only start
-  // sound on a press, and may go on from there
+  // The element, made the first time the view opens, which is a press
   function ready() {
     if (player) return;
     if (navigator.audioSession) navigator.audioSession.type = 'playback';
     player = new Audio();
-    still = new Audio();
     silence = wav(new Float32Array(QUIET * 8000), 8000);
-    still.src = silence;
-    still.loop = true;
     // Only the file that was asked for counts: the silence between runs may start playing
     // just as a run is being rendered, and must not pass for it
     const mine = () => audio && player.src === audio.file;
@@ -1510,15 +1512,15 @@
     // app, and that is a spoiled strip. The page's own stops let go of `audio` first, a file
     // playing out pauses as it ends, and loading a file pauses before anything has begun.
     player.addEventListener('pause', () => {
-      if (mine() && audio.begun && !player.ended) hush('Interrupted');
+      if (mine() && audio.begun && !player.ended) over('Interrupted');
     });
     // To the phone an element playing silence is playing, whatever it is told, so a headset
-    // or the lock screen only ever sends pause: pause is the press, and starts a run too
-    // For now the view also names the command each press arrives as, and what the two elements
-    // are doing when it does: the words a headset sends depend on what the phone has told it
+    // or the lock screen only ever sends pause: pause is the press, and starts a run too.
+    // For now the view also names the command each press arrives as, and whether the element
+    // was playing when it did: the words a headset sends depend on what the phone has told it.
     const pressed = (name, act) => () => {
       const was = field('tell').textContent.replace(/ ·.*$/, '');
-      tell(`${was} · ${name}${player.paused ? '' : ' ▶'}${still.paused ? '' : ' ~'}`);
+      tell(`${was} · ${name}${player.paused ? '' : ' ▶'}`);
       act();
     };
     try {
@@ -1536,10 +1538,14 @@
     if (navigator.mediaSession) navigator.mediaSession.playbackState = playback;
   }
 
-  // The silence, on a loop, for as long as the view is open. To the lock screen a paused page
-  // is nothing; a playing one is what its buttons address.
+  // Silence on a loop, from the press that opens the view and from every press that stops a
+  // run. To the lock screen a paused element is nothing; a playing one is what its buttons
+  // address.
   function quiet() {
-    if (darkroom) still.play().catch(() => {});
+    if (!darkroom) return;
+    player.loop = true;
+    player.src = silence;
+    player.play().catch(() => {});
   }
 
   function load(file, loop) {
@@ -1704,7 +1710,11 @@
 
     // An accent on every mark, and the file carries a breath of silence after the last
     for (const mark of marks) beat(mark, 2 * FUNDAMENTAL, ACCENT, TICK);
-    return wav((await context.startRendering()).getChannelData(0), RATE);
+    const rendered = (await context.startRendering()).getChannelData(0);
+    // …and then silence, for as long as the next press may take to come
+    const samples = new Float32Array(rendered.length + MINUTES * 60 * RATE);
+    samples.set(rendered);
+    return wav(samples, RATE);
   }
 
   // Running one patch, the bars keep the score: the patches before it full, its own filling
@@ -1721,12 +1731,10 @@
     }
   }
 
-  // A stop from anywhere — a press, a hold, the lock screen, a button on the earbuds — and a
-  // run started again starts from its count-in
-  function hush(why) {
-    if (!audio) return;
+  // Nothing sounds any more, whatever became of the element: the view says why, offers what
+  // comes next, and has its file made ready
+  function over(why) {
     audio = null;
-    player.pause();
     document.documentElement.classList.remove('running');
     tell(why);
     offer();
@@ -1734,12 +1742,22 @@
     prepare();
   }
 
-  // Where the run has got to, by the element's own clock, and every mark passed reported once
+  // A stop by a press — a button, a hold, the lock screen, the earbuds — puts the silence on,
+  // and a run started again starts from its count-in
+  function hush(why) {
+    if (!audio) return;
+    over(why);
+    quiet();
+  }
+
+  // Where the run has got to, by the element's own clock, every mark passed reported once,
+  // and the run over a moment after its last mark, the element left playing its silence
   function follow() {
     if (!audio?.marks || !audio.begun || player.src !== audio.file) return;
     const at = player.currentTime - LEAD;
     const passed = audio.marks.filter(mark => at >= mark).length;
     while (audio && audio.shown < passed) reached(audio.shown++, audio.marks.length, audio.k);
+    if (audio && at >= audio.marks[audio.marks.length - 1] + DONE) finish();
   }
 
   // The last mark is the lamp going off; its line stays lit until the file has played out
@@ -1749,11 +1767,14 @@
     lit(mark + 1 + (k ?? 0));
   }
 
-  // The file has played out: the run is over, and a patch run on its own hands on to the next
+  // The run is over — its last mark a moment behind, or its file's silence run out — and a
+  // patch run on its own hands on to the next: moved on to first, so that the file made ready
+  // at the end is the one for it
   function finish() {
     if (!audio?.marks || player.src !== audio.file) return;
     const { k } = audio;
-    hush('Lamp off');
+    if (k !== undefined) patch = k + 1 < parts.length ? k + 1 : 0;
+    over('Lamp off');
     if (k !== undefined) next(k);
   }
 
@@ -1761,10 +1782,8 @@
   // here begins again
   function next(k) {
     field('plan').querySelectorAll('div')[k + 1].classList.add('done');
-    patch = k + 1 < parts.length ? k + 1 : 0;
     tell(patch ? `Patch ${patch + 1} next` : 'Done');
     offer();
-    prepare();
   }
 
   // A press starts a run and a press stops one: the press itself, not the tap it may or may not
