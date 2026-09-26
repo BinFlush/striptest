@@ -10,11 +10,11 @@ const algorithm = page.match(/<script id="algorithm">([\s\S]*?)<\/script>/)[1];
 const context = vm.createContext({});
 const used = `{ solveSkipping, timed, figures, schedule, climb,
   FUNDAMENTAL, BEND, CLIMBS, COUNT_IN,
-  density, shade, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED }`;
+  density, shade, scale, exposure, middle, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED }`;
 vm.runInContext(`${algorithm}\nthis.page = ${used};`, context);
 const { solveSkipping, timed, figures, schedule, climb } = context.page;
 const { FUNDAMENTAL, BEND, CLIMBS, COUNT_IN } = context.page;
-const { density, shade, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED } = context.page;
+const { density, shade, scale, exposure, middle, borders, zoneOf, edges, probed, PAPERS, SPEEDS, PRINTED } = context.page;
 
 const asked = JSON.parse(fs.readFileSync(0, 'utf8'));
 const results = asked.map(({ skipped, ...settings }) => {
@@ -58,6 +58,10 @@ const papers = Object.fromEntries(Object.keys(PAPERS).map(paper => {
     numbered: [3, ...PRINTED[paper], 0].map(printed => [printed, zoneOf(printed, paper)]),
     borders: Object.fromEntries(filters.map(filter =>
       [filter, borders(filter, paper).map(stops => [stops, density(stops, filter, paper)])])),
+    // The axis every strip lies on: the exposures at which each filter reaches the paper's
+    // white and black, and the light each filter's middle grey takes
+    scale: Object.fromEntries(filters.map(filter => [filter, scale(filter, paper)])),
+    middle: Object.fromEntries(filters.map(filter => [filter, middle(filter, paper)])),
   };
 
   // Rows given from two stops less to two stops more than the reference, in sixths and a bit, at
@@ -78,14 +82,18 @@ const papers = Object.fromEntries(Object.keys(PAPERS).map(paper => {
   // probed at every filter there: in rows given a stop less, the same and a stop more, and in
   // one given what the page's own speeds say the other filter needs
   const white = PRINTED[paper][PRINTED[paper].length - 1];
-  const measured = (zoneOf(white + 0.6, paper) + 0.5) / 11;
+  // Where that tone sits along the axis in a reference row at each filter
+  const measured = filter => {
+    const [light, dark] = scale(filter, paper);
+    return (dark - exposure(white + 0.6, filter, paper)) / (dark - light);
+  };
   const speeds = pairs.map(([filter, other]) => {
     const needed = Math.log2(SPEEDS[paper][filter] / SPEEDS[paper][other]);
     return {
       filter,
       other,
       probed: [...new Set([-1, 0, 1, needed])]
-        .map(exposed => [exposed, probed(measured, exposed, filter, other, paper)]),
+        .map(exposed => [exposed, probed(measured(filter), exposed, filter, other, paper)]),
     };
   });
   // The curves as the page writes them, so the suite can hold the data itself to what the

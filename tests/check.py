@@ -211,12 +211,14 @@ def zone_failures(paper, zones):
     return [f"{paper}, zones: {name}" for name, holds in checks if not holds]
 
 
-def strip_failures(paper, strips, printed):
+def strip_failures(paper, strips, printed, zones):
     """A row is drawn as zones between edges, and probed as a density at one place.
 
     Both must tell the same story: the zone a place lies in is the zone nearest to the density
-    probed there, whether the row is at the reference row's filter or at another. And a row
-    exposed like the reference, at its filter, is an even scale.
+    probed there, whether the row is at the reference row's filter or at another. And the
+    edges are the row's own filter's zone borders on the axis the strips share - the reference
+    row's exposure in stops, from black at the left to white at the right at its filter -
+    shifted by the row's exposure and by the light its filter's middle grey takes, clipped.
     """
     halfway = [(a + b) / 2 for a, b in zip(printed, printed[1:])]
     nearest = lambda reached: min(range(11), key=lambda zone: abs(printed[zone] - reached))
@@ -224,10 +226,13 @@ def strip_failures(paper, strips, printed):
     for strip in strips:
         name = (f"{paper}, filter {strip['other']} against {strip['filter']}, "
                 f"{strip['exposed']:+.3f} stops")
-        even = [100 * zone / 11 for zone in range(12)]
-        is_reference = strip["other"] == strip["filter"] and not strip["exposed"]
-        if is_reference and any(abs(a - b) > 1e-9 for a, b in zip(strip["edges"], even)):
-            failures.append(f"strips: {name}: the reference row is not an even scale")
+        light, dark = zones["scale"][strip["filter"]]
+        lead = zones["middle"][strip["filter"]] - zones["middle"][strip["other"]]
+        along = lambda stops: min(max((dark - stops) / (dark - light), 0), 1) * 100
+        wanted = [0] + [along(stops - strip["exposed"] - lead)
+                        for stops, _ in zones["borders"][strip["other"]]] + [100]
+        if any(abs(a - b) > 1e-9 for a, b in zip(strip["edges"], wanted)):
+            failures.append(f"strips: {name}: the edges are not the filter's borders, shifted")
         for share, reached in strip["probed"]:
             on_a_border = (any(abs(edge - 100 * share) < 1e-6 for edge in strip["edges"])
                            or any(abs(reached - half) < 1e-9 for half in halfway))
@@ -407,7 +412,7 @@ def main():
         for filter_name, tones in told["tones"].items():
             failures += tone_failures(paper, filter_name, tones)
         failures += zone_failures(paper, told["zones"])
-        failures += strip_failures(paper, told["strips"], told["zones"]["printed"])
+        failures += strip_failures(paper, told["strips"], told["zones"]["printed"], told["zones"])
         failures += speed_failures(paper, told["speeds"])
 
     for settings, rows in zip(all_settings, answer["timers"]):

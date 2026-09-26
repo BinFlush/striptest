@@ -347,7 +347,43 @@
   #map {
     --probe: .5;
     position: relative;
+  }
+
+  /* The axis the strips share, in stops, under the map: a tick a stop, zero at the base row's
+     middle grey, in the map's own columns so that the ticks stand under the bands */
+  #axis {
+    display: grid;
+    grid-template-columns: var(--gutter) 1fr;
+    column-gap: .75rem;
     margin-bottom: 2rem;
+  }
+
+  #axis div {
+    position: relative;
+    grid-column: 2;
+    height: 1.25rem;
+  }
+
+  #axis span {
+    position: absolute;
+    top: .375rem;
+    transform: translateX(-50%);
+    color: var(--muted);
+    font: .6875rem/1 var(--mono);
+  }
+
+  #axis span::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    width: 1px;
+    height: .3125rem;
+    background: var(--muted);
+  }
+
+  #map:empty + #axis {
+    display: none;
   }
 
   .band::after {
@@ -841,6 +877,7 @@
 </fieldset>
 
 <div id="map"></div>
+<div id="axis"></div>
 
 <label>Paper
   <select id="paper"></select>
@@ -874,8 +911,10 @@
       is all there is to it.</li>
     <li>The strip beside each figure shows roughly what that patch prints as, in the zones of the
       Zone System: 0 is full black, V middle grey and X paper white, on the paper and at the
-      filter set under the map. The base's strip is the whole scale, and every other is that
-      scale after its patch's exposure. Your prints may differ.</li>
+      filter set under the map. The strips share one axis, the exposure in stops, with a scale
+      of it under the map, zero at the base's middle grey: the base's strip shows the paper's
+      zones each as wide as the exposure it spans at that filter, and every other strip is the
+      same, shifted by its patch's exposure. Your prints may differ.</li>
     <li>To see what a tone does in the other patches, find it in the base's strip, the boxed one,
       and look straight up or down: a place across the map is one part of the picture.</li>
     <li>To follow one tone closely, slide a finger sideways along any strip, or drag with the
@@ -1283,29 +1322,25 @@
     return below + clamp((zones[below] - printed) / (zones[below] - zones[above]), 0, 1);
   }
 
-  // A place along the strips is one part of the picture, and it sits where the zone it prints as
-  // in the base row puts it: the base row is an even scale, and a row given `exposed` stops
-  // more shows what each of its tones becomes. The row can be shown at `other`, another filter
-  // than the base row's, under the same light. These are the places, in % along
-  // the strip, where that row's zones begin and end.
+  // A place along the strips is one part of the picture, and the strips share one axis: the
+  // exposure that part gets in the base row, in stops, from as much as makes the paper black
+  // at the left to as little as leaves it white at the right, at the base row's filter. The
+  // base row's zones lie where its filter's curve puts them; a row given `exposed` stops more,
+  // or shown at `other`, another filter, under the same light, carries its own filter's zone
+  // borders, shifted along that axis by its exposure and by what its filter's speed adds.
+  // These are the places, in % along the strip, where that row's zones begin and end.
   function edges(exposed, filter, other, paper) {
     const [light, dark] = scale(filter, paper);
     const lead = middle(filter, paper) - middle(other, paper);
-    const place = stops => stops > dark ? 0 : stops < light ? 100
-      : (zoneOf(density(stops, filter, paper), paper) + .5) / NUMERALS.length * 100;
-    return [0, ...borders(other, paper).map(stops => place(stops - exposed - lead)), 100];
+    const along = stops => clamp((dark - stops) / (dark - light), 0, 1) * 100;
+    return [0, ...borders(other, paper).map(stops => along(stops - exposed - lead)), 100];
   }
 
   // The print density that row has at one place, given as a share of the way along the strip
   function probed(share, exposed, filter, other, paper) {
-    const [, dark] = scale(filter, paper);
+    const [light, dark] = scale(filter, paper);
     const lead = middle(filter, paper) - middle(other, paper);
-    const zones = PRINTED[paper];
-    const zone = clamp(share * NUMERALS.length - .5, 0, NUMERALS.length - 1);
-    const below = Math.min(NUMERALS.length - 2, Math.floor(zone));
-    const printed = zones[below] + (zones[below + 1] - zones[below]) * (zone - below);
-    const stops = zone > 0 ? exposure(printed, filter, paper) : dark;
-    return density(stops + exposed + lead, other, paper);
+    return density(dark - share * (dark - light) + exposed + lead, other, paper);
   }
 
   // A whole and a part, as printers say it — 5⅔, +1½ — the part one glyph where there is one,
@@ -1842,6 +1877,19 @@
     return strip;
   }
 
+  // The scale under the map: the base row's exposure in stops along the strips, a tick a stop,
+  // zero at its middle grey, more exposure to the left where the paper is blacker
+  function axis(chosen) {
+    if (!chosen) return [];
+    const [light, dark] = scale(chosen.filters[0], chosen.paper);
+    const ticks = range(Math.ceil(light), Math.floor(dark)).map(stops => {
+      const tick = element('span', `${stops > 0 ? '+' : ''}${stops}`);
+      tick.style.left = `${(dark - stops) / (dark - light) * 100}%`;
+      return tick;
+    });
+    return [element('div', ...ticks)];
+  }
+
   // The strips under a row's numbers: one at the filter printed with, which is the first, and
   // under it one at the filter it is compared with
   // Every row is exposed so many stops more than `anchor`, the base row, errors included
@@ -1891,7 +1939,7 @@
 
   // While a finger or the mouse slides across the rows, every strip shows in full the tone that
   // the part of the picture under it has in that row, and names the zone it is nearest to — the
-  // part being known by its place in the base row, which runs evenly through the scale. A slide
+  // part being known by the exposure its place along the axis means in the base row. A slide
   // picks nothing, whichever row it is on. Nothing is taken out of the page meanwhile: a finger
   // that loses the element it touched may stop being reported.
   function probe({ clientX }) {
@@ -2017,6 +2065,7 @@
     // The rows are built afresh, so a pick made from the keyboard keeps its focus on the new one
     const picking = field('map').contains(document.activeElement);
     field('map').replaceChildren(...rows);
+    field('axis').replaceChildren(...axis(chosen));
     if (picking) field('map').querySelector(':checked')?.focus({ preventScroll: true });
     fit();
   }
