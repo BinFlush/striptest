@@ -1360,11 +1360,12 @@
   let darkroom = document.documentElement.classList.contains('darkroom');
   let awake = null;
   // What is sounding — a run or a metronome — or nothing; the one element it sounds through;
-  // and the files it plays: the silence between runs, and the run or metronome of the moment
+  // the silence it plays between runs; and the file a press would play, made ahead of the press
   let audio = null;
   let player = null;
   let silence = null;
-  let url = null;
+  let prepared = null;
+  let preparing = 0;
   let planned = [];
   let parts = [];
   let patch = 0;
@@ -1421,6 +1422,7 @@
     stayAwake();
     ready();
     quiet();
+    prepare();
   }
 
   function leaveDarkroom() {
@@ -1500,10 +1502,12 @@
     player.addEventListener('pause', () => {
       if (mine() && audio.begun && !player.ended) hush('Interrupted');
     });
+    // To the phone an element playing silence is playing, whatever it is told, so a headset
+    // or the lock screen only ever sends pause: pause is the press, and starts a run too
     try {
       navigator.mediaSession.metadata = new MediaMetadata({ title: 'Striptest' });
       navigator.mediaSession.setActionHandler('play', () => { if (!audio) toggle(); });
-      navigator.mediaSession.setActionHandler('pause', () => hush('Stopped'));
+      navigator.mediaSession.setActionHandler('pause', () => audio ? hush('Stopped') : toggle());
       navigator.mediaSession.setActionHandler('stop', () => hush('Stopped'));
     } catch {}
   }
@@ -1521,16 +1525,34 @@
     player.loop = true;
     player.src = silence;
     player.play().catch(() => {});
-    state('paused');
   }
 
   function load(file, loop) {
-    if (url) URL.revokeObjectURL(url);
-    url = file;
     audio.file = file;
     player.loop = loop;
     player.src = file;
     player.play().catch(() => hush('Interrupted'));
+  }
+
+  // The file a press would play, rendered ahead of the press — when the plan changes, when the
+  // view opens, after every stop — because a locked phone lets an element start only inside
+  // the command that asks for it, not after the wait a render takes. Nothing is remade while
+  // a file is playing; the stop that ends it remakes it.
+  async function prepare() {
+    if (audio) return;
+    const job = ++preparing;
+    const counting = field('metronome').checked;
+    const [marks, k] = field('separate').checked ? [alone(patch), patch] : [planned];
+    const made = counting ? solved && await renderTick(solved)
+      : planned.length ? await renderRun(marks, k) : null;
+    // Overtaken by a newer render, or by a press that is now playing the file this would have
+    // replaced: that file stays, and the stop that ends it makes the next
+    if (job !== preparing || audio) return void (made && URL.revokeObjectURL(made));
+    if (prepared) URL.revokeObjectURL(prepared.file);
+    if (!made) return void (prepared = null);
+    const said = counting ? `${solved.tempo} bpm, every ${nthBeat(solved.every)}`
+      : k === undefined ? 'Count-in' : `Patch ${k + 1}`;
+    prepared = { file: made, loop: counting, marks: counting ? undefined : marks, k, said };
   }
 
   // A note struck at `when` on `context` and gone a tick later, still sounding to `over` so
@@ -1578,8 +1600,7 @@
   // octave above the rest as the marks of a run are above its count-in. One cycle of it is
   // rendered, to the sample, and laid end to end for minutes, so the file loops at a cycle's
   // edge and is let run for as long as it is wanted.
-  async function tick({ tempo, every }) {
-    const token = audio = { said: `${tempo} bpm, every ${nthBeat(every)}` };
+  async function renderTick({ tempo, every }) {
     const period = 60 / tempo;
     const context = new OfflineAudioContext(1, Math.round(every * period * RATE), RATE);
     for (let n = 0; n < every; n++) {
@@ -1589,10 +1610,7 @@
     const cycles = Math.ceil(MINUTES * 60 / (every * period));
     const samples = new Float32Array(cycle.length * cycles);
     for (let n = 0; n < cycles; n++) samples.set(cycle, n * cycle.length);
-    const file = wav(samples, RATE);
-    // Stopped while it was being rendered
-    if (audio !== token) return URL.revokeObjectURL(file);
-    load(file, true);
+    return wav(samples, RATE);
   }
 
   // Everything a run sounds is rendered before it starts, so nothing after that depends on a
@@ -1604,9 +1622,7 @@
   }
 
   // `k` names the one patch this run is, when patches are run one at a time
-  async function play(marks, k) {
-    const said = k === undefined ? 'Count-in' : `Patch ${k + 1}`;
-    const token = audio = { marks, k, shown: 0, said };
+  async function renderRun(marks, k) {
     const from = LEAD;
     const over = marks[marks.length - 1];
     const context = new OfflineAudioContext(1, Math.ceil((from + over + TAIL) * RATE), RATE);
@@ -1658,9 +1674,12 @@
 
     // An accent on every mark, and the file carries a breath of silence after the last
     for (const mark of marks) beat(mark, 2 * FUNDAMENTAL, ACCENT, TICK);
+    return wav((await context.startRendering()).getChannelData(0), RATE);
+  }
 
-    // Running one patch, the bars keep the score: the patches before it full, its own filling
-    // after the count-in, the ones ahead empty — and the count-in's own bar fills after the blips
+  // Running one patch, the bars keep the score: the patches before it full, its own filling
+  // after the count-in, the ones ahead empty — and the count-in's own bar fills after the blips
+  function score(marks, k) {
     const bars = [...field('plan').querySelectorAll('div')];
     bars.forEach((div, i) => {
       div.classList.toggle('done', k !== undefined && i > 0 && i <= k);
@@ -1670,10 +1689,6 @@
       bars[0].style.setProperty('--after', `${LEAD + marks[0] - planned[0]}s`);
       bars[k + 1].style.setProperty('--after', `${LEAD + marks[0]}s`);
     }
-    const file = wav((await context.startRendering()).getChannelData(0), RATE);
-    // Stopped while it was being rendered
-    if (audio !== token) return URL.revokeObjectURL(file);
-    load(file, false);
   }
 
   // A stop from anywhere — a press, a hold, the lock screen, a button on the earbuds — goes
@@ -1687,6 +1702,7 @@
     tell(why);
     offer();
     lit();
+    prepare();
   }
 
   // Where the run has got to, by the element's own clock, and every mark passed reported once
@@ -1719,6 +1735,7 @@
     patch = k + 1 < parts.length ? k + 1 : 0;
     tell(patch ? `Patch ${patch + 1} next` : 'Done');
     offer();
+    prepare();
   }
 
   // A press starts a run and a press stops one: the press itself, not the tap it may or may not
@@ -1749,14 +1766,16 @@
     return true;
   }
 
-  // A press runs what the view is showing: the metronome the strip was solved for, or the
-  // strip itself, by ear
+  // A press runs what the view is showing, the metronome the strip was solved for or the strip
+  // itself by ear, from the file made ready for it — and starts it in the same breath as the
+  // press, which is the only way a locked phone allows
   function toggle() {
     if (audio) return hush('Stopped');
-    if (field('metronome').checked) return void (solved && tick(solved));
-    if (!planned.length) return;
-    if (field('separate').checked) play(alone(patch), patch);
-    else play(planned);
+    if (!prepared) return;
+    const { file, loop, marks, k, said } = prepared;
+    audio = { marks, k, said, shown: 0 };
+    if (marks) score(marks, k);
+    load(file, loop);
   }
 
   function element(name, ...content) {
@@ -1959,6 +1978,7 @@
       bar(wait, planned[i - 1] ?? 0, longest),
     ]);
     document.body.className = counting ? 'metronome' : '';
+    prepare();
     field('grade').textContent = grade;
     field('filter').setAttribute('aria-valuetext', grade);
     field('othergrade').textContent = other;
