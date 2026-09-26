@@ -1360,12 +1360,14 @@
   let darkroom = document.documentElement.classList.contains('darkroom');
   let awake = null;
   // What is sounding — a run or a metronome — or nothing; the one element it sounds through;
-  // the silence it plays between runs; and the file a press would play, made ahead of the press
+  // the silence it plays between runs; the file a press would play, made ahead of the press
+  // and keyed to the plan it was made from; and the render of it under way, if one is
   let audio = null;
   let player = null;
   let silence = null;
   let prepared = null;
-  let preparing = 0;
+  let rendering = null;
+  let job = 0;
   let planned = [];
   let parts = [];
   let patch = 0;
@@ -1534,25 +1536,40 @@
     player.play().catch(() => hush('Interrupted'));
   }
 
-  // The file a press would play, rendered ahead of the press — when the plan changes, when the
-  // view opens, after every stop — because a locked phone lets an element start only inside
-  // the command that asks for it, not after the wait a render takes. Nothing is remade while
-  // a file is playing; the stop that ends it remakes it.
-  async function prepare() {
-    if (audio) return;
-    const job = ++preparing;
-    const counting = field('metronome').checked;
+  // What a press would play now, and a key naming everything its file depends on
+  function wanted() {
+    if (field('metronome').checked) {
+      if (!solved) return null;
+      const { tempo, every } = solved;
+      const said = `${tempo} bpm, every ${nthBeat(every)}`;
+      return { key: `${tempo} ${every}`, loop: true, said };
+    }
+    if (!planned.length) return null;
     const [marks, k] = field('separate').checked ? [alone(patch), patch] : [planned];
-    const made = counting ? solved && await renderTick(solved)
-      : planned.length ? await renderRun(marks, k) : null;
-    // Overtaken by a newer render, or by a press that is now playing the file this would have
-    // replaced: that file stays, and the stop that ends it makes the next
-    if (job !== preparing || audio) return void (made && URL.revokeObjectURL(made));
+    const said = k === undefined ? 'Count-in' : `Patch ${k + 1}`;
+    return { key: `${k ?? ''} ${marks.join(' ')}`, loop: false, marks, k, said };
+  }
+
+  // The file a press would play, rendered ahead of the press, because a locked phone lets an
+  // element start only inside the command that asks for it, not after the wait a render
+  // takes. Made at the door, after every stop and after every patch: the plan cannot change
+  // while the view is open, so that is every time it could be out of date. A file already made
+  // from this plan is kept; while a new one is being made there is none, so that a press can
+  // never play the plan before this one.
+  function prepare() {
+    if (audio) return;
+    const want = wanted();
+    if (want && prepared?.key === want.key) return;
     if (prepared) URL.revokeObjectURL(prepared.file);
-    if (!made) return void (prepared = null);
-    const said = counting ? `${solved.tempo} bpm, every ${nthBeat(solved.every)}`
-      : k === undefined ? 'Count-in' : `Patch ${k + 1}`;
-    prepared = { file: made, loop: counting, marks: counting ? undefined : marks, k, said };
+    prepared = null;
+    if (!want) return;
+    const mine = ++job;
+    rendering = (want.marks ? renderRun(want.marks, want.k) : renderTick(solved)).then(file => {
+      // Overtaken by a newer render, or by a press that went on without waiting
+      if (mine !== job || audio) return void URL.revokeObjectURL(file);
+      rendering = null;
+      return prepared = { ...want, file };
+    });
   }
 
   // A note struck at `when` on `context` and gone a tick later, still sounding to `over` so
@@ -1767,12 +1784,14 @@
   }
 
   // A press runs what the view is showing, the metronome the strip was solved for or the strip
-  // itself by ear, from the file made ready for it — and starts it in the same breath as the
-  // press, which is the only way a locked phone allows
-  function toggle() {
+  // itself by ear, from the file made ready for it, in the same breath as the press, which is
+  // the only way a locked phone allows. Caught with the file still being made, the press waits
+  // for it, which the foreground can afford; with nothing to play at all it does nothing.
+  async function toggle() {
     if (audio) return hush('Stopped');
-    if (!prepared) return;
-    const { file, loop, marks, k, said } = prepared;
+    const made = prepared ?? await rendering;
+    if (!made || audio) return;
+    const { file, loop, marks, k, said } = made;
     audio = { marks, k, said, shown: 0 };
     if (marks) score(marks, k);
     load(file, loop);
@@ -1978,7 +1997,6 @@
       bar(wait, planned[i - 1] ?? 0, longest),
     ]);
     document.body.className = counting ? 'metronome' : '';
-    prepare();
     field('grade').textContent = grade;
     field('filter').setAttribute('aria-valuetext', grade);
     field('othergrade').textContent = other;
@@ -2098,7 +2116,11 @@
     if (target.matches('#skip')) skipped.add(Number(target.value));
     if (target.matches('#skipped button')) skipped.delete(Number(target.value));
     if (target.matches('#forget')) skipped.clear();
-    if (target.matches('#reset')) patch = 0;
+    // Reset moves the patch on with the view open, which is the one plan change a press can make
+    if (target.matches('#reset')) {
+      patch = 0;
+      prepare();
+    }
     if (target.matches('#enter')) enterDarkroom();
     if (target.matches('#leave')) leaveDarkroom();
     remember();
