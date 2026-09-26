@@ -1131,12 +1131,7 @@
   const QUIET = 10;
   const RAMP = .012;
   const TICK = .12;
-  // A run's file carries this much silence after its last mark, and is let go of this long
-  // after it: before the file can end, because to the phone an element ending is a stop, and
-  // a stop takes the lock screen's and the headset's buttons with it until they are pressed
-  // once for nothing. Handed on to the silence while still playing, the element never stops.
-  const TAIL = 1;
-  const DONE = .25;
+  const TAIL = .5;
   const OVERTONE = .3;
   const DRONE = .05;
   const GLIDE = .09;
@@ -1364,11 +1359,13 @@
   const HELD = 700;
   let darkroom = document.documentElement.classList.contains('darkroom');
   let awake = null;
-  // What is sounding — a run or a metronome — or nothing; the one element it sounds through;
-  // the silence it plays between runs; the file a press would play, made ahead of the press
-  // and keyed to the plan it was made from; and the render of it under way, if one is
+  // What is sounding — a run or a metronome — or nothing; the element it sounds through; the
+  // element that plays silence beside it, from the press that opens the view to the one that
+  // closes it; the file a press would play, made ahead of the press and keyed to the plan it
+  // was made from; and the render of it under way, if one is
   let audio = null;
   let player = null;
+  let still = null;
   let silence = null;
   let prepared = null;
   let rendering = null;
@@ -1435,7 +1432,7 @@
   function leaveDarkroom() {
     darkroom = false;
     hush('');
-    player.pause();
+    still.pause();
     player.removeAttribute('src');
     player.load();
     state('none');
@@ -1456,10 +1453,13 @@
       .forEach((cell, i) => cell.classList.toggle('now', Math.floor(i / 3) === line));
   }
 
-  // Everything that sounds is rendered first, whole, into a wave file, and played through one
+  // Everything that sounds is rendered first, whole, into a wave file, and played through a
   // media element: a file plays on with the screen locked, which sound made as it goes does
   // not, and a file playing is what the lock screen, earbuds and a Bluetooth button are let
-  // start and stop. Between runs the element plays silence, so that those reach the page.
+  // start and stop. A second element plays silence the whole time the view is open, started by
+  // the press that opened it and never touched again: the phone gives the buttons to a page
+  // whose playing was the user's doing, and takes the first press back for itself from one
+  // whose playing a timer began — which is what a run ending had been leaving behind.
   function wav(samples, rate) {
     const bytes = new DataView(new ArrayBuffer(44 + samples.length * 2));
     const text = (at, word) => [...word].forEach((c, i) => bytes.setUint8(at + i, c.charCodeAt(0)));
@@ -1481,13 +1481,16 @@
     return URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
   }
 
-  // The element, made the first time the view opens, which is a press: a page may only start
+  // The elements, made the first time the view opens, which is a press: a page may only start
   // sound on a press, and may go on from there
   function ready() {
     if (player) return;
     if (navigator.audioSession) navigator.audioSession.type = 'playback';
     player = new Audio();
+    still = new Audio();
     silence = wav(new Float32Array(QUIET * 8000), 8000);
+    still.src = silence;
+    still.loop = true;
     // Only the file that was asked for counts: the silence between runs may start playing
     // just as a run is being rendered, and must not pass for it
     const mine = () => audio && player.src === audio.file;
@@ -1525,13 +1528,10 @@
     if (navigator.mediaSession) navigator.mediaSession.playbackState = playback;
   }
 
-  // Between runs the element plays silence on a loop. To the lock screen a paused element is
-  // nothing; a playing one is what its buttons address.
+  // The silence, on a loop, for as long as the view is open. To the lock screen a paused page
+  // is nothing; a playing one is what its buttons address.
   function quiet() {
-    if (!darkroom) return;
-    player.loop = true;
-    player.src = silence;
-    player.play().catch(() => {});
+    if (darkroom) still.play().catch(() => {});
   }
 
   function load(file, loop) {
@@ -1713,13 +1713,12 @@
     }
   }
 
-  // A stop from anywhere — a press, a hold, the lock screen, a button on the earbuds — goes
-  // back to silence, and a run started again starts from its count-in. The element is not
-  // paused on the way: the silence takes over from the file as the file took over from it.
+  // A stop from anywhere — a press, a hold, the lock screen, a button on the earbuds — and a
+  // run started again starts from its count-in
   function hush(why) {
     if (!audio) return;
     audio = null;
-    quiet();
+    player.pause();
     document.documentElement.classList.remove('running');
     tell(why);
     offer();
@@ -1727,14 +1726,12 @@
     prepare();
   }
 
-  // Where the run has got to, by the element's own clock, every mark passed reported once,
-  // and the run over a moment after its last mark, before its file can end
+  // Where the run has got to, by the element's own clock, and every mark passed reported once
   function follow() {
     if (!audio?.marks || !audio.begun || player.src !== audio.file) return;
     const at = player.currentTime - LEAD;
     const passed = audio.marks.filter(mark => at >= mark).length;
     while (audio && audio.shown < passed) reached(audio.shown++, audio.marks.length, audio.k);
-    if (audio && at >= audio.marks[audio.marks.length - 1] + DONE) finish();
   }
 
   // The last mark is the lamp going off; its line stays lit until the file has played out
@@ -1744,8 +1741,7 @@
     lit(mark + 1 + (k ?? 0));
   }
 
-  // The run is over — its last mark a moment behind, or, should that moment have been missed,
-  // its file played out — and a patch run on its own hands on to the next
+  // The file has played out: the run is over, and a patch run on its own hands on to the next
   function finish() {
     if (!audio?.marks || player.src !== audio.file) return;
     const { k } = audio;
