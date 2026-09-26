@@ -1131,7 +1131,12 @@
   const QUIET = 10;
   const RAMP = .012;
   const TICK = .12;
-  const TAIL = .5;
+  // A run's file carries this much silence after its last mark, and is let go of this long
+  // after it: before the file can end, because to the phone an element ending is a stop, and
+  // a stop takes the lock screen's and the headset's buttons with it until they are pressed
+  // once for nothing. Handed on to the silence while still playing, the element never stops.
+  const TAIL = 1;
+  const DONE = .25;
   const OVERTONE = .3;
   const DRONE = .05;
   const GLIDE = .09;
@@ -1709,11 +1714,11 @@
   }
 
   // A stop from anywhere — a press, a hold, the lock screen, a button on the earbuds — goes
-  // back to silence, and a run started again starts from its count-in
+  // back to silence, and a run started again starts from its count-in. The element is not
+  // paused on the way: the silence takes over from the file as the file took over from it.
   function hush(why) {
     if (!audio) return;
     audio = null;
-    player.pause();
     quiet();
     document.documentElement.classList.remove('running');
     tell(why);
@@ -1722,12 +1727,14 @@
     prepare();
   }
 
-  // Where the run has got to, by the element's own clock, and every mark passed reported once
+  // Where the run has got to, by the element's own clock, every mark passed reported once,
+  // and the run over a moment after its last mark, before its file can end
   function follow() {
     if (!audio?.marks || !audio.begun || player.src !== audio.file) return;
     const at = player.currentTime - LEAD;
     const passed = audio.marks.filter(mark => at >= mark).length;
     while (audio && audio.shown < passed) reached(audio.shown++, audio.marks.length, audio.k);
+    if (audio && at >= audio.marks[audio.marks.length - 1] + DONE) finish();
   }
 
   // The last mark is the lamp going off; its line stays lit until the file has played out
@@ -1737,7 +1744,8 @@
     lit(mark + 1 + (k ?? 0));
   }
 
-  // The file has played out: the run is over, and a patch run on its own hands on to the next
+  // The run is over — its last mark a moment behind, or, should that moment have been missed,
+  // its file played out — and a patch run on its own hands on to the next
   function finish() {
     if (!audio?.marks || player.src !== audio.file) return;
     const { k } = audio;
