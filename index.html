@@ -1464,7 +1464,9 @@
     bytes.setUint16(34, 16, true);
     text(36, 'data');
     bytes.setUint32(40, samples.length * 2, true);
-    samples.forEach((sample, i) => bytes.setInt16(44 + i * 2, clamp(sample, -1, 1) * 32767, true));
+    // The samples go in through a view: little-endian, as the file wants and every phone is
+    const data = new Int16Array(bytes.buffer, 44);
+    for (let i = 0; i < samples.length; i++) data[i] = clamp(samples[i], -1, 1) * 32767;
     return URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
   }
 
