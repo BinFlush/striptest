@@ -1,7 +1,7 @@
 # striptest
 A tool for planning f/stop test strips in the darkroom, and for timing them: by sound cues the page makes itself, or with a physical metronome at the best tempo for the strip. The seconds are there too, for anyone with a timer.
 
-**Use it here: https://binflush.github.io/striptest/**
+**Use it here: https://striptest.lutzen.co/**
 
 ## Overview
 **striptest** is for darkroom printers who f/stop print. It has two parts.
@@ -18,10 +18,10 @@ A tool for planning f/stop test strips in the darkroom, and for timing them: by 
 Every patch has a strip of tones beside its figure. Each strip shows what that patch prints as, in the zones of the Zone System, and the strips abut, so a tone in the picture can be followed straight up and down the map from patch to patch. Each paper has its own curves, and the filter changes how far apart the patches land, so both are chosen under the map. A second filter can be laid under the first, to see whether a change of contrast would do what more exposure would not. This is for the age-old question, *"should I change the exposure, or is it the contrast?"*
 
 ## Quickstart
-Open https://binflush.github.io/striptest/, type in your base time, and pick the step size and the number of patches. The map gives the seconds for every patch, what it has had in all and what it adds. Press **Run in Darkroom Mode** at the foot of the screen, then **Start**, and the page counts you in and sounds each patch. Tick **Use a metronome instead** and it gives you a tempo and the counts instead. The section **The website** below goes through the rest.
+Open https://striptest.lutzen.co/, type in your base time, and pick the step size and the number of patches. The map gives the seconds for every patch, what it has had in all and what it adds. Press **Run in Darkroom Mode** at the foot of the screen, then **Start**, and the page counts you in and sounds each patch. Tick **Use a metronome instead** and it gives you a tempo and the counts instead. The section **The website** below goes through the rest.
 
 ## The website
-The website lives at https://binflush.github.io/striptest/. It does the same job as the Python script this started as, and a good deal more, and it does it in your browser, so it also works on the phone in your pocket. Everything is calculated on your own device, and nothing is sent anywhere.
+The website lives at https://striptest.lutzen.co/. It does the same job as the Python script this started as, and a good deal more, and it does it in your browser, so it also works on the phone in your pocket. Everything is calculated on your own device, and nothing is sent anywhere.
 
 The easiest way to explain it is to go through a printing session.
 
