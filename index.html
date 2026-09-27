@@ -1697,10 +1697,11 @@
     while (audio && audio.shown < passed) reached(audio.shown++, audio.marks.length, audio.k);
   }
 
-  // The last mark is the lamp going off; its line stays lit until the file has played out
+  // Every mark names the patch now exposing, the one whose bar fills; the last mark is the lamp
+  // going off, and its line stays lit until the file has played out
   function reached(mark, marks, k) {
     if (mark === marks - 1) return tell('Lamp off');
-    tell(mark ? `Patch ${mark}` : 'Lamp on');
+    tell(`Patch ${mark + 1 + (k ?? 0)}`);
     lit(mark + 1 + (k ?? 0));
   }
 
