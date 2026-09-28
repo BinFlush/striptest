@@ -89,7 +89,7 @@ const papers = Object.fromEntries(Object.keys(PAPERS).map(paper => {
   const white = PRINTED[paper][PRINTED[paper].length - 1];
   // Where that tone sits along the axis in a reference row at each filter, with the other beside it
   const measured = (filter, other) => {
-    const [light, dark] = span([filter, other], paper);
+    const [light, dark] = span(paper);
     return (dark - exposure(white + 0.6, filter, paper)) / (dark - light);
   };
   const speeds = pairs.map(([filter, other]) => {

@@ -1419,17 +1419,23 @@
     return below + clamp((zones[below] - printed) / (zones[below] - zones[above]), 0, 1);
   }
 
-  // The stretch of the axis on screen, in stops from the base row's middle grey: the base
-  // row's filter's own scale, or, with another filter beside it, whichever of the two reaches
-  // further along the axis — so that the harder filter's rows sit inside the softer's width,
-  // and moving the harder one's slider re-zooms nothing
-  function span(filters, paper) {
-    const [filter, other] = filters;
-    const own = scale(filter, paper);
-    if (other === undefined) return own;
-    const lead = middle(filter, paper) - middle(other, paper);
-    const theirs = scale(other, paper).map(stops => stops - lead);
-    return theirs[1] - theirs[0] > own[1] - own[0] ? theirs : own;
+  // The stretch of the axis on screen, in stops from the base row's middle grey: one for the
+  // paper, whichever filter is set and whichever it is compared with, so that no slider ever
+  // re-zooms the map. It reaches as far as any filter's rows can: its own from its middle
+  // grey, and as the other filter, shifted by the speed between it and any base filter.
+  // Worked out once a paper: every row asks for it, and every move of a finger along a strip.
+  const SPANS = {};
+  function span(paper) {
+    if (!SPANS[paper]) {
+      const filters = FILTERS.filter(filter => filter in PAPERS[paper]);
+      const reaches = filters.flatMap(filter => filters.map(other => {
+        const lead = middle(filter, paper) - middle(other, paper);
+        return scale(other, paper).map(stops => stops - lead);
+      }));
+      SPANS[paper] = [Math.min(...reaches.map(([light]) => light)),
+        Math.max(...reaches.map(([, dark]) => dark))];
+    }
+    return SPANS[paper];
   }
 
   // A place along the strips is one part of the picture, and the strips share one axis: the
@@ -1440,7 +1446,7 @@
   // borders, shifted along that axis by its exposure and by what its filter's speed adds.
   // These are the places, in % along the strip, where that row's zones begin and end.
   function edges(exposed, filters, other, paper) {
-    const [light, dark] = span(filters, paper);
+    const [light, dark] = span(paper);
     const lead = middle(filters[0], paper) - middle(other, paper);
     const along = stops => clamp((dark - stops) / (dark - light), 0, 1) * 100;
     return [0, ...borders(other, paper).map(stops => along(stops - exposed - lead)), 100];
@@ -1448,7 +1454,7 @@
 
   // The print density that row has at one place, given as a share of the way along the strip
   function probed(share, exposed, filters, other, paper) {
-    const [light, dark] = span(filters, paper);
+    const [light, dark] = span(paper);
     const lead = middle(filters[0], paper) - middle(other, paper);
     return density(dark - share * (dark - light) + exposed + lead, other, paper);
   }
@@ -1993,7 +1999,7 @@
   // zero at its middle grey, more exposure to the left where the paper is blacker
   function axis(chosen) {
     if (!chosen) return [];
-    const [light, dark] = span(chosen.filters, chosen.paper);
+    const [light, dark] = span(chosen.paper);
     const ticks = range(Math.ceil(light), Math.floor(dark)).map(stops => {
       const tick = element('span', `${stops > 0 ? '+' : ''}${stops}`);
       tick.style.left = `${(dark - stops) / (dark - light) * 100}%`;

@@ -249,15 +249,13 @@ def zone_failures(paper, zones):
     return [f"{paper}, zones: {name}" for name, holds in checks if not holds]
 
 
-def span(zones, filters):
-    """The stretch of the axis on screen: the reference filter's scale, or the wider of it and
-    the other filter's, as the page works it out."""
-    own = zones["scale"][filters[0]]
-    if len(filters) == 1:
-        return own
-    lead = zones["middle"][filters[0]] - zones["middle"][filters[1]]
-    theirs = [stops - lead for stops in zones["scale"][filters[1]]]
-    return theirs if theirs[1] - theirs[0] > own[1] - own[0] else own
+def span(zones):
+    """The stretch of the axis on screen, as the page works it out: one for the paper, as far
+    as any filter's rows reach, as the base filter or shifted by its speed beside any other."""
+    reaches = [[stops - (zones["middle"][base] - zones["middle"][other])
+                for stops in zones["scale"][other]]
+               for base in zones["scale"] for other in zones["scale"]]
+    return [min(light for light, _ in reaches), max(dark for _, dark in reaches)]
 
 
 def strip_failures(paper, strips, printed, zones):
@@ -277,7 +275,7 @@ def strip_failures(paper, strips, printed, zones):
     for strip in strips:
         name = (f"{paper}, filter {strip['other']} beside {'/'.join(strip['filters'])}, "
                 f"{strip['exposed']:+.3f} stops")
-        light, dark = span(zones, strip["filters"])
+        light, dark = span(zones)
         lead = zones["middle"][strip["filters"][0]] - zones["middle"][strip["other"]]
         along = lambda stops: min(max((dark - stops) / (dark - light), 0), 1) * 100
         wanted = [0] + [along(stops - strip["exposed"] - lead)
