@@ -153,21 +153,21 @@ def density(grey):
 
 
 def tone_failures(paper, filter_name, tones):
-    """The page's row tones on one paper at one filter, as (thirds of a stop, grey), against Ilford.
+    """The row tones on one paper at one filter, as (twelfths of a stop, grey), against Ilford.
 
     ISO 6846 measures a paper's contrast as its log exposure range R: from the exposure that
     gives 0.04 above the paper's minimum density to the one that gives 90% of its maximum
     above the minimum.
     """
-    thirds = sorted(third for third, _ in tones)
+    steps = sorted(step for step, _ in tones)
     densities = [density(grey) for _, grey in sorted(tones)]
     lightest, darkest = densities[0], densities[-1]
     low, high = lightest + 0.04, lightest + 0.9 * (darkest - lightest)
     rising = np.array(densities) + np.arange(len(densities)) * 1e-9
-    stops = (np.interp(high, rising, thirds) - np.interp(low, rising, thirds)) / 3
+    stops = (np.interp(high, rising, steps) - np.interp(low, rising, steps)) / 12
     iso_range, published = stops * np.log10(2), ISO_RANGE[paper][filter_name]
     blackest, deepest = BLACK[paper]
-    base = densities[thirds.index(0)]
+    base = densities[steps.index(0)]
     checks = [
         ("the base row is 18% middle grey", abs(10 ** -base - 0.18) < 0.0005),
         ("more exposure never prints lighter",
