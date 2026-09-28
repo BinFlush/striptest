@@ -1215,11 +1215,13 @@
     return [first / per, (first + curve.length - 1) / per];
   }
 
-  // The exposure, in stops from middle grey, that gives a print density at a filter
+  // The exposure, in stops from middle grey, that gives a print density at a filter; where the
+  // paper holds one density over a stretch of exposure, the start of that stretch
   function exposure(wanted, filter, paper) {
     const [per, first, ...curve] = PAPERS[paper][filter];
     const printed = clamp(wanted, curve[0], curve[curve.length - 1]);
-    const above = Math.max(1, curve.findIndex(step => step >= printed));
+    const above = curve.findIndex(step => step >= printed);
+    if (above === 0) return first / per;
     const below = above - 1;
     return (first + below + (printed - curve[below]) / (curve[above] - curve[below])) / per;
   }

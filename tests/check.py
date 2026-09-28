@@ -413,15 +413,14 @@ def main():
             failures.append(f"{paper}: the filters it offers have a gap in the middle, "
                             f"which the page's slider cannot show: {offered}")
         for filter_name, curve in told["curves"].items():
-            # The page inverts these curves — to place the zones, and to read the tone under a
-            # finger — so no density may be held over two steps: there would be no one exposure
-            # to invert it to, and the tone would jump the width of the flat spot. Rounding a
-            # slow toe to two decimals is enough to cause it.
-            steps = curve[1:]
-            if not all(a < b for a, b in zip(steps, steps[1:])):
-                held = [i for i, (a, b) in enumerate(zip(steps, steps[1:])) if a >= b]
-                failures.append(f"{paper}, filter {filter_name}: the curve holds one density "
-                                f"over more than one step, at {held}")
+            # A paper may hold one density over a stretch of exposure, as a traced toe or
+            # shoulder does, and the page turns such a density back into where the stretch
+            # begins; what it may never do is print lighter for more light
+            steps = curve[2:]
+            if not all(a <= b for a, b in zip(steps, steps[1:])):
+                lighter = [i for i, (a, b) in enumerate(zip(steps, steps[1:])) if a > b]
+                failures.append(f"{paper}, filter {filter_name}: the curve prints lighter for "
+                                f"more light, at {lighter}")
         for filter_name, tones in told["tones"].items():
             failures += tone_failures(paper, filter_name, tones)
         failures += zone_failures(paper, told["zones"])
