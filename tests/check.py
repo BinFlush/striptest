@@ -34,12 +34,22 @@ MECHANICAL = ["40:60 [2]", "60:72 [3]", "72:120 [4]", "120:144 [6]", "144:208 [8
 ISO_RANGE = {
     "Multigrade RC Deluxe":
         {"00": 1.60, "0": 1.30, "1": 1.10, "2": 0.90, "3": 0.70, "4": 0.60, "5": 0.50},
+    "Multigrade RC Warmtone":
+        {"00": 1.90, "0": 1.60, "1": 1.30, "2": 1.10, "3": 0.90, "4": 0.70, "5": 0.50},
+    "Multigrade RC Cooltone":
+        {"00": 1.80, "0": 1.60, "1": 1.20, "2": 1.00, "3": 0.80, "4": 0.60, "5": 0.50},
     "Multigrade Art 300":
         {"00": 1.70, "0": 1.60, "1": 1.30, "2": 1.10, "3": 0.90, "4": 0.70, "5": 0.50},
     "Multigrade FB Classic":
         {"00": 1.70, "0": 1.40, "1": 1.10, "2": 0.95, "3": 0.80, "4": 0.60, "5": 0.50},
+    "Multigrade FB Warmtone":
+        {"00": 1.70, "0": 1.60, "1": 1.30, "2": 1.10, "3": 0.90, "4": 0.70, "5": 0.50},
     "Multigrade IV RC Deluxe":
         {"00": 1.80, "0": 1.60, "1": 1.30, "2": 1.10, "3": 0.90, "4": 0.60, "5": 0.40},
+    "Fomaspeed Variant":
+        {"0": 1.30, "1": 1.10, "2": 0.90, "3": 0.70, "4": 0.60, "5": 0.50},
+    "Fomabrom Variant III":
+        {"0": 1.30, "1": 1.10, "2": 0.90, "3": 0.70, "4": 0.60, "5": 0.50},
 }
 
 # Their ISO speed (P) at each filter, from the speed table in the same sheet. Two filters are
@@ -47,20 +57,48 @@ ISO_RANGE = {
 ISO_SPEED = {
     "Multigrade RC Deluxe":
         {"00": 240, "0": 240, "1": 240, "2": 240, "3": 240, "4": 220, "5": 220},
+    "Multigrade RC Warmtone":
+        {"00": 100, "0": 100, "1": 100, "2": 100, "3": 100, "4": 50, "5": 50},
+    "Multigrade RC Cooltone":
+        {"00": 200, "0": 200, "1": 200, "2": 200, "3": 200, "4": 100, "5": 100},
     "Multigrade Art 300":
         {"00": 100, "0": 100, "1": 100, "2": 100, "3": 100, "4": 50, "5": 50},
     "Multigrade FB Classic":
         {"00": 230, "0": 230, "1": 230, "2": 230, "3": 230, "4": 210, "5": 210},
+    "Multigrade FB Warmtone":
+        {"00": 100, "0": 100, "1": 100, "2": 100, "3": 100, "4": 50, "5": 50},
     "Multigrade IV RC Deluxe":
         {"00": 200, "0": 200, "1": 200, "2": 200, "3": 200, "4": 100, "5": 100},
+    "Fomaspeed Variant":
+        {"0": 200, "1": 200, "2": 200, "3": 200, "4": 100, "5": 100},
+    "Fomabrom Variant III":
+        {"0": 200, "1": 200, "2": 200, "3": 200, "4": 100, "5": 100},
 }
 
 # Paper white, and the span maximum black lies in, as the sheet's plots draw them
-WHITE = {"Multigrade RC Deluxe": 0.05, "Multigrade Art 300": 0.0,
-         "Multigrade FB Classic": 0.02, "Multigrade IV RC Deluxe": 0.03}
+WHITE = {
+    "Multigrade RC Deluxe": 0.05,
+    "Multigrade RC Warmtone": 0.05,
+    "Multigrade RC Cooltone": 0.05,
+    "Multigrade Art 300": 0.0,
+    "Multigrade FB Classic": 0.02,
+    "Multigrade FB Warmtone": 0.05,
+    "Multigrade IV RC Deluxe": 0.03,
+    "Fomaspeed Variant": 0.1,
+    "Fomabrom Variant III": 0.1,
+}
 # Art 300 is cotton rag and matte, and cannot make the black a glossy paper can
-BLACK = {"Multigrade RC Deluxe": (2.05, 2.10), "Multigrade Art 300": (1.35, 1.45),
-         "Multigrade FB Classic": (2.05, 2.10), "Multigrade IV RC Deluxe": (2.00, 2.05)}
+BLACK = {
+    "Multigrade RC Deluxe": (2.05, 2.10),
+    "Multigrade RC Warmtone": (2.20, 2.25),
+    "Multigrade RC Cooltone": (2.09, 2.14),
+    "Multigrade Art 300": (1.35, 1.45),
+    "Multigrade FB Classic": (2.05, 2.10),
+    "Multigrade FB Warmtone": (2.20, 2.25),
+    "Multigrade IV RC Deluxe": (2.00, 2.05),
+    "Fomaspeed Variant": (2.07, 2.12),
+    "Fomabrom Variant III": (1.98, 2.03),
+}
 
 # The README's worked examples: settings, then the tempo and counts it prints
 README = [
