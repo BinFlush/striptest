@@ -28,7 +28,7 @@
     --muted: #6B6B68;
     --line: #D9D9D5;
     --tint: #E7E7E4;
-    --faint: #8C8C88;
+    --faint: var(--muted);
     --accent: #B3261E;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
@@ -41,7 +41,7 @@
       --muted: #9A9A96;
       --line: #2C2C2C;
       --tint: #222;
-      --faint: #7A7A76;
+      --faint: #7E7E7A;
       --accent: #E5484D;
     }
   }
@@ -326,6 +326,11 @@
     color: var(--ink);
     font-size: clamp(1rem, 5.5vw, 1.375rem);
     font-weight: 600;
+  }
+
+  /* On the base's tile both figures stay in ink, as the rest of the tile is */
+  .row.base .figure {
+    color: var(--ink);
   }
 
   .stops {
